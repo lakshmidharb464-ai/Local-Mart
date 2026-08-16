@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
+  <defs>
+    <linearGradient id="leafGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4CAF50" />
+      <stop offset="100%" stop-color="#1B5E20" />
+    </linearGradient>
+    <linearGradient id="handleGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#81C784" />
+      <stop offset="100%" stop-color="#2E7D32" />
+    </linearGradient>
+  </defs>
+
+  {/* Shopping Bag Handle */}
+  <path d="M36 42 V28 C36 20 42 14 50 14 C58 14 64 20 64 28 V42" stroke="url(#handleGrad)" stroke-width="7" stroke-linecap="round" fill="none" />
+
+  {/* Leaf Bag Body */}
+  <path d="M22 42 H78 C78 42 82 78 50 88 C18 78 22 42 22 42 Z" fill="url(#leafGrad)" />
+
+  {/* Leaf Vein Accent */}
+  <path d="M50 44 Q52 64 68 76" stroke="#C8E6C9" stroke-width="4" stroke-linecap="round" fill="none" opacity="0.85" />
+</svg>

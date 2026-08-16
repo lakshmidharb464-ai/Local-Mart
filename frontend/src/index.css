@@ -1,0 +1,374 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+
+/* ───────────────────────────────────────────────
+   Base
+─────────────────────────────────────────────── */
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    scroll-padding-top: 90px;
+  }
+  body {
+    background-color: #F8F9FA;
+    color: #1F2A1F;
+    font-family: 'Inter', sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+/* ───────────────────────────────────────────────
+   Scroll-reveal utility classes
+─────────────────────────────────────────────── */
+.reveal {
+  opacity: 0;
+  transform: translateY(32px);
+  transition: opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+              transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+.reveal-left {
+  opacity: 0;
+  transform: translateX(-32px);
+  transition: opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+              transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.reveal-left.visible {
+  opacity: 1;
+  transform: translateX(0);
+}
+.reveal-right {
+  opacity: 0;
+  transform: translateX(32px);
+  transition: opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+              transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.reveal-right.visible {
+  opacity: 1;
+  transform: translateX(0);
+}
+.reveal-scale {
+  opacity: 0;
+  transform: scale(0.92);
+  transition: opacity 0.6s cubic-bezier(0.22, 1, 0.36, 1),
+              transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.reveal-scale.visible {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* Stagger delays */
+.delay-100 { transition-delay: 0.1s; }
+.delay-150 { transition-delay: 0.15s; }
+.delay-200 { transition-delay: 0.2s; }
+.delay-250 { transition-delay: 0.25s; }
+.delay-300 { transition-delay: 0.3s; }
+.delay-400 { transition-delay: 0.4s; }
+.delay-500 { transition-delay: 0.5s; }
+.delay-600 { transition-delay: 0.6s; }
+.delay-700 { transition-delay: 0.7s; }
+
+/* ───────────────────────────────────────────────
+   Glassmorphism card
+─────────────────────────────────────────────── */
+.glass-card {
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  box-shadow: 0 8px 32px rgba(15, 40, 24, 0.08);
+}
+.glass-dark {
+  background: rgba(15, 40, 24, 0.55);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+/* ───────────────────────────────────────────────
+   Shimmer skeleton loader
+─────────────────────────────────────────────── */
+@keyframes shimmer {
+  0% { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+.shimmer {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e8e2 50%, #f0f0f0 75%);
+  background-size: 800px 100%;
+  animation: shimmer 1.6s infinite;
+}
+
+/* ───────────────────────────────────────────────
+   Gradient text
+─────────────────────────────────────────────── */
+.gradient-text {
+  background: linear-gradient(135deg, #a8f060 0%, #4CAF50 50%, #2E7D32 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.gradient-text-warm {
+  background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ───────────────────────────────────────────────
+   Glowing button
+─────────────────────────────────────────────── */
+.btn-glow {
+  box-shadow: 0 0 0 0 rgba(168, 240, 96, 0.4);
+  transition: box-shadow 0.3s ease, transform 0.2s ease;
+}
+.btn-glow:hover {
+  box-shadow: 0 0 0 8px rgba(168, 240, 96, 0.08),
+              0 8px 32px rgba(168, 240, 96, 0.3);
+  transform: translateY(-2px);
+}
+.btn-glow:active {
+  transform: scale(0.97);
+}
+
+/* ───────────────────────────────────────────────
+   Animated underline for nav links
+─────────────────────────────────────────────── */
+.nav-link-animated {
+  position: relative;
+}
+.nav-link-animated::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 50%;
+  right: 50%;
+  height: 2px;
+  background: linear-gradient(90deg, #4CAF50, #a8f060);
+  border-radius: 2px;
+  transition: left 0.3s ease, right 0.3s ease;
+}
+.nav-link-animated:hover::after {
+  left: 0;
+  right: 0;
+}
+
+/* ───────────────────────────────────────────────
+   Card hover glow
+─────────────────────────────────────────────── */
+.card-hover {
+  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+              box-shadow 0.3s ease;
+}
+.card-hover:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 20px 60px rgba(46, 125, 50, 0.12),
+              0 8px 24px rgba(15, 40, 24, 0.08);
+}
+
+/* ───────────────────────────────────────────────
+   Noise texture overlay (subtle grain)
+─────────────────────────────────────────────── */
+.noise-overlay::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 1;
+  border-radius: inherit;
+}
+
+/* ───────────────────────────────────────────────
+   Marquee / ticker animation
+─────────────────────────────────────────────── */
+@keyframes marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+.animate-marquee {
+  animation: marquee 20s linear infinite;
+  display: flex;
+  width: max-content;
+}
+.animate-marquee:hover {
+  animation-play-state: paused;
+}
+
+/* ───────────────────────────────────────────────
+   Product card image zoom
+─────────────────────────────────────────────── */
+.img-zoom {
+  overflow: hidden;
+}
+.img-zoom img {
+  transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.img-zoom:hover img {
+  transform: scale(1.08);
+}
+
+/* ───────────────────────────────────────────────
+   Pulse ring for live badge
+─────────────────────────────────────────────── */
+@keyframes pulseRing {
+  0% { box-shadow: 0 0 0 0 rgba(163, 230, 53, 0.6); }
+  70% { box-shadow: 0 0 0 8px rgba(163, 230, 53, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(163, 230, 53, 0); }
+}
+.pulse-ring {
+  animation: pulseRing 2s cubic-bezier(0.455, 0.03, 0.515, 0.955) infinite;
+}
+
+/* ───────────────────────────────────────────────
+   Auth Modal CSS
+─────────────────────────────────────────────── */
+.auth-sliding-box {
+  background-color: #fff;
+  border-radius: 24px;
+  box-shadow: 0 24px 64px rgba(15, 40, 24, 0.18), 0 4px 12px rgba(15, 40, 24, 0.05);
+  position: relative;
+  overflow: hidden;
+  width: 820px;
+  max-width: 100%;
+  min-height: 520px;
+}
+.auth-form-panel {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  transition: all 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.auth-sign-in {
+  left: 0;
+  width: 50%;
+  z-index: 2;
+}
+.auth-sliding-box.active .auth-sign-in {
+  transform: translateX(100%);
+}
+.auth-sign-up {
+  left: 0;
+  width: 50%;
+  opacity: 0;
+  z-index: 1;
+}
+.auth-sliding-box.active .auth-sign-up {
+  transform: translateX(100%);
+  opacity: 1;
+  z-index: 5;
+  animation: authMove 0.6s;
+}
+@keyframes authMove {
+  0%, 49.99% { opacity: 0; z-index: 1; }
+  50%, 100% { opacity: 1; z-index: 5; }
+}
+.auth-toggle-container {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 50%;
+  height: 100%;
+  overflow: hidden;
+  transition: all 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+  border-radius: 120px 0 0 80px;
+  z-index: 1000;
+}
+.auth-sliding-box.active .auth-toggle-container {
+  transform: translateX(-100%);
+  border-radius: 0 120px 80px 0;
+}
+.auth-toggle {
+  background: linear-gradient(135deg, #1B5E20 0%, #2E7D32 50%, #388E3C 100%);
+  color: #fff;
+  position: relative;
+  left: -100%;
+  height: 100%;
+  width: 200%;
+  transform: translateX(0);
+  transition: all 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.auth-sliding-box.active .auth-toggle {
+  transform: translateX(50%);
+}
+.auth-toggle-panel {
+  position: absolute;
+  width: 50%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  padding: 0 40px;
+  text-align: center;
+  top: 0;
+  transform: translateX(0);
+  transition: all 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.auth-toggle-left { transform: translateX(-200%); }
+.auth-sliding-box.active .auth-toggle-left { transform: translateX(0); }
+.auth-toggle-right { right: 0; transform: translateX(0); }
+.auth-sliding-box.active .auth-toggle-right { transform: translateX(200%); }
+
+/* ───────────────────────────────────────────────
+   Scrollbar
+─────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 8px; height: 6px; }
+::-webkit-scrollbar-track { background: #F1F8F2; }
+::-webkit-scrollbar-thumb { background: #A5D6A7; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #4CAF50; }
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+  height: 0;
+  width: 0;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* ───────────────────────────────────────────────
+   Section divider wave
+─────────────────────────────────────────────── */
+.wave-divider svg {
+  display: block;
+  width: 100%;
+}
+
+/* ───────────────────────────────────────────────
+   Feature card icon bounce on hover
+─────────────────────────────────────────────── */
+@keyframes iconBounce {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  30% { transform: translateY(-4px) rotate(-4deg); }
+  60% { transform: translateY(-2px) rotate(3deg); }
+}
+.group:hover .icon-bounce {
+  animation: iconBounce 0.5s ease;
+}
+
+/* ───────────────────────────────────────────────
+   Ticker bar
+─────────────────────────────────────────────── */
+.ticker-wrap {
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+/* ───────────────────────────────────────────────
+   Floating particles
+─────────────────────────────────────────────── */
+@keyframes particleFloat {
+  0%, 100% { transform: translateY(0) rotate(0deg); opacity: 0.6; }
+  50% { transform: translateY(-20px) rotate(180deg); opacity: 1; }
+}
+.particle {
+  animation: particleFloat var(--dur, 4s) ease-in-out infinite;
+  animation-delay: var(--delay, 0s);
+}
