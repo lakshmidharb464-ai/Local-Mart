@@ -1,8 +1,10 @@
 import React, { useState, useMemo, lazy, Suspense } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { useMarketplace } from '../context/MarketplaceContext';
 import { CustomerNavbar } from './Customer/CustomerNavbar';
 import { FloatingCartBar } from '../components/FloatingCartBar';
-import { PRODUCTS } from '../data/mockData';
+import { MobileBottomNav } from '../components/MobileBottomNav';
 
 const CustomerHome = lazy(() => import('./Customer/CustomerHome').then(m => ({ default: m.CustomerHome || m.default })));
 const CustomerProducts = lazy(() => import('./Customer/CustomerProducts').then(m => ({ default: m.CustomerProducts || m.default })));
@@ -10,6 +12,7 @@ const CustomerWishlist = lazy(() => import('./Customer/CustomerWishlist').then(m
 const CustomerCartCheckout = lazy(() => import('./Customer/CustomerCartCheckout').then(m => ({ default: m.CustomerCartCheckout || m.default })));
 const CustomerOrders = lazy(() => import('./Customer/CustomerOrders').then(m => ({ default: m.CustomerOrders || m.default })));
 const CustomerProfileSettings = lazy(() => import('./Customer/CustomerProfileSettings').then(m => ({ default: m.CustomerProfileSettings || m.default })));
+const CustomerSubscriptions = lazy(() => import('./Customer/CustomerSubscriptions').then(m => ({ default: m.CustomerSubscriptions || m.default })));
 const ProduceDetailModal = lazy(() => import('./Customer/ProduceDetailModal').then(m => ({ default: m.ProduceDetailModal || m.default })));
 
 const ViewLoader = () => (
@@ -22,10 +25,11 @@ const ViewLoader = () => (
 );
 
 export const CustomerDashboard = ({ setActiveView }) => {
+  const { showToast } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
 
-  const validTabs = useMemo(() => ['home', 'products', 'wishlist', 'cart', 'orders', 'profile', 'settings'], []);
+  const validTabs = useMemo(() => ['home', 'products', 'wishlist', 'cart', 'orders', 'profile', 'settings', 'subscriptions'], []);
 
   const activeTab = useMemo(() => {
     const rawPath = location.pathname.replace(/^\/customer\/?/, '');
@@ -43,82 +47,27 @@ export const CustomerDashboard = ({ setActiveView }) => {
   };
 
 
-  // Master Customer States
-  const [products, setProducts] = useState(PRODUCTS);
-  const [wishlist, setWishlist] = useState([PRODUCTS[0], PRODUCTS[2]]);
+  // Master Customer States from Shared Marketplace
+  const { products, orders: customerOrders, placeOrder, setOrders: setCustomerOrders } = useMarketplace();
   const [quickBuyProduct, setQuickBuyProduct] = useState(null);
 
-  const [customerOrders, setCustomerOrders] = useState([
-    {
-      id: 'ORD-4127',
-      date: 'Today, 10:44 AM',
-      items: 'Pure A2 Gir Cow Milk (1 liter)',
-      farmer: 'Rajesh Kumar (Pune Rural)',
-      status: 'Pending',
-      eta: '25-35 mins',
-      total: 94,
-      paymentMethod: 'Cash on Delivery',
-      address: 'Flat 402, Green Acres, Baner Road, Pune',
-      image: 'https://images.unsplash.com/photo-1550583724-b2692b85b150?auto=format&fit=crop&w=600&q=80',
-      category: 'Dairy',
-      itemsList: [
-        { name: 'Pure A2 Gir Cow Milk', qty: '1 Liter', price: 94, img: 'https://images.unsplash.com/photo-1550583724-b2692b85b150?auto=format&fit=crop&w=200&q=80' }
-      ],
-      timeline: [
-        { title: 'Order Placed', time: '10:44 AM', done: true, desc: 'Sent to farmer Rajesh Kumar' },
-        { title: 'Farmer Approval', time: 'Pending', done: false, desc: 'Farm harvesting & packaging' },
-        { title: 'Courier Pickup', time: 'Pending', done: false, desc: 'Nearest EV rider assignment' },
-        { title: 'Delivered', time: 'Est. 11:15 AM', done: false, desc: 'Doorstep drop in Baner, Pune' }
-      ]
-    },
-    {
-      id: 'ORD-8821',
-      date: 'Today, 10:15 AM',
-      items: 'Vine Tomatoes (2kg), Hydroponic Spinach (1 bunch)',
-      farmer: 'Rajesh Kumar (Pune Rural)',
-      status: 'Out for Delivery',
-      eta: '18 mins',
-      total: 110,
-      paymentMethod: 'UPI (Paid)',
-      address: 'Flat 402, Green Acres, Baner Road, Pune',
-      image: 'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?auto=format&fit=crop&w=600&q=80',
-      category: 'Vegetables',
-      rider: { name: 'Vikram Singh', phone: '+91 98230 11223', vehicle: 'Ather 450X EV Scooter · MH 12 FE 4920' },
-      itemsList: [
-        { name: 'Vine Tomatoes', qty: '2 kg', price: 80, img: 'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?auto=format&fit=crop&w=200&q=80' },
-        { name: 'Hydroponic Spinach', qty: '1 bunch', price: 30, img: 'https://images.unsplash.com/photo-1576045057995-568f588f82fb?auto=format&fit=crop&w=200&q=80' }
-      ],
-      timeline: [
-        { title: 'Order Placed', time: '10:15 AM', done: true, desc: 'Order verified & confirmed' },
-        { title: 'Harvest Packed', time: '10:22 AM', done: true, desc: 'Packed fresh at Pune Rural Hub' },
-        { title: 'Out for Delivery', time: '10:35 AM', done: true, desc: 'Vikram Singh en route with thermal bag' },
-        { title: 'Delivered', time: 'Est. 10:53 AM', done: false, desc: '18 mins away from Baner Road' }
-      ]
-    },
-    {
-      id: 'ORD-7649',
-      date: 'Yesterday, 4:30 PM',
-      items: 'A2 Gir Cow Milk (2L), Devgad Alphonso Mangoes (1 dozen)',
-      farmer: 'Mahesh Deshmukh (Satara Dairy)',
-      status: 'Delivered',
-      eta: 'Completed',
-      total: 810,
-      paymentMethod: 'Credit Card',
-      address: 'Flat 402, Green Acres, Baner Road, Pune',
-      image: 'https://images.unsplash.com/photo-1553279768-865429fa0078?auto=format&fit=crop&w=600&q=80',
-      category: 'Fruits & Dairy',
-      itemsList: [
-        { name: 'A2 Gir Cow Milk', qty: '2 Liters', price: 160, img: 'https://images.unsplash.com/photo-1550583724-b2692b85b150?auto=format&fit=crop&w=200&q=80' },
-        { name: 'Devgad Alphonso Mangoes', qty: '1 Dozen', price: 650, img: 'https://images.unsplash.com/photo-1553279768-865429fa0078?auto=format&fit=crop&w=200&q=80' }
-      ],
-      timeline: [
-        { title: 'Order Placed', time: '4:30 PM', done: true, desc: 'Order confirmed' },
-        { title: 'Harvest Packed', time: '4:42 PM', done: true, desc: 'Insulated box sealed' },
-        { title: 'Out for Delivery', time: '4:55 PM', done: true, desc: 'Courier on transit' },
-        { title: 'Delivered', time: '5:12 PM', done: true, desc: 'Handed over at front desk' }
-      ]
+  // Persisted Customer Wishlist
+  const [wishlist, setWishlist] = useState(() => {
+    try {
+      const saved = localStorage.getItem('localfarm_wishlist');
+      return saved ? JSON.parse(saved) : (products.slice(0, 2) || []);
+    } catch {
+      return [];
     }
-  ]);
+  });
+
+  React.useEffect(() => {
+    try {
+      localStorage.setItem('localfarm_wishlist', JSON.stringify(wishlist));
+    } catch (e) {
+      console.error('Error saving wishlist:', e);
+    }
+  }, [wishlist]);
 
   const toggleWishlist = (product) => {
     if (wishlist.some(w => w.id === product.id)) {
@@ -129,7 +78,7 @@ export const CustomerDashboard = ({ setActiveView }) => {
   };
 
   const addNewCustomerOrder = (newOrder) => {
-    setCustomerOrders([newOrder, ...customerOrders]);
+    placeOrder(newOrder);
   };
 
   const handleOpenQuickBuy = (product) => {
@@ -171,6 +120,8 @@ export const CustomerDashboard = ({ setActiveView }) => {
         );
       case 'profile':
         return <CustomerProfileSettings key="profile" initialSubTab="profile" />;
+      case 'subscriptions':
+        return <CustomerSubscriptions showToast={showToast} />;
       case 'settings':
         return <CustomerProfileSettings key="settings" initialSubTab="security" />;
       case 'home':
@@ -219,6 +170,13 @@ export const CustomerDashboard = ({ setActiveView }) => {
 
       {/* Floating Bottom Cart Bar */}
       <FloatingCartBar activeTab={activeTab} setActiveTab={setActiveTab} />
+
+      {/* Ergonomic Mobile Bottom Navigation */}
+      <MobileBottomNav
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        wishlistCount={wishlist.length}
+      />
 
     </div>
   );

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { 
   Search, 
@@ -26,10 +26,11 @@ import {
   Upload,
   IndianRupee,
   ShieldCheck,
-  Filter
+  Filter,
+  RotateCcw
 } from 'lucide-react';
 
-export const ProductManagement = ({ products = [], setProducts, categories = [], setCategories }) => {
+export const ProductManagement = ({ products = [], setProducts, categories = [], setCategories, isDark = true }) => {
   const { showToast } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCatFilter, setSelectedCatFilter] = useState('all');
@@ -39,6 +40,20 @@ export const ProductManagement = ({ products = [], setProducts, categories = [],
   const [showAddProductModal, setShowAddProductModal] = useState(false);
   const [newCatName, setNewCatName] = useState('');
   const [filterRegion, setFilterRegion] = useState('all');
+
+  // Close modals on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setShowAddProductModal(false);
+        setShowCategoryModal(false);
+        setEditingProduct(null);
+        setViewingProduct(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   // Sample Produce Image Presets for 1-tap image selection
   const produceImagePresets = [
@@ -61,21 +76,27 @@ export const ProductManagement = ({ products = [], setProducts, categories = [],
     district: 'Chittoor AP'
   });
 
-  const filteredProducts = products.filter(p => {
-    const matchesSearch = 
-      p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.farmerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.category.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCat = selectedCatFilter === 'all' || p.category === selectedCatFilter;
-    const matchesRegion = filterRegion === 'all' ? true :
-      filterRegion === 'chittoor' ? (p.district?.includes('Chittoor') || p.farmerName?.includes('Chittoor') || p.id?.startsWith('prod_ctr')) : true;
-    return matchesSearch && matchesCat && matchesRegion;
-  });
+  const filteredProducts = useMemo(() => {
+    return products.filter(p => {
+      const matchesSearch = 
+        p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        p.farmerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        p.category.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesCat = selectedCatFilter === 'all' || p.category === selectedCatFilter;
+      const matchesRegion = filterRegion === 'all' ? true :
+        filterRegion === 'chittoor' ? (p.district?.includes('Chittoor') || p.farmerName?.includes('Chittoor') || p.id?.startsWith('prod_ctr')) : true;
+      return matchesSearch && matchesCat && matchesRegion;
+    });
+  }, [products, searchQuery, selectedCatFilter, filterRegion]);
 
-  const totalProducts = products.length;
-  const approvedProducts = products.filter(p => p.status === 'Approved').length;
-  const pendingProducts = products.filter(p => p.status === 'Pending').length;
-  const totalCategories = categories.filter(c => c.id !== 'all').length;
+  const { totalProducts, approvedProducts, pendingProducts, totalCategories } = useMemo(() => {
+    return {
+      totalProducts: products.length,
+      approvedProducts: products.filter(p => p.status === 'Approved').length,
+      pendingProducts: products.filter(p => p.status === 'Pending').length,
+      totalCategories: categories.filter(c => c.id !== 'all').length,
+    };
+  }, [products, categories]);
 
   const handleApproveProduct = (id, name) => {
     setProducts(products.map(p => p.id === id ? { ...p, status: 'Approved' } : p));
@@ -155,8 +176,17 @@ export const ProductManagement = ({ products = [], setProducts, categories = [],
     }
   };
 
+  const cardBase  = isDark ? 'adm-glass rounded-3xl p-6 sm:p-7' : 'bg-white rounded-3xl border border-emerald-100/80 shadow-farm-sm p-6 sm:p-7';
+  const cardTitle = isDark ? 'text-[#D4EAD9]' : 'text-farmGreen-950';
+  const cardSub   = isDark ? 'text-[#7FA882]' : 'text-farmMuted';
+  const divider   = isDark ? 'border-[rgba(0,255,133,0.07)]' : 'border-gray-100';
+  const tableWrap = isDark ? 'adm-glass rounded-3xl overflow-hidden border-[rgba(0,255,133,0.08)]' : 'bg-white rounded-3xl border border-emerald-100/80 shadow-farm-sm overflow-hidden';
+  const tHead     = isDark ? 'bg-[rgba(0,255,133,0.04)] border-b border-[rgba(0,255,133,0.08)] text-[#7FA882]' : 'bg-farmBg/80 border-b border-emerald-100 text-farmMuted';
+  const tDivide   = isDark ? 'divide-[rgba(0,255,133,0.04)]' : 'divide-gray-100';
+  const tRow      = isDark ? 'adm-row hover:bg-[rgba(0,255,133,0.025)]' : 'hover:bg-emerald-50/50';
+
   return (
-    <div className="space-y-6 animate-fadeIn font-display pb-12">
+    <div className="space-y-6 font-display pb-12">
       
       {/* Header Controls */}
       <div className="bg-white p-6 sm:p-7 rounded-3xl border border-gray-100 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -258,7 +288,13 @@ export const ProductManagement = ({ products = [], setProducts, categories = [],
           <button
             onClick={() => setSelectedCatFilter('all')}
             className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap ${
-              selectedCatFilter === 'all' ? 'bg-emerald-800 text-white shadow-xs' : 'bg-gray-50 text-gray-700 hover:bg-emerald-50'
+              selectedCatFilter === 'all'
+                ? isDark
+                  ? 'bg-[rgba(0,255,133,0.15)] text-[#00FF85] border border-[rgba(0,255,133,0.4)] shadow-[0_0_12px_rgba(0,255,133,0.2)]'
+                  : 'bg-emerald-700 text-white shadow-sm border border-emerald-800'
+                : isDark
+                  ? 'text-[#7FA882] border border-[rgba(0,255,133,0.08)] hover:bg-[rgba(0,255,133,0.06)] hover:text-[#D4EAD9]'
+                  : 'bg-farmBg text-[#0A2214] font-bold border border-emerald-200/80 hover:bg-emerald-50 hover:text-emerald-900 shadow-2xs'
             }`}
           >
             All Produce
@@ -268,7 +304,13 @@ export const ProductManagement = ({ products = [], setProducts, categories = [],
               key={cat.id}
               onClick={() => setSelectedCatFilter(cat.id)}
               className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap ${
-                selectedCatFilter === cat.id ? 'bg-emerald-800 text-white shadow-xs' : 'bg-gray-50 text-gray-700 hover:bg-emerald-50'
+                selectedCatFilter === cat.id
+                  ? isDark
+                    ? 'bg-[rgba(0,255,133,0.15)] text-[#00FF85] border border-[rgba(0,255,133,0.4)] shadow-[0_0_12px_rgba(0,255,133,0.2)]'
+                    : 'bg-emerald-700 text-white shadow-sm border border-emerald-800'
+                  : isDark
+                    ? 'text-[#7FA882] border border-[rgba(0,255,133,0.08)] hover:bg-[rgba(0,255,133,0.06)] hover:text-[#D4EAD9]'
+                    : 'bg-farmBg text-[#0A2214] font-bold border border-emerald-200/80 hover:bg-emerald-50 hover:text-emerald-900 shadow-2xs'
               }`}
             >
               {cat.name}
@@ -305,6 +347,7 @@ export const ProductManagement = ({ products = [], setProducts, categories = [],
                   src={p.image} 
                   alt={p.name}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  loading="lazy"
                 />
                 <div className="absolute top-3 left-3 flex items-center gap-1.5 flex-wrap">
                   <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase shadow-xs ${
@@ -372,6 +415,25 @@ export const ProductManagement = ({ products = [], setProducts, categories = [],
             </div>
           );
         })}
+
+        {filteredProducts.length === 0 && (
+          <div className="col-span-full p-12 text-center text-xs space-y-3 bg-white border border-emerald-100/80 rounded-3xl shadow-farm-sm">
+            <div className="w-12 h-12 rounded-2xl mx-auto flex items-center justify-center bg-emerald-50 border border-emerald-200 text-emerald-700">
+              <ShoppingBag className="w-6 h-6 opacity-80" />
+            </div>
+            <div className="font-extrabold text-sm text-farmGreen-950">No Produce Listings Found</div>
+            <p className="text-[11px] text-farmMuted max-w-sm mx-auto">Try adjusting your keyword search or switching to another category tab.</p>
+            {(searchQuery || selectedCatFilter !== 'all' || filterRegion !== 'all') && (
+              <button
+                onClick={() => { setSearchQuery(''); setSelectedCatFilter('all'); setFilterRegion('all'); }}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-emerald-700 text-white hover:bg-emerald-800 transition-all cursor-pointer shadow-sm active:scale-95"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>Reset Filters & Search</span>
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Onboard Produce Item Modal - Fully Responsive Scrollable Modal with Quick Adjusters */}
@@ -406,6 +468,7 @@ export const ProductManagement = ({ products = [], setProducts, categories = [],
                 <label className="font-black text-farmGreen-950 mb-1 block">Produce Name *</label>
                 <input
                   type="text"
+                  autoFocus
                   placeholder="e.g. Organic Hydroponic Kale"
                   value={newProduct.name}
                   onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
@@ -419,7 +482,7 @@ export const ProductManagement = ({ products = [], setProducts, categories = [],
                 <label className="font-black text-farmGreen-950 block">Produce Photo (Select Preset or Upload)</label>
                 <div className="flex items-center gap-3">
                   <div className="w-14 h-14 rounded-2xl bg-gray-100 overflow-hidden shrink-0 border border-emerald-300 shadow-2xs">
-                    <img src={newProduct.image} alt="Preview" className="w-full h-full object-cover" />
+                    <img src={newProduct.image} alt="Preview" className="w-full h-full object-cover" loading="lazy" />
                   </div>
 
                   <div className="flex-1 flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
@@ -433,7 +496,7 @@ export const ProductManagement = ({ products = [], setProducts, categories = [],
                         }`}
                         title={pr.name}
                       >
-                        <img src={pr.url} alt={pr.name} className="w-full h-full object-cover" />
+                        <img src={pr.url} alt={pr.name} className="w-full h-full object-cover" loading="lazy" />
                       </button>
                     ))}
                     
@@ -593,6 +656,7 @@ export const ProductManagement = ({ products = [], setProducts, categories = [],
                 <label className="font-black text-farmGreen-950 mb-1 block">New Category Name</label>
                 <input
                   type="text"
+                  autoFocus
                   placeholder="e.g. Organic Dairy & Eggs"
                   value={newCatName}
                   onChange={(e) => setNewCatName(e.target.value)}
@@ -640,6 +704,7 @@ export const ProductManagement = ({ products = [], setProducts, categories = [],
                 <label className="font-black text-farmGreen-950 mb-1 block">Produce Name</label>
                 <input
                   type="text"
+                  autoFocus
                   value={editingProduct.name}
                   onChange={(e) => setEditingProduct({ ...editingProduct, name: e.target.value })}
                   className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-2xl outline-none font-bold"

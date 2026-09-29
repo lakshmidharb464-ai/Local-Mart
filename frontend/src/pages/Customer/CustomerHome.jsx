@@ -7,43 +7,35 @@ import {
   Zap, Plus, Minus, TrendingUp, Clock, Award,
   Flame, BadgePercent
 } from 'lucide-react';
-import { FARMERS } from '../../data/mockData';
+import { apiClient } from '../../services/apiClient';
+import { Button } from '../../components/ui/Button';
+import { Badge } from '../../components/ui/Badge';
 
 /* ═══════════════════════════════════════════════════
    TOAST
-═══════════════════════════════════════════════════ */
+   ═══════════════════════════════════════════════════ */
 const Toast = ({ name, onClose }) => (
-  <div style={{
-    position: 'fixed', bottom: 90, left: '50%', transform: 'translateX(-50%)',
-    zIndex: 9999, display: 'flex', alignItems: 'center', gap: 12,
-    background: 'linear-gradient(135deg,#0d2214,#1b3a1f)',
-    border: '1px solid rgba(168,240,96,0.3)',
-    padding: '12px 18px', borderRadius: 18, minWidth: 240,
-    boxShadow: '0 20px 60px rgba(0,0,0,0.5), 0 0 0 1px rgba(168,240,96,0.1)',
-    animation: 'toastUp .35s cubic-bezier(.22,1,.36,1) both',
-    fontFamily: 'Plus Jakarta Sans,sans-serif',
-  }}>
-    <div style={{ width: 32, height: 32, borderRadius: 10, background: 'linear-gradient(135deg,#a8f060,#6fcf37)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 4px 12px rgba(168,240,96,0.3)' }}>
-      <Check style={{ width: 15, height: 15, color: '#071a0b' }} />
+  <div className="fixed bottom-24 sm:bottom-12 left-1/2 -translate-x-1/2 z-[9999] flex items-center gap-3 bg-white/95 backdrop-blur-md border border-emerald-200/80 px-5 py-3 rounded-2xl shadow-organic-lg min-w-[280px] animate-slideUp font-display">
+    <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-500 to-farmGreen-600 flex items-center justify-center shrink-0 shadow-sm">
+      <Check className="w-4 h-4 text-white" />
     </div>
-    <div style={{ flex: 1 }}>
-      <div style={{ fontSize: 12, fontWeight: 800, color: '#fff', lineHeight: 1.3 }}>{name}</div>
-      <div style={{ fontSize: 10, color: 'rgba(168,240,96,0.6)', marginTop: 2, fontWeight: 600 }}>Added to basket ✓</div>
+    <div className="flex-1">
+      <div className="text-xs font-black text-farmGreen-950 leading-tight">{name}</div>
+      <div className="text-[11px] text-emerald-600 font-bold mt-0.5">Added to basket ✓</div>
     </div>
-    <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.08)', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.5)', padding: 6, borderRadius: 8 }}>
-      <X style={{ width: 12, height: 12 }} />
+    <button
+      onClick={onClose}
+      className="bg-gray-100 hover:bg-gray-200 text-gray-500 hover:text-gray-800 p-1.5 rounded-lg transition-colors cursor-pointer"
+    >
+      <X className="w-3.5 h-3.5" />
     </button>
-    <style>{`
-      @keyframes toastUp{from{opacity:0;transform:translate(-50%,20px) scale(0.95)}to{opacity:1;transform:translate(-50%,0) scale(1)}}
-    `}</style>
   </div>
 );
 
 /* ═══════════════════════════════════════════════════
-   PRODUCT CARD — premium redesign
-═══════════════════════════════════════════════════ */
-const ProductCard = ({ prod, isWishlisted, onWishlist, onQuickView, onAddToCart, cartQty, onQtyChange }) => {
-  const [hov, setHov] = useState(false);
+   PRODUCT CARD — Warm organic white card with premium hover
+   ═══════════════════════════════════════════════════ */
+const ProductCard = React.memo(({ prod, isWishlisted, onWishlist, onQuickView, onAddToCart, cartQty, onQtyChange }) => {
   const [added, setAdded] = useState(false);
 
   const handleAdd = (e) => {
@@ -55,301 +47,241 @@ const ProductCard = ({ prod, isWishlisted, onWishlist, onQuickView, onAddToCart,
 
   return (
     <div
-      onMouseEnter={() => setHov(true)}
-      onMouseLeave={() => setHov(false)}
-      style={{
-        background: '#fff',
-        borderRadius: 20,
-        border: hov ? '1.5px solid #a5d6a7' : '1.5px solid #f0f4f0',
-        boxShadow: hov
-          ? '0 16px 48px rgba(15,40,24,0.14), 0 4px 16px rgba(46,125,50,0.08)'
-          : '0 2px 8px rgba(0,0,0,0.06)',
-        transform: hov ? 'translateY(-5px)' : 'translateY(0)',
-        transition: 'all .3s cubic-bezier(.22,1,.36,1)',
-        display: 'flex', flexDirection: 'column', overflow: 'hidden',
-        fontFamily: 'Plus Jakarta Sans, sans-serif',
-        position: 'relative',
-      }}
+      onClick={() => onQuickView(prod)}
+      className="group bg-white rounded-3xl border border-emerald-100/70 hover:border-emerald-300 shadow-farm-sm hover:shadow-organic-lg transition-all duration-300 flex flex-col overflow-hidden relative cursor-pointer font-display hover:-translate-y-1.5"
     >
-      {/* Image */}
-      <div
-        style={{ position: 'relative', height: 160, overflow: 'hidden', background: '#f0f4f0', cursor: 'pointer', flexShrink: 0 }}
-        onClick={() => onQuickView(prod)}
-      >
+      {/* Product Image Area */}
+      <div className="relative aspect-square sm:h-52 w-full overflow-hidden bg-emerald-50/40 shrink-0">
         <img
-          src={prod.image} alt={prod.name}
-          style={{ width: '100%', height: '100%', objectFit: 'cover', transform: hov ? 'scale(1.1)' : 'scale(1)', transition: 'transform .5s cubic-bezier(.22,1,.36,1)' }}
+          src={prod.image}
+          alt={prod.name}
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
+          loading="lazy"
         />
-        {/* Dark gradient overlay */}
-        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,.35) 0%, transparent 50%)', opacity: hov ? 1 : 0, transition: 'opacity .3s' }} />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-black/10 opacity-60 group-hover:opacity-75 transition-opacity" />
 
-        {/* Quick View pill */}
-        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, display: 'flex', justifyContent: 'center', paddingBottom: 12, opacity: hov ? 1 : 0, transform: hov ? 'translateY(0)' : 'translateY(12px)', transition: 'all .28s ease' }}>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'rgba(255,255,255,.96)', color: '#0d2214', fontSize: 10, fontWeight: 800, padding: '5px 14px', borderRadius: 999, boxShadow: '0 4px 16px rgba(0,0,0,.2)', backdropFilter: 'blur(8px)' }}>
-            <Eye style={{ width: 11, height: 11 }} /> Quick View
-          </span>
-        </div>
-
-        {/* Wishlist */}
-        <button
-          onClick={(e) => { e.stopPropagation(); onWishlist(prod); }}
-          style={{
-            position: 'absolute', top: 10, right: 10, width: 32, height: 32, borderRadius: '50%',
-            border: 'none', cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            background: isWishlisted ? '#ef4444' : 'rgba(255,255,255,.92)',
-            color: isWishlisted ? '#fff' : '#bbb',
-            boxShadow: isWishlisted ? '0 4px 12px rgba(239,68,68,0.4)' : '0 2px 8px rgba(0,0,0,.12)',
-            transform: isWishlisted ? 'scale(1.15)' : hov ? 'scale(1.05)' : 'scale(1)',
-            transition: 'all .22s cubic-bezier(.22,1,.36,1)',
-          }}
-        >
-          <Heart style={{ width: 13, height: 13, fill: isWishlisted ? '#fff' : 'none' }} />
-        </button>
-
-        {/* Tags */}
-        <div style={{ position: 'absolute', top: 10, left: 10, display: 'flex', flexDirection: 'column', gap: 4 }}>
+        {/* Top Floating Badges */}
+        <div className="absolute top-2.5 left-2.5 flex flex-col gap-1.5 z-10">
           {prod.organic && (
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, background: 'linear-gradient(135deg,#a8f060,#6fcf37)', color: '#071a0b', fontSize: 9, fontWeight: 900, padding: '3px 9px', borderRadius: 999, boxShadow: '0 2px 8px rgba(168,240,96,0.35)' }}>
-              <Leaf style={{ width: 8, height: 8 }} /> Organic
+            <Badge variant="organic" size="sm">Organic</Badge>
+          )}
+          {prod.category && (
+            <span className="px-2 py-0.5 rounded-full bg-black/50 backdrop-blur-md text-white text-[10px] font-bold border border-white/20 w-fit">
+              {prod.category}
             </span>
           )}
         </div>
 
-        {/* Harvest badge */}
-        <div style={{ position: 'absolute', bottom: hov ? 36 : 10, left: 10, background: 'rgba(10,30,14,.82)', backdropFilter: 'blur(8px)', padding: '3px 9px', borderRadius: 999, display: 'flex', alignItems: 'center', gap: 4, transition: 'bottom .28s ease' }}>
-          <Clock style={{ width: 8, height: 8, color: '#a8f060' }} />
-          <span style={{ fontSize: 9, fontWeight: 700, color: '#fff' }}>{prod.harvestDate}</span>
+        {/* Action Controls (Quick View & Wishlist) */}
+        <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5 z-10">
+          <button
+            onClick={(e) => { e.stopPropagation(); onQuickView(prod); }}
+            title="Quick View"
+            className="w-8 h-8 rounded-full bg-white/90 hover:bg-white text-farmGreen-950 flex items-center justify-center shadow-md backdrop-blur-md transition-transform hover:scale-110 active:scale-95 cursor-pointer"
+          >
+            <Eye className="w-3.5 h-3.5" />
+          </button>
+
+          <button
+            onClick={(e) => { e.stopPropagation(); onWishlist(prod); }}
+            title={isWishlisted ? 'Remove from Wishlist' : 'Add to Wishlist'}
+            className={`w-8 h-8 rounded-full flex items-center justify-center shadow-md backdrop-blur-md transition-transform hover:scale-110 active:scale-95 cursor-pointer ${
+              isWishlisted
+                ? 'bg-rose-500 text-white'
+                : 'bg-white/90 hover:bg-white text-gray-500 hover:text-rose-500'
+            }`}
+          >
+            <Heart className={`w-3.5 h-3.5 ${isWishlisted ? 'fill-white' : ''}`} />
+          </button>
+        </div>
+
+        {/* Harvest Date Pill */}
+        <div className="absolute bottom-2.5 left-2.5 bg-black/65 backdrop-blur-md px-2.5 py-1 rounded-full flex items-center gap-1.5 border border-white/15 z-10">
+          <Clock className="w-3 h-3 text-emerald-400" />
+          <span className="text-[10px] font-black text-white">{prod.harvestDate}</span>
         </div>
       </div>
 
-      {/* Body */}
-      <div style={{ padding: '13px 14px', display: 'flex', flexDirection: 'column', gap: 8, flex: 1 }}>
-        <div style={{ cursor: 'pointer' }} onClick={() => onQuickView(prod)}>
-          <h3 style={{ fontWeight: 800, fontSize: 13, color: '#0d2214', lineHeight: 1.3, margin: 0, display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+      {/* Body Info */}
+      <div className="p-4 flex flex-col justify-between flex-1 gap-2.5">
+        <div>
+          <h3 className="font-extrabold text-sm sm:text-base text-farmGreen-950 leading-snug line-clamp-1 group-hover:text-emerald-700 transition-colors">
             {prod.name}
           </h3>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
-            <Sprout style={{ width: 10, height: 10, color: '#4caf50', flexShrink: 0 }} />
-            <span style={{ fontSize: 10, color: '#7a8f7e', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>{prod.farmerName}</span>
-            <span style={{ fontSize: 10, color: '#c8d6c9' }}>·</span>
-            <MapPin style={{ width: 9, height: 9, color: '#9ca3af', flexShrink: 0 }} />
-            <span style={{ fontSize: 10, color: '#9ca3af', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>{prod.farmerLocation}</span>
+          <div className="flex items-center gap-1.5 mt-1 text-[11px] text-gray-500 font-medium">
+            <Sprout className="w-3 h-3 text-emerald-600 shrink-0" />
+            <span className="truncate font-bold text-farmGreen-900">{prod.farmerName}</span>
+            <span className="text-gray-300">·</span>
+            <MapPin className="w-3 h-3 text-gray-400 shrink-0" />
+            <span className="truncate text-gray-400">{prod.farmerLocation}</span>
           </div>
         </div>
 
-        {/* Price + Rating */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        {/* Price & Rating */}
+        <div className="flex items-center justify-between pt-1 border-t border-gray-100">
           <div>
-            <span style={{ fontWeight: 900, fontSize: 17, color: '#0d2214' }}>₹{prod.price}</span>
-            <span style={{ fontWeight: 400, fontSize: 10, color: '#9ca3af', marginLeft: 2 }}>/{prod.unit}</span>
+            <span className="font-black text-base sm:text-lg text-farmGreen-950">₹{prod.price}</span>
+            <span className="text-xs text-gray-400 font-semibold ml-0.5">/{prod.unit}</span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 3, background: '#fffbeb', border: '1px solid #fde68a', padding: '3px 8px', borderRadius: 999 }}>
-            <Star style={{ width: 10, height: 10, fill: '#f59e0b', color: '#f59e0b' }} />
-            <span style={{ fontSize: 10, fontWeight: 800, color: '#92400e' }}>{prod.rating}</span>
-            <span style={{ fontSize: 9, color: '#b45309' }}>({prod.reviewsCount})</span>
+          <div className="flex items-center gap-1 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+            <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+            <span className="text-[11px] font-black text-amber-900">{prod.rating}</span>
+            <span className="text-[10px] text-amber-700 font-medium">({prod.reviewsCount})</span>
           </div>
         </div>
 
         {/* Cart Controls */}
-        {cartQty > 0 ? (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'linear-gradient(135deg,#f0faf0,#e8f5e9)', borderRadius: 12, padding: '4px 6px', border: '1.5px solid #c8e6c9' }}>
-            <button
-              onClick={(e) => { e.stopPropagation(); onQtyChange(prod, -1); }}
-              style={{ width: 28, height: 28, borderRadius: 8, background: '#fff', border: '1px solid #c8e6c9', color: '#2e7d32', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, transition: 'all .15s', flexShrink: 0 }}
-              onMouseEnter={e => e.currentTarget.style.background = '#2e7d32' && (e.currentTarget.style.color = '#fff')}
-              onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.color = '#2e7d32'; }}
+        <div className="pt-1">
+          {cartQty > 0 ? (
+            <div className="flex items-center justify-between bg-emerald-50/80 rounded-2xl p-1 border border-emerald-200" onClick={e => e.stopPropagation()}>
+              <button
+                onClick={(e) => { e.stopPropagation(); onQtyChange(prod, -1); }}
+                className="w-7 h-7 rounded-xl bg-white border border-emerald-200 text-emerald-800 hover:bg-emerald-600 hover:text-white flex items-center justify-center transition-colors cursor-pointer shadow-xs"
+              >
+                <Minus className="w-3 h-3" />
+              </button>
+              <span className="font-black text-xs text-emerald-900 px-2">
+                {cartQty} in basket
+              </span>
+              <button
+                onClick={(e) => { e.stopPropagation(); onQtyChange(prod, 1); }}
+                className="w-7 h-7 rounded-xl bg-emerald-700 text-white hover:bg-emerald-800 flex items-center justify-center transition-colors cursor-pointer shadow-xs"
+              >
+                <Plus className="w-3 h-3" />
+              </button>
+            </div>
+          ) : (
+            <Button
+              onClick={handleAdd}
+              variant={added ? 'secondary' : 'primary'}
+              size="sm"
+              className="w-full text-xs font-bold py-2 rounded-xl"
+              icon={added ? Check : ShoppingCart}
             >
-              <Minus style={{ width: 12, height: 12 }} />
-            </button>
-            <span style={{ fontWeight: 800, fontSize: 13, color: '#1b5e20', flex: 1, textAlign: 'center' }}>{cartQty} in cart</span>
-            <button
-              onClick={(e) => { e.stopPropagation(); onQtyChange(prod, 1); }}
-              style={{ width: 28, height: 28, borderRadius: 8, background: 'linear-gradient(135deg,#2e7d32,#1b5e20)', border: 'none', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, transition: 'all .15s', flexShrink: 0, boxShadow: '0 2px 8px rgba(46,125,50,0.3)' }}
-            >
-              <Plus style={{ width: 12, height: 12 }} />
-            </button>
-          </div>
-        ) : (
-          <button
-            onClick={handleAdd}
-            style={{
-              width: '100%', height: 36, borderRadius: 12, border: 'none',
-              fontWeight: 800, fontSize: 11, fontFamily: 'Plus Jakarta Sans,sans-serif',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-              cursor: 'pointer',
-              background: added
-                ? 'linear-gradient(135deg,#84cc16,#65a30d)'
-                : hov
-                  ? 'linear-gradient(135deg,#1b5e20,#0d2214)'
-                  : 'linear-gradient(135deg,#2e7d32,#1b5e20)',
-              color: '#fff',
-              boxShadow: hov && !added ? '0 6px 20px rgba(46,125,50,.35)' : 'none',
-              transform: hov && !added ? 'scale(1.01)' : 'scale(1)',
-              transition: 'all .22s cubic-bezier(.22,1,.36,1)',
-            }}
-          >
-            {added
-              ? <><Check style={{ width: 13, height: 13 }} /> Added!</>
-              : <><ShoppingCart style={{ width: 12, height: 12 }} /> Add to Basket</>
-            }
-          </button>
-        )}
-      </div>
-    </div>
-  );
-};
-
-/* ═══════════════════════════════════════════════════
-   CATEGORY CARD — premium redesign
-═══════════════════════════════════════════════════ */
-const CatCard = ({ cat, count, onClick }) => {
-  const [hov, setHov] = useState(false);
-  return (
-    <button
-      onClick={onClick}
-      onMouseEnter={() => setHov(true)}
-      onMouseLeave={() => setHov(false)}
-      style={{
-        background: 'none', border: 'none', padding: 0,
-        cursor: 'pointer', display: 'flex', flexDirection: 'column',
-        gap: 0, fontFamily: 'Plus Jakarta Sans, sans-serif', textAlign: 'left',
-      }}
-    >
-      <div style={{
-        width: '100%', aspectRatio: '3/2', borderRadius: 18, overflow: 'hidden',
-        position: 'relative',
-        border: hov ? '2.5px solid #66bb6a' : '2px solid rgba(0,0,0,0.06)',
-        boxShadow: hov
-          ? '0 16px 40px rgba(46,125,50,.22), 0 4px 16px rgba(0,0,0,.10)'
-          : '0 2px 8px rgba(0,0,0,.07)',
-        transform: hov ? 'translateY(-4px) scale(1.02)' : 'translateY(0) scale(1)',
-        transition: 'all .3s cubic-bezier(.22,1,.36,1)',
-      }}>
-        <img
-          src={cat.image} alt={cat.name}
-          style={{ width: '100%', height: '100%', objectFit: 'cover', transform: hov ? 'scale(1.1)' : 'scale(1)', transition: 'transform .5s cubic-bezier(.22,1,.36,1)' }}
-        />
-        {/* Gradient */}
-        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(160deg, transparent 30%, rgba(0,0,0,.6) 100%)', opacity: hov ? 1 : 0.65, transition: 'opacity .3s' }} />
-
-        {/* Label */}
-        <div style={{ position: 'absolute', bottom: 12, left: 14, right: 14 }}>
-          <div style={{ fontWeight: 900, fontSize: 14, color: '#fff', lineHeight: 1.2, textShadow: '0 1px 4px rgba(0,0,0,.3)' }}>{cat.name}</div>
-          <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.7)', marginTop: 2, fontWeight: 600, opacity: hov ? 1 : 0, transform: hov ? 'translateY(0)' : 'translateY(4px)', transition: 'all .25s ease' }}>
-            {count} items →
-          </div>
-        </div>
-
-        {/* Hover badge */}
-        {hov && (
-          <div style={{ position: 'absolute', top: 10, right: 10, background: 'linear-gradient(135deg,#a8f060,#6fcf37)', color: '#071a0b', fontSize: 9, fontWeight: 900, padding: '3px 9px', borderRadius: 999, boxShadow: '0 2px 8px rgba(168,240,96,0.4)' }}>
-            Shop →
-          </div>
-        )}
-      </div>
-    </button>
-  );
-};
-
-/* ═══════════════════════════════════════════════════
-   FARMER CARD — premium redesign
-═══════════════════════════════════════════════════ */
-const FarmerCard = ({ farmer }) => {
-  const [hov, setHov] = useState(false);
-  return (
-    <div
-      onMouseEnter={() => setHov(true)}
-      onMouseLeave={() => setHov(false)}
-      style={{
-        display: 'flex', alignItems: 'center', gap: 14,
-        padding: '16px 18px', background: '#fff', borderRadius: 18,
-        border: hov ? '1.5px solid #a5d6a7' : '1.5px solid #f0f4f0',
-        boxShadow: hov ? '0 12px 36px rgba(15,40,24,0.12)' : '0 2px 8px rgba(0,0,0,0.05)',
-        transform: hov ? 'translateY(-3px)' : 'translateY(0)',
-        transition: 'all .3s cubic-bezier(.22,1,.36,1)', cursor: 'default',
-        fontFamily: 'Plus Jakarta Sans, sans-serif', position: 'relative', overflow: 'hidden',
-      }}
-    >
-      {/* Hover shimmer bg */}
-      <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg,rgba(232,245,233,0.5),transparent)', opacity: hov ? 1 : 0, transition: 'opacity .3s' }} />
-
-      {/* Avatar */}
-      <div style={{ position: 'relative', flexShrink: 0, zIndex: 1 }}>
-        <img
-          src={farmer.image} alt={farmer.name}
-          style={{
-            width: 52, height: 52, borderRadius: 14, objectFit: 'cover',
-            border: hov ? '2.5px solid #66bb6a' : '2px solid #e8f5e9',
-            transition: 'border-color .25s, transform .25s',
-            transform: hov ? 'scale(1.05)' : 'scale(1)',
-          }}
-        />
-        <span style={{ position: 'absolute', bottom: -2, right: -2, width: 13, height: 13, borderRadius: '50%', background: '#84cc16', border: '2.5px solid #fff', boxShadow: '0 1px 4px rgba(0,0,0,0.15)' }} />
-      </div>
-
-      {/* Info */}
-      <div style={{ flex: 1, minWidth: 0, zIndex: 1 }}>
-        <div style={{ fontWeight: 800, fontSize: 13, color: '#0d2214', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{farmer.name}</div>
-        <div style={{ fontSize: 10, color: '#7a8f7e', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 500 }}>{farmer.specialty}</div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 7 }}>
-          <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 10, color: '#9ca3af' }}>
-            <MapPin style={{ width: 9, height: 9, color: '#4caf50' }} />{farmer.location}
-          </span>
-          <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 10, fontWeight: 800, color: '#92400e', background: '#fffbeb', border: '1px solid #fde68a', padding: '1px 7px', borderRadius: 999 }}>
-            <Star style={{ width: 9, height: 9, fill: '#f59e0b', color: '#f59e0b' }} />{farmer.rating}
-          </span>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2, fontSize: 9, fontWeight: 700, color: '#166534', background: '#dcfce7', padding: '1px 7px', borderRadius: 999 }}>
-            <ShieldCheck style={{ width: 8, height: 8 }} /> Verified
-          </span>
+              {added ? 'Added!' : 'Add to Basket'}
+            </Button>
+          )}
         </div>
       </div>
-
-      <ChevronRight style={{ width: 15, height: 15, color: hov ? '#2e7d32' : '#d1d5db', transform: hov ? 'translateX(3px)' : 'translateX(0)', transition: 'all .22s', flexShrink: 0, zIndex: 1 }} />
     </div>
   );
-};
+});
 
 /* ═══════════════════════════════════════════════════
-   PERK STRIP ITEM — animated
-═══════════════════════════════════════════════════ */
-const PerkItem = ({ icon: Icon, text, bg, fg, gradient }) => {
-  const [hov, setHov] = useState(false);
-  return (
-    <div
-      onMouseEnter={() => setHov(true)}
-      onMouseLeave={() => setHov(false)}
-      style={{
-        display: 'flex', alignItems: 'center', gap: 12, background: '#fff',
-        borderRadius: 16, border: hov ? '1.5px solid #c8e6c9' : '1.5px solid #f0f4f0',
-        padding: '13px 16px',
-        boxShadow: hov ? '0 8px 24px rgba(46,125,50,0.12)' : '0 2px 6px rgba(0,0,0,0.05)',
-        transform: hov ? 'translateY(-2px)' : 'translateY(0)',
-        transition: 'all .25s cubic-bezier(.22,1,.36,1)', cursor: 'default',
-      }}
-    >
-      <div style={{ width: 38, height: 38, borderRadius: 12, background: gradient || bg, color: fg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: hov ? `0 4px 14px ${bg}80` : 'none', transition: 'box-shadow .25s' }}>
-        <Icon style={{ width: 18, height: 18 }} />
+   ═══════════════════════════════════════════════════ */
+const CatCard = React.memo(({ cat, count, onClick }) => (
+  <button
+    onClick={onClick}
+    className="group bg-transparent border-0 p-0 cursor-pointer flex flex-col font-display text-left w-full focus:outline-none"
+  >
+    <div className="w-full aspect-[3/2] rounded-2xl overflow-hidden relative border-2 border-transparent group-hover:border-emerald-400 shadow-sm group-hover:shadow-organic transition-all duration-300 group-hover:-translate-y-1">
+      <img
+        src={cat.image}
+        alt={cat.name}
+        className="w-full h-full object-cover group-hover:scale-108 transition-transform duration-500 ease-out"
+        loading="lazy"
+      />
+      <div className="absolute inset-0 bg-gradient-to-t from-farmGreen-950/90 via-farmGreen-950/30 to-transparent group-hover:from-farmGreen-950/80 transition-colors" />
+
+      <div className="absolute bottom-2.5 left-3 right-3">
+        <div className="font-black text-xs sm:text-sm text-white leading-tight drop-shadow-xs">{cat.name}</div>
+        <div className="text-[10px] text-emerald-300 font-bold mt-0.5 flex items-center gap-1 opacity-90 group-hover:opacity-100">
+          <span>{count} items</span>
+          <ArrowRight className="w-2.5 h-2.5 group-hover:translate-x-0.5 transition-transform" />
+        </div>
       </div>
-      <span style={{ fontWeight: 800, fontSize: 12, color: '#0d2214' }}>{text}</span>
     </div>
-  );
-};
+  </button>
+));
+
+/* ═══════════════════════════════════════════════════
+   FARMER CARD
+   ═══════════════════════════════════════════════════ */
+const FarmerCard = React.memo(({ farmer }) => (
+  <div className="group flex items-center gap-3.5 p-4 bg-white rounded-2xl border border-emerald-100/80 hover:border-emerald-300 shadow-farm-sm hover:shadow-organic-md transition-all duration-300 hover:-translate-y-1 cursor-default font-display relative overflow-hidden">
+    <div className="relative shrink-0">
+      <img
+        src={farmer.image}
+        alt={farmer.name}
+        className="w-12 h-12 rounded-xl object-cover border-2 border-emerald-100 group-hover:border-emerald-400 transition-colors"
+        loading="lazy"
+      />
+      <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-white shadow-xs" />
+    </div>
+
+    <div className="flex-1 min-w-0">
+      <div className="font-black text-xs sm:text-sm text-farmGreen-950 truncate">{farmer.name}</div>
+      <div className="text-[11px] text-gray-500 font-semibold truncate mt-0.5">{farmer.specialty}</div>
+      <div className="flex items-center gap-2 mt-2">
+        <span className="flex items-center gap-1 text-[10px] text-gray-400">
+          <MapPin className="w-2.5 h-2.5 text-emerald-600 shrink-0" />
+          <span className="truncate">{farmer.location}</span>
+        </span>
+        <span className="flex items-center gap-1 text-[10px] font-black text-amber-800 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-md">
+          <Star className="w-2.5 h-2.5 fill-amber-400 text-amber-400" />
+          {farmer.rating}
+        </span>
+        <span className="inline-flex items-center gap-1 text-[9px] font-black text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded-md border border-emerald-200/60">
+          <ShieldCheck className="w-2.5 h-2.5 text-emerald-600" /> Verified
+        </span>
+      </div>
+    </div>
+
+    <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-emerald-600 group-hover:translate-x-1 transition-all shrink-0" />
+  </div>
+));
+
+/* ═══════════════════════════════════════════════════
+   PERK STRIP ITEM
+   ═══════════════════════════════════════════════════ */
+const PerkItem = ({ icon: Icon, text, gradient }) => (
+  <div className="flex items-center gap-3 bg-white rounded-2xl border border-emerald-100/70 hover:border-emerald-300 p-3 sm:p-3.5 shadow-farm-sm hover:shadow-organic transition-all hover:-translate-y-0.5 cursor-default font-display w-full">
+    <div className={`w-9 h-9 rounded-xl ${gradient} text-white flex items-center justify-center shrink-0 shadow-xs`}>
+      <Icon className="w-4 h-4" />
+    </div>
+    <span className="font-black text-xs text-farmGreen-950 leading-snug">{text}</span>
+  </div>
+);
 
 /* ═══════════════════════════════════════════════════
    MAIN CustomerHome
-═══════════════════════════════════════════════════ */
-export const CustomerHome = ({ products, setActiveTab, toggleWishlist, wishlist, onOpenQuickBuy }) => {
+   ═══════════════════════════════════════════════════ */
+export const CustomerHome = ({ products = [], setActiveTab, toggleWishlist, wishlist = [], onOpenQuickBuy }) => {
   const { addToCart, cartItems, updateQuantity } = useCart();
   const [search, setSearch] = useState('');
   const [activeCat, setActiveCat] = useState('All');
   const [toast, setToast] = useState(null);
   const [heroVisible, setHeroVisible] = useState(false);
+  const [bannerDismissed, setBannerDismissed] = useState(false);
+
+  const [farmers, setFarmers] = useState([]);
 
   useEffect(() => {
-    const t = setTimeout(() => setHeroVisible(true), 80);
+    const t = setTimeout(() => setHeroVisible(true), 60);
+    // Load real farmers from backend
+    apiClient('/admin/farmers')
+      .then(res => setFarmers((res?.farmers || []).filter(f => f.approval_status === 'Approved' || f.approvalStatus === 'Approved')))
+      .catch(() => setFarmers([]));
     return () => clearTimeout(t);
   }, []);
+
+  const displayFarmers = React.useMemo(() => {
+    if (farmers.length > 0) return farmers;
+    const map = new Map();
+    products.forEach(p => {
+      if (p.farmerName && !map.has(p.farmerName)) {
+        map.set(p.farmerName, {
+          id: p.farmerId || p.farmerName,
+          name: p.farmerName,
+          specialty: p.category || 'Organic Produce',
+          location: p.farmerLocation || 'Local Farm Hub',
+          rating: p.rating || 4.9,
+          image: p.farmerAvatar || p.image || 'https://images.unsplash.com/photo-1595273670150-bd0c3c392e46?auto=format&fit=crop&w=300&q=80',
+        });
+      }
+    });
+    return Array.from(map.values()).slice(0, 6);
+  }, [farmers, products]);
 
   const handleAdd = useCallback((prod) => {
     addToCart(prod);
@@ -357,8 +289,9 @@ export const CustomerHome = ({ products, setActiveTab, toggleWishlist, wishlist,
     setTimeout(() => setToast(null), 2800);
   }, [addToCart]);
 
-  const getCartItem = (productId) => cartItems.find(item => item.product.id === productId);
+  const getCartItem = (productId) => cartItems.find(item => item.product?.id === productId || item.id === productId);
   const getCartQty = (productId) => getCartItem(productId)?.quantity || 0;
+
   const handleQtyChange = (product, delta) => {
     const item = getCartItem(product.id);
     if (!item && delta > 0) { addToCart(product); return; }
@@ -366,14 +299,17 @@ export const CustomerHome = ({ products, setActiveTab, toggleWishlist, wishlist,
     updateQuantity(product.id, item.quantity + delta);
   };
 
-  const approved = products.filter(p => p.status === 'Approved');
+  const approved = products.filter(p => p.status === 'Approved' || !p.status);
   const cats = ['All', 'Vegetables', 'Fruits', 'Dairy', 'Grocery'];
   const filtered = approved.filter(p => {
     const matchCat = activeCat === 'All' || p.category === activeCat;
-    const matchSearch = !search || p.name.toLowerCase().includes(search.toLowerCase()) || p.farmerName.toLowerCase().includes(search.toLowerCase());
+    const matchSearch = !search ||
+      p.name?.toLowerCase().includes(search.toLowerCase()) ||
+      p.farmerName?.toLowerCase().includes(search.toLowerCase());
     return matchCat && matchSearch;
   });
-  const farmers = FARMERS.filter(f => f.approvalStatus === 'Approved');
+
+
 
   const catConfig = [
     { name: 'Vegetables', image: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=500&q=80' },
@@ -385,117 +321,132 @@ export const CustomerHome = ({ products, setActiveTab, toggleWishlist, wishlist,
   const getCatCount = (name) => approved.filter(p => p.category === name).length;
 
   const perks = [
-    { icon: Truck, text: 'Same-Day Delivery', bg: '#d1fae5', fg: '#065f46', gradient: 'linear-gradient(135deg,#34d399,#059669)' },
-    { icon: ShieldCheck, text: 'Verified Farmers', bg: '#dbeafe', fg: '#1e40af', gradient: 'linear-gradient(135deg,#60a5fa,#2563eb)' },
-    { icon: Leaf, text: 'Zero Middleman', bg: '#dcfce7', fg: '#166534', gradient: 'linear-gradient(135deg,#4ade80,#16a34a)' },
-    { icon: Award, text: 'Freshness Guarantee', bg: '#fef3c7', fg: '#92400e', gradient: 'linear-gradient(135deg,#fbbf24,#d97706)' },
+    { icon: Truck, text: 'Same-Day Delivery', gradient: 'bg-gradient-to-br from-emerald-500 to-emerald-700' },
+    { icon: ShieldCheck, text: 'Verified Farmers', gradient: 'bg-gradient-to-br from-sky-500 to-blue-700' },
+    { icon: Leaf, text: 'Zero Middleman', gradient: 'bg-gradient-to-br from-emerald-600 to-farmGreen-800' },
+    { icon: Award, text: 'Freshness Guarantee', gradient: 'bg-gradient-to-br from-amber-500 to-amber-700' },
   ];
 
   return (
-    <div style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', background: '#f0f2f0', paddingBottom: 80 }}>
+    <div className="font-display pb-20 space-y-6">
       {toast && <Toast name={toast} onClose={() => setToast(null)} />}
 
-      {/* ══════════════════════════════════════════
-          § 1  HERO — cinematic split panel
-      ══════════════════════════════════════════ */}
-      <div style={{
-        borderRadius: 24, overflow: 'hidden', marginBottom: 14,
-        background: 'linear-gradient(125deg,#071a0b 0%,#0d2214 40%,#0f2a18 70%,#122a18 100%)',
-        position: 'relative', minHeight: 320,
-        display: 'flex',
-        boxShadow: '0 8px 40px rgba(0,0,0,0.25)',
-      }}>
-        {/* Ambient blobs */}
-        <div style={{ position: 'absolute', top: '-20%', left: '10%', width: 400, height: 400, borderRadius: '50%', background: 'radial-gradient(circle,rgba(100,200,60,.07),transparent 70%)', pointerEvents: 'none' }} />
-        <div style={{ position: 'absolute', bottom: '-20%', right: '35%', width: 300, height: 300, borderRadius: '50%', background: 'radial-gradient(circle,rgba(255,152,0,.05),transparent 70%)', pointerEvents: 'none' }} />
+      {/* ── Seasonal Harvest Awareness Banner ── */}
+      {!bannerDismissed && (
+        <div className="flex items-center justify-between bg-gradient-to-r from-emerald-800 to-farmGreen-800 text-white px-4 py-2.5 rounded-2xl text-xs font-bold border border-emerald-600/50 shadow-sm">
+          <span className="flex items-center gap-2">
+            <span className="text-base">🌧️</span>
+            <span><strong>Monsoon Harvest Season:</strong>&nbsp;Extra fresh leafy greens &amp; tomatoes from Chittoor farms this week.</span>
+          </span>
+          <button
+            onClick={() => setBannerDismissed(true)}
+            className="text-emerald-300 hover:text-white ml-4 cursor-pointer p-1 rounded-lg hover:bg-white/10 transition-colors shrink-0"
+            aria-label="Dismiss banner"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
 
-        {/* LEFT: Text */}
-        <div style={{
-          flex: '0 0 54%', padding: '44px 44px 40px', display: 'flex', flexDirection: 'column',
-          justifyContent: 'center', position: 'relative', zIndex: 2,
-          opacity: heroVisible ? 1 : 0, transform: heroVisible ? 'translateY(0)' : 'translateY(20px)',
-          transition: 'all .7s cubic-bezier(.22,1,.36,1)',
-        }}>
-          {/* Live badge */}
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '5px 14px 5px 10px', borderRadius: 999, border: '1px solid rgba(168,240,96,0.25)', background: 'rgba(168,240,96,0.08)', marginBottom: 18, width: 'fit-content', backdropFilter: 'blur(8px)' }}>
-            <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#a8f060', display: 'inline-block', animation: 'pulseDot 2s infinite', boxShadow: '0 0 0 0 rgba(168,240,96,0.5)' }} />
-            <span style={{ color: '#a8f060', fontSize: 10, fontWeight: 800, letterSpacing: '.1em', textTransform: 'uppercase' }}>Fresh · Organic · Local</span>
+      {/* ══════════════════════════════════════════
+          § 1 HERO — CINEMATIC SPLIT PANEL
+      ══════════════════════════════════════════ */}
+      <div className="relative rounded-3xl overflow-hidden bg-gradient-to-br from-[#05170a] via-[#0c2313] to-[#15381f] border border-emerald-500/20 shadow-xl flex flex-col lg:flex-row min-h-[360px]">
+        {/* Ambient Glows */}
+        <div className="absolute top-0 left-10 w-96 h-96 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 right-1/3 w-80 h-80 rounded-full bg-amber-500/5 blur-3xl pointer-events-none" />
+
+        {/* LEFT PANEL: Hero Typography & Search */}
+        <div
+          className={`w-full lg:w-[56%] p-6 sm:p-10 lg:p-12 flex flex-col justify-center relative z-10 transition-all duration-700 ${
+            heroVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'
+          }`}
+        >
+          {/* Live Badge */}
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-emerald-400/30 bg-emerald-500/15 backdrop-blur-md mb-4 w-fit shadow-2xs">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="text-emerald-300 text-[10px] font-black uppercase tracking-wider">Fresh · Organic · Local</span>
           </div>
 
-          {/* Headline */}
-          <h1 style={{ fontWeight: 900, color: '#fff', lineHeight: 1.1, margin: '0 0 14px', fontSize: 'clamp(1.8rem,3vw,2.6rem)', letterSpacing: '-.035em' }}>
-            Farm-Fresh<br />
-            Groceries,{' '}
-            <span style={{ color: '#a8f060', textShadow: '0 0 30px rgba(168,240,96,0.2)' }}>Direct<br />to Your Home</span>
+          {/* Main Title */}
+          <h1 className="font-display font-black text-white text-3xl sm:text-4xl lg:text-5xl leading-tight tracking-tight mb-3">
+            Farm-Fresh Groceries,{' '}
+            <span className="text-emerald-400 italic">Direct to Your Home</span>
           </h1>
 
-          <p style={{ color: 'rgba(255,255,255,.5)', fontSize: 13, lineHeight: 1.75, margin: '0 0 22px', maxWidth: 360, fontWeight: 500 }}>
-            Shop from <strong style={{ color: 'rgba(255,255,255,.85)', fontWeight: 800 }}>142 verified local farmers</strong> — zero middleman, zero compromise on freshness.
+          <p className="text-gray-300/80 text-xs sm:text-sm leading-relaxed mb-6 max-w-md font-semibold">
+            Shop from <strong className="text-white font-extrabold">142 verified local farmers</strong> — zero middleman, zero compromise on freshness.
           </p>
 
-          {/* Search bar */}
-          <div style={{ position: 'relative', maxWidth: 400, marginBottom: 20 }}>
-            <Search style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', width: 15, height: 15, color: '#9ca3af', pointerEvents: 'none' }} />
+          {/* Search Bar */}
+          <div className="relative max-w-md mb-6">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
             <input
               type="text"
               placeholder="Search tomatoes, A2 milk, mangoes…"
               value={search}
               onChange={e => setSearch(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter' && search) document.getElementById('products-section')?.scrollIntoView({ behavior: 'smooth' }); }}
-              style={{ width: '100%', padding: '13px 110px 13px 46px', background: 'rgba(255,255,255,0.97)', borderRadius: 16, border: 'none', outline: 'none', fontSize: 12, fontWeight: 600, color: '#0d2214', boxSizing: 'border-box', boxShadow: '0 12px 40px rgba(0,0,0,.28)', fontFamily: 'Plus Jakarta Sans,sans-serif' }}
+              onKeyDown={e => {
+                if (e.key === 'Enter' && search) {
+                  document.getElementById('products-section')?.scrollIntoView({ behavior: 'smooth' });
+                }
+              }}
+              className="w-full pl-11 pr-24 py-3 sm:py-3.5 bg-white rounded-2xl text-xs sm:text-sm font-bold text-farmGreen-950 placeholder-gray-400 outline-none shadow-lg border border-transparent focus:border-emerald-400 transition-all"
             />
             {search && (
-              <button onClick={() => setSearch('')} style={{ position: 'absolute', right: 90, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', display: 'flex' }}>
-                <X style={{ width: 13, height: 13 }} />
+              <button
+                onClick={() => setSearch('')}
+                className="absolute right-20 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1"
+              >
+                <X className="w-3.5 h-3.5" />
               </button>
             )}
             <button
               onClick={() => document.getElementById('products-section')?.scrollIntoView({ behavior: 'smooth' })}
-              style={{ position: 'absolute', right: 7, top: '50%', transform: 'translateY(-50%)', padding: '7px 16px', background: 'linear-gradient(135deg,#FF9800,#F57C00)', color: '#fff', border: 'none', borderRadius: 11, fontSize: 11, fontWeight: 800, cursor: 'pointer', fontFamily: 'Plus Jakarta Sans,sans-serif', boxShadow: '0 4px 14px rgba(255,152,0,.35)', transition: 'transform .15s' }}
-              onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-50%) scale(1.04)'}
-              onMouseLeave={e => e.currentTarget.style.transform = 'translateY(-50%) scale(1)'}
+              className="absolute right-2 top-1/2 -translate-y-1/2 px-4 py-2 bg-gradient-to-r from-farmGold-600 to-farmGold-500 hover:from-farmGold-500 hover:to-farmGold-400 text-farmGreen-950 font-black text-xs rounded-xl shadow-md transition-all active:scale-95 cursor-pointer"
             >
               Search
             </button>
           </div>
 
           {/* CTAs */}
-          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', marginBottom: 24 }}>
-            <button
+          <div className="flex flex-wrap items-center gap-3 mb-6">
+            <Button
               onClick={() => setActiveTab('products')}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '11px 26px', borderRadius: 14, background: 'linear-gradient(135deg,#a8f060,#6fcf37)', color: '#071a0b', fontSize: 12, fontWeight: 900, border: 'none', cursor: 'pointer', boxShadow: '0 8px 28px rgba(168,240,96,.32)', fontFamily: 'Plus Jakarta Sans,sans-serif', transition: 'all .2s' }}
-              onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.04) translateY(-1px)'; e.currentTarget.style.boxShadow = '0 12px 36px rgba(168,240,96,.42)'; }}
-              onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1) translateY(0)'; e.currentTarget.style.boxShadow = '0 8px 28px rgba(168,240,96,.32)'; }}
+              variant="primary"
+              size="md"
+              icon={Zap}
+              className="px-6 py-3"
             >
-              <Zap style={{ width: 14, height: 14 }} /> Shop Now <ChevronRight style={{ width: 14, height: 14 }} />
-            </button>
-            <button
+              Shop Now
+            </Button>
+            <Button
               onClick={() => document.getElementById('products-section')?.scrollIntoView({ behavior: 'smooth' })}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '11px 20px', borderRadius: 14, background: 'rgba(255,255,255,.09)', color: '#fff', fontSize: 12, fontWeight: 700, border: '1px solid rgba(255,255,255,.18)', cursor: 'pointer', fontFamily: 'Plus Jakarta Sans,sans-serif', backdropFilter: 'blur(6px)', transition: 'all .2s' }}
-              onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,.15)'}
-              onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,.09)'}
+              variant="secondary"
+              size="md"
+              className="bg-white/10 hover:bg-white/20 text-white border-white/20 px-5 py-3 backdrop-blur-md"
             >
               Browse Products
-            </button>
+            </Button>
           </div>
 
-          {/* Stats row */}
-          <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
+          {/* Metric Stats */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2 border-t border-white/10">
             {[
               { val: '142+', label: 'Local Farms', icon: Sprout },
               { val: '100%', label: 'Organic', icon: Leaf },
-              { val: '2hr', label: 'Avg. Delivery', icon: Truck },
+              { val: '2hr', label: 'Avg Delivery', icon: Truck },
               { val: '4.9★', label: '12k+ Reviews', icon: Star },
             ].map((s, i) => {
               const Icon = s.icon;
               return (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <div style={{ width: 28, height: 28, borderRadius: 8, background: 'rgba(168,240,96,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(168,240,96,0.2)' }}>
-                    <Icon style={{ width: 12, height: 12, color: '#a8f060' }} />
+                <div key={i} className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg bg-emerald-500/15 border border-emerald-400/20 flex items-center justify-center shrink-0">
+                    <Icon className="w-3.5 h-3.5 text-emerald-400" />
                   </div>
                   <div>
-                    <div style={{ fontWeight: 900, fontSize: 14, color: '#a8f060', lineHeight: 1 }}>{s.val}</div>
-                    <div style={{ fontSize: 9, color: 'rgba(255,255,255,.4)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.06em', lineHeight: 1, marginTop: 2 }}>{s.label}</div>
+                    <div className="font-black text-xs sm:text-sm text-emerald-300 leading-tight">{s.val}</div>
+                    <div className="text-[9px] text-gray-400 font-bold uppercase tracking-wider mt-0.5">{s.label}</div>
                   </div>
                 </div>
               );
@@ -503,125 +454,127 @@ export const CustomerHome = ({ products, setActiveTab, toggleWishlist, wishlist,
           </div>
         </div>
 
-        {/* RIGHT: Image */}
-        <div style={{
-          flex: '0 0 46%', position: 'relative', overflow: 'hidden',
-          opacity: heroVisible ? 1 : 0, transform: heroVisible ? 'translateX(0)' : 'translateX(20px)',
-          transition: 'all .9s cubic-bezier(.22,1,.36,1)',
-        }}>
-          <div style={{ position: 'absolute', inset: 0, zIndex: 2, pointerEvents: 'none', background: 'linear-gradient(to right, #0d2214 0%, rgba(13,34,20,0.5) 25%, transparent 55%)' }} />
-          <div style={{ position: 'absolute', inset: 0, zIndex: 2, pointerEvents: 'none', background: 'linear-gradient(to bottom, rgba(7,26,11,.4) 0%, transparent 30%, transparent 65%, rgba(7,26,11,.55) 100%)' }} />
-
+        {/* RIGHT PANEL: Hero Image with Floating Pills */}
+        <div
+          className={`w-full lg:w-[44%] relative min-h-[260px] lg:min-h-auto overflow-hidden transition-all duration-1000 ${
+            heroVisible ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-6'
+          }`}
+        >
           <img
             src="/hero_basket_banner.jpg"
             alt="Fresh farm produce basket"
-            draggable={false}
-            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center', userSelect: 'none', display: 'block' }}
+            className="w-full h-full object-cover object-center"
+            loading="lazy"
           />
+          <div className="absolute inset-0 bg-gradient-to-t lg:bg-gradient-to-r from-[#05170a] via-transparent to-transparent opacity-80" />
 
-          {/* Floating chips */}
-          <div style={{ position: 'absolute', top: 20, right: 18, zIndex: 3, display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(10,30,14,.85)', backdropFilter: 'blur(16px)', border: '1px solid rgba(168,240,96,.2)', padding: '8px 14px', borderRadius: 14, boxShadow: '0 8px 24px rgba(0,0,0,.4)', animation: 'floatChip 5s ease-in-out infinite' }}>
-            <Leaf style={{ width: 13, height: 13, color: '#a8f060' }} />
-            <span style={{ fontSize: 11, fontWeight: 800, color: '#fff', fontFamily: 'Plus Jakarta Sans,sans-serif' }}>100% Organic</span>
+          {/* Floating Feature Pills */}
+          <div className="absolute top-4 right-4 bg-black/75 backdrop-blur-md border border-emerald-400/30 px-3.5 py-1.5 rounded-xl shadow-xl flex items-center gap-2">
+            <Leaf className="w-3.5 h-3.5 text-emerald-400" />
+            <span className="text-xs font-black text-white">100% Certified Organic</span>
           </div>
 
-          <div style={{ position: 'absolute', bottom: 22, left: 20, zIndex: 3, display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(10,30,14,.85)', backdropFilter: 'blur(16px)', border: '1px solid rgba(255,255,255,.12)', padding: '8px 14px', borderRadius: 14, boxShadow: '0 8px 24px rgba(0,0,0,.4)', animation: 'floatChipAlt 6s ease-in-out infinite' }}>
-            <Truck style={{ width: 13, height: 13, color: '#a8f060' }} />
-            <span style={{ fontSize: 11, fontWeight: 800, color: '#fff', fontFamily: 'Plus Jakarta Sans,sans-serif' }}>Free Same-Day Delivery</span>
-          </div>
-
-          <div style={{ position: 'absolute', top: '42%', right: 18, zIndex: 3, display: 'flex', alignItems: 'center', gap: 7, background: 'rgba(255,255,255,.95)', backdropFilter: 'blur(12px)', padding: '7px 13px', borderRadius: 14, boxShadow: '0 8px 24px rgba(0,0,0,.25)', animation: 'floatChip 7s ease-in-out infinite 1s' }}>
-            <Star style={{ width: 12, height: 12, fill: '#f59e0b', color: '#f59e0b' }} />
-            <span style={{ fontSize: 11, fontWeight: 800, color: '#0d2214', fontFamily: 'Plus Jakarta Sans,sans-serif' }}>4.9 · 12k+ Reviews</span>
+          <div className="absolute bottom-4 left-4 bg-black/75 backdrop-blur-md border border-white/20 px-3.5 py-1.5 rounded-xl shadow-xl flex items-center gap-2">
+            <Truck className="w-3.5 h-3.5 text-emerald-400" />
+            <span className="text-xs font-black text-white">Fast Local Dispatch</span>
           </div>
         </div>
       </div>
 
       {/* ══════════════════════════════════════════
-          § 2  PERKS STRIP
+          § 2 PERKS STRIP
       ══════════════════════════════════════════ */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10, marginBottom: 14 }}>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {perks.map((p, i) => <PerkItem key={i} {...p} />)}
       </div>
 
       {/* ══════════════════════════════════════════
-          § 3  CATEGORIES
+          § 3 BROWSE BY CATEGORY
       ══════════════════════════════════════════ */}
-      <div style={{ background: '#fff', borderRadius: 22, border: '1px solid #f0f4f0', padding: '20px 22px', marginBottom: 14, boxShadow: '0 2px 12px rgba(0,0,0,0.05)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+      <div className="bg-white rounded-3xl border border-emerald-100/80 p-5 sm:p-6 shadow-farm-sm">
+        <div className="flex items-center justify-between mb-4">
           <div>
-            <h2 style={{ fontWeight: 900, fontSize: 17, color: '#0d2214', margin: 0 }}>Browse by Category</h2>
-            <p style={{ fontSize: 11, color: '#7a8f7e', margin: '3px 0 0', fontWeight: 500 }}>Fresh produce sorted by type</p>
+            <h2 className="font-display font-black text-base sm:text-lg text-farmGreen-950">Browse by Category</h2>
+            <p className="text-xs text-gray-500 font-semibold mt-0.5">Fresh produce sorted by harvest category</p>
           </div>
           <button
             onClick={() => setActiveTab('products')}
-            style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 800, color: '#2e7d32', background: '#f0faf0', border: '1px solid #c8e6c9', padding: '6px 14px', borderRadius: 999, cursor: 'pointer', fontFamily: 'Plus Jakarta Sans,sans-serif', transition: 'all .2s' }}
-            onMouseEnter={e => { e.currentTarget.style.background = '#2e7d32'; e.currentTarget.style.color = '#fff'; }}
-            onMouseLeave={e => { e.currentTarget.style.background = '#f0faf0'; e.currentTarget.style.color = '#2e7d32'; }}
+            className="inline-flex items-center gap-1.5 text-xs font-black text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/80 px-3.5 py-1.5 rounded-full transition-colors cursor-pointer"
           >
-            See all <ArrowRight style={{ width: 11, height: 11 }} />
+            <span>See all</span>
+            <ArrowRight className="w-3 h-3" />
           </button>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12 }}>
+
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
           {catConfig.map(cat => (
             <CatCard
               key={cat.name}
               cat={cat}
               count={getCatCount(cat.name)}
-              onClick={() => { setActiveCat(cat.name); document.getElementById('products-section')?.scrollIntoView({ behavior: 'smooth' }); }}
+              onClick={() => {
+                setActiveCat(cat.name);
+                document.getElementById('products-section')?.scrollIntoView({ behavior: 'smooth' });
+              }}
             />
           ))}
         </div>
       </div>
 
       {/* ══════════════════════════════════════════
-          § 4  PRODUCTS GRID
+          § 4 PRODUCTS CATALOG SECTION
       ══════════════════════════════════════════ */}
-      <div id="products-section" style={{ marginBottom: 14 }}>
-        {/* Head */}
-        <div style={{ background: '#fff', borderRadius: 22, border: '1px solid #f0f4f0', padding: '16px 22px', marginBottom: 10, boxShadow: '0 2px 12px rgba(0,0,0,0.05)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+      <div id="products-section" className="space-y-4">
+        {/* Section Header & Tabs */}
+        <div className="bg-white rounded-3xl border border-emerald-100/80 p-5 sm:p-6 shadow-farm-sm">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
             <div>
-              <h2 style={{ fontWeight: 900, fontSize: 17, color: '#0d2214', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Flame style={{ width: 18, height: 18, color: '#f97316' }} /> Our Fresh Products
+              <h2 className="font-display font-black text-base sm:text-lg text-farmGreen-950 flex items-center gap-2">
+                <Flame className="w-5 h-5 text-amber-500" />
+                <span>Our Fresh Harvest</span>
               </h2>
-              <p style={{ fontSize: 11, color: '#7a8f7e', margin: '3px 0 0', fontWeight: 500 }}>All verified, farm-direct produce · {filtered.length} items</p>
+              <p className="text-xs text-gray-500 font-semibold mt-0.5">
+                Verified farm-direct produce · {filtered.length} items available
+              </p>
             </div>
+
             <button
               onClick={() => setActiveTab('products')}
-              style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 800, color: '#2e7d32', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'Plus Jakarta Sans,sans-serif' }}
+              className="inline-flex items-center gap-1.5 text-xs font-black text-emerald-800 hover:text-emerald-950 cursor-pointer self-start sm:self-auto"
             >
-              See All <ArrowRight style={{ width: 13, height: 13 }} />
+              <span>View Full Catalog</span>
+              <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>
 
-          {/* Filter tabs */}
-          <div style={{ display: 'flex', gap: 7, overflowX: 'auto', paddingBottom: 2, scrollbarWidth: 'none' }}>
-            {cats.map(cat => (
-              <button
-                key={cat}
-                onClick={() => setActiveCat(cat)}
-                style={{
-                  flexShrink: 0, padding: '7px 16px', borderRadius: 999,
-                  fontSize: 11, fontWeight: 800, cursor: 'pointer', border: 'none',
-                  fontFamily: 'Plus Jakarta Sans,sans-serif',
-                  background: activeCat === cat ? 'linear-gradient(135deg,#2e7d32,#1b5e20)' : '#f5f7f5',
-                  color: activeCat === cat ? '#fff' : '#2e7d32',
-                  boxShadow: activeCat === cat ? '0 4px 16px rgba(46,125,50,.28)' : '0 1px 3px rgba(0,0,0,.06)',
-                  outline: activeCat !== cat ? '1.5px solid #d4edda' : 'none',
-                  transition: 'all .22s cubic-bezier(.22,1,.36,1)',
-                  transform: activeCat === cat ? 'scale(1.04)' : 'scale(1)',
-                }}
-              >
-                {cat}
-                {cat !== 'All' && <span style={{ marginLeft: 5, opacity: 0.7 }}>({getCatCount(cat)})</span>}
-              </button>
-            ))}
+          {/* Category Filter Pills */}
+          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+            {cats.map(cat => {
+              const isSelected = activeCat === cat;
+              return (
+                <button
+                  key={cat}
+                  onClick={() => setActiveCat(cat)}
+                  className={`px-4 py-2 rounded-full text-xs font-extrabold shrink-0 transition-all cursor-pointer ${
+                    isSelected
+                      ? 'bg-emerald-800 text-white shadow-md'
+                      : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                  }`}
+                >
+                  <span>{cat}</span>
+                  {cat !== 'All' && (
+                    <span className={`ml-1.5 text-[10px] ${isSelected ? 'text-emerald-200' : 'text-gray-500'}`}>
+                      ({getCatCount(cat)})
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </div>
         </div>
 
-        {/* Grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(185px,1fr))', gap: 12 }}>
+        {/* Product Cards Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {filtered.map(prod => (
             <ProductCard
               key={prod.id}
@@ -634,53 +587,41 @@ export const CustomerHome = ({ products, setActiveTab, toggleWishlist, wishlist,
               onQtyChange={handleQtyChange}
             />
           ))}
+
           {filtered.length === 0 && (
-            <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '64px 0', color: '#7a8f7e' }}>
-              <Package style={{ width: 40, height: 40, margin: '0 auto 12px', color: '#c8d6c9' }} />
-              <div style={{ fontSize: 14, fontWeight: 700 }}>No products found</div>
-              <div style={{ fontSize: 12, marginTop: 4 }}>Try a different category or clear your search.</div>
-              <button onClick={() => { setActiveCat('All'); setSearch(''); }} style={{ marginTop: 14, padding: '8px 20px', borderRadius: 999, background: '#f0faf0', border: '1.5px solid #c8e6c9', color: '#2e7d32', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'Plus Jakarta Sans,sans-serif' }}>
-                Clear filters
-              </button>
+            <div className="col-span-full text-center py-16 px-4 bg-white rounded-3xl border border-emerald-100 shadow-farm-sm">
+              <Package className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+              <h3 className="font-extrabold text-base text-farmGreen-950">No crops found</h3>
+              <p className="text-xs text-gray-500 font-semibold mt-1">Try another search keyword or switch category filters.</p>
+              <Button
+                onClick={() => { setActiveCat('All'); setSearch(''); }}
+                variant="secondary"
+                size="sm"
+                className="mt-4"
+              >
+                Reset Filters
+              </Button>
             </div>
           )}
         </div>
       </div>
 
       {/* ══════════════════════════════════════════
-          § 5  LOCAL FARMERS
+          § 5 LOCAL FARMERS
       ══════════════════════════════════════════ */}
-      <div>
-        <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 14 }}>
-          <div>
-            <h2 style={{ fontWeight: 900, fontSize: 17, color: '#0d2214', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <TrendingUp style={{ width: 17, height: 17, color: '#2e7d32' }} /> Meet Your Local Farmers
-            </h2>
-            <p style={{ fontSize: 11, color: '#7a8f7e', margin: '3px 0 0', fontWeight: 500 }}>Verified growers behind every product</p>
-          </div>
+      <div className="space-y-3">
+        <div>
+          <h2 className="font-display font-black text-base sm:text-lg text-farmGreen-950 flex items-center gap-2">
+            <TrendingUp className="w-5 h-5 text-emerald-700" />
+            <span>Meet Your Local Farmers</span>
+          </h2>
+          <p className="text-xs text-gray-500 font-semibold mt-0.5">Verified local growers behind every harvest</p>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(280px,1fr))', gap: 10 }}>
-          {farmers.map(f => <FarmerCard key={f.id} farmer={f} />)}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {displayFarmers.map(f => <FarmerCard key={f.id} farmer={f} />)}
         </div>
       </div>
-
-      {/* Keyframes */}
-      <style>{`
-        @keyframes pulseDot {
-          0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(168,240,96,0.5); }
-          50% { opacity: .7; box-shadow: 0 0 0 6px rgba(168,240,96,0); }
-        }
-        @keyframes floatChip {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-8px); }
-        }
-        @keyframes floatChipAlt {
-          0%, 100% { transform: translateY(-4px); }
-          50% { transform: translateY(4px); }
-        }
-        ::-webkit-scrollbar { display: none; }
-      `}</style>
     </div>
   );
 };

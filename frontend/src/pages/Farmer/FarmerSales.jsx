@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { 
   TrendingUp, 
@@ -29,8 +29,157 @@ import {
   Sprout
 } from 'lucide-react';
 
+/* ─── Beautiful SVG Area Chart Panel ───────────────────────────────────── */
+const AreaChartPanel = ({ chartPoints, chartMetric, setChartMetric, selectedDayFilter, setSelectedDayFilter, timeframe, maxSales, maxOrders }) => {
+  const [hoveredIdx, setHoveredIdx] = useState(null);
+  const W = 560, H = 200, PAD = 16;
+
+  const values = chartPoints.map(d => chartMetric === 'revenue' ? d.sales : d.orders);
+  const maxVal = Math.max(...values);
+  const minVal = Math.min(...values);
+  const range = maxVal - minVal || 1;
+
+  const pts = chartPoints.map((d, i) => ({
+    x: PAD + (i / (chartPoints.length - 1)) * (W - PAD * 2),
+    y: H - PAD - ((values[i] - minVal) / range) * (H - PAD * 2),
+    ...d,
+    val: values[i],
+  }));
+
+  const lineD = pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+  const areaD = `${lineD} L${(W - PAD).toFixed(1)},${H} L${PAD},${H} Z`;
+
+  const formatVal = v => chartMetric === 'revenue' ? `₹${v.toLocaleString('en-IN')}` : `${v} orders`;
+
+  return (
+    <div className="lg:col-span-2 glass-surface p-6 rounded-3xl border border-farmGreen-200/30 shadow-glass space-y-4">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-farmSage-100/40">
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 bg-farmGreen-100/80 text-farmGreen-700 rounded-2xl">
+            <BarChart3 className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 className="font-black text-base text-farmGreen-950">{timeframe.charAt(0).toUpperCase() + timeframe.slice(1)} Revenue Trend</h3>
+            <p className="text-[11px] text-farmMuted font-semibold">Hover over points to inspect values · Click to filter transactions</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-1 bg-farmSage-100/40 p-1 rounded-xl shrink-0">
+          {[{ k: 'revenue', label: 'Revenue (₹)' }, { k: 'orders', label: 'Orders (#)' }].map(m => (
+            <button
+              key={m.k}
+              onClick={() => setChartMetric(m.k)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${chartMetric === m.k ? 'bg-white text-farmGreen-950 shadow-sm' : 'text-farmMuted hover:text-farmGreen-950'}`}
+            >
+              {m.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Active filter pill */}
+      {selectedDayFilter && (
+        <div className="flex items-center justify-between px-3 py-2 bg-farmGreen-50/60 rounded-xl border border-emerald-200 text-xs font-bold text-emerald-900 animate-fadeIn">
+          <span>Showing transactions for: <strong>{selectedDayFilter}</strong></span>
+          <button onClick={() => setSelectedDayFilter(null)} className="text-farmGreen-700 hover:underline cursor-pointer">Show All</button>
+        </div>
+      )}
+
+      {/* SVG Area Chart */}
+      <div className="relative w-full overflow-hidden" style={{ height: H + 8 }}>
+        <svg
+          viewBox={`0 0 ${W} ${H}`}
+          preserveAspectRatio="none"
+          className="w-full"
+          style={{ height: H }}
+          onMouseLeave={() => setHoveredIdx(null)}
+        >
+          <defs>
+            <linearGradient id="sales-area-grad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={chartMetric === 'revenue' ? '#10b981' : '#6366f1'} stopOpacity="0.3" />
+              <stop offset="100%" stopColor={chartMetric === 'revenue' ? '#10b981' : '#6366f1'} stopOpacity="0.01" />
+            </linearGradient>
+            {/* Horizontal grid lines */}
+          </defs>
+
+          {/* Grid lines */}
+          {[0.25, 0.5, 0.75].map(f => {
+            const y = PAD + f * (H - PAD * 2);
+            return <line key={f} x1={PAD} y1={y} x2={W - PAD} y2={y} stroke="#f0f4f0" strokeWidth="1" />;
+          })}
+
+          {/* Area fill */}
+          <path d={areaD} fill="url(#sales-area-grad)" />
+
+          {/* Line */}
+          <path d={lineD} stroke={chartMetric === 'revenue' ? '#059669' : '#4f46e5'} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+
+          {/* Interactive points */}
+          {pts.map((p, i) => {
+            const isHovered = hoveredIdx === i;
+            const isSelected = selectedDayFilter === p.label;
+            return (
+              <g key={i}>
+                {/* Hit area */}
+                <rect
+                  x={p.x - 20}
+                  y={0}
+                  width={40}
+                  height={H}
+                  fill="transparent"
+                  className="cursor-pointer"
+                  onMouseEnter={() => setHoveredIdx(i)}
+                  onClick={() => setSelectedDayFilter(isSelected ? null : p.label)}
+                />
+                {/* Vertical guide on hover */}
+                {isHovered && <line x1={p.x} y1={PAD} x2={p.x} y2={H - 8} stroke="#d1fae5" strokeWidth="1" strokeDasharray="4,3" />}
+                {/* Dot */}
+                <circle cx={p.x} cy={p.y} r={isHovered || isSelected ? 6 : 3.5} fill={chartMetric === 'revenue' ? '#059669' : '#4f46e5'} stroke="white" strokeWidth="2" className="transition-all duration-150" />
+                {/* Tooltip bubble */}
+                {isHovered && (
+                  <g>
+                    <rect x={p.x - 44} y={p.y - 36} width={88} height={28} rx="6" fill="#0B3D2E" />
+                    <text x={p.x} y={p.y - 26} textAnchor="middle" fill="white" fontSize="9" fontWeight="800" fontFamily="sans-serif">
+                      {p.label}
+                    </text>
+                    <text x={p.x} y={p.y - 15} textAnchor="middle" fill="#6ee7b7" fontSize="9" fontWeight="700" fontFamily="sans-serif">
+                      {formatVal(p.val)}
+                    </text>
+                  </g>
+                )}
+              </g>
+            );
+          })}
+        </svg>
+
+        {/* X-axis labels */}
+        <div className="flex items-center justify-between px-4 mt-1">
+          {pts.map((p, i) => (
+            <button
+              key={i}
+              onClick={() => setSelectedDayFilter(selectedDayFilter === p.label ? null : p.label)}
+              className={`text-[10px] font-bold transition-all cursor-pointer ${selectedDayFilter === p.label ? 'text-farmGreen-950 font-black' : 'text-farmMuted hover:text-farmGreen-950'}`}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div className="flex items-center justify-between text-xs text-farmMuted pt-1 border-t border-farmSage-100/40 font-semibold">
+        <span>
+          Peak: <strong className="text-farmGreen-950">{chartPoints.reduce((a, b) => (chartMetric === 'revenue' ? b.sales > a.sales : b.orders > a.orders) ? b : a, chartPoints[0])?.label}</strong>
+          {' '}<strong className="text-farmGreen-950">{formatVal(Math.max(...values))}</strong>
+        </span>
+        <span className="text-farmGreen-700 font-bold">Zero platform fees · 100% yours</span>
+      </div>
+    </div>
+  );
+};
+
 export const FarmerSales = ({ orders = [] }) => {
-  const { showToast } = useAuth();
+  const { showToast, currencySymbol } = useAuth();
 
   const [timeframe, setTimeframe] = useState('weekly'); // 'daily' | 'weekly' | 'monthly' | 'yearly'
   const [chartMetric, setChartMetric] = useState('revenue'); // 'revenue' | 'orders'
@@ -120,7 +269,7 @@ export const FarmerSales = ({ orders = [] }) => {
 
   // Category sales breakdown
   const categorySales = [
-    { name: 'Organic Vegetables', percent: 42, amount: 41320, color: 'bg-emerald-500', barColor: 'from-emerald-500 to-green-600' },
+    { name: 'Organic Vegetables', percent: 42, amount: 41320, color: 'bg-farmGreen-600', barColor: 'from-emerald-500 to-green-600' },
     { name: 'A2 Dairy & Ghee', percent: 34, amount: 33450, color: 'bg-amber-500', barColor: 'from-amber-400 to-orange-500' },
     { name: 'Orchard Fruits', percent: 16, amount: 15740, color: 'bg-rose-500', barColor: 'from-rose-400 to-pink-500' },
     { name: 'Herbs & Cold-Pressed', percent: 8, amount: 7890, color: 'bg-cyan-500', barColor: 'from-cyan-400 to-blue-500' },
@@ -297,7 +446,7 @@ export const FarmerSales = ({ orders = [] }) => {
 
         <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
           <div className="space-y-2 max-w-xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-400/30 text-emerald-300 text-xs font-extrabold tracking-wide">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-farmGreen-600/15 border border-emerald-400/30 text-emerald-300 text-xs font-extrabold tracking-wide">
               <Sprout className="w-3.5 h-3.5 text-emerald-400" />
               <span>DIRECT FARM REVENUE HUB</span>
             </div>
@@ -313,7 +462,7 @@ export const FarmerSales = ({ orders = [] }) => {
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
             
             {/* Timeframe Pills */}
-            <div className="flex items-center bg-white/10 backdrop-blur-md p-1.5 rounded-2xl border border-white/15">
+            <div className="flex items-center bg-white/[0.07] backdrop-blur-md p-1.5 rounded-2xl border border-white/15">
               {['daily', 'weekly', 'monthly', 'yearly'].map((tf) => (
                 <button
                   key={tf}
@@ -324,7 +473,7 @@ export const FarmerSales = ({ orders = [] }) => {
                   className={`px-3.5 py-1.5 rounded-xl text-xs font-black capitalize transition-all cursor-pointer ${
                     timeframe === tf
                       ? 'bg-[#a8f060] text-[#071a0b] shadow-md'
-                      : 'text-white/70 hover:text-white hover:bg-white/10'
+                      : 'text-white/70 hover:text-white hover:bg-white/[0.07]'
                   }`}
                 >
                   {tf}
@@ -336,16 +485,15 @@ export const FarmerSales = ({ orders = [] }) => {
             <div className="flex items-center gap-2">
               <button
                 onClick={handleExportStatement}
-                className="px-3.5 py-2.5 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/15 text-white text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer active:scale-95"
-                title="Download CSV Statement"
+                className="w-10 h-10 rounded-2xl bg-white/[0.07] hover:bg-white/20 border border-white/15 text-white flex items-center justify-center transition-all duration-300 hover:scale-110 active:scale-90 cursor-pointer shadow-md"
+                title="Download Earnings Statement (CSV & PDF)"
               >
-                <Download className="w-4 h-4 text-emerald-300" />
-                <span className="hidden sm:inline">Export</span>
+                <Download className="w-5 h-5 text-emerald-300" />
               </button>
 
               <button
                 onClick={() => setShowPayoutModal(true)}
-                className="px-5 py-2.5 rounded-2xl text-xs font-black flex items-center gap-2 transition-all cursor-pointer active:scale-95 shadow-lg"
+                className="px-5 py-2.5 rounded-2xl text-xs font-black flex items-center gap-2 transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer shadow-lg shadow-emerald-500/20"
                 style={{ 
                   background: 'linear-gradient(135deg, #a8f060, #6fcf37)', 
                   color: '#071a0b',
@@ -362,198 +510,55 @@ export const FarmerSales = ({ orders = [] }) => {
       </div>
 
       {/* ─── 4 Dynamic Metric KPI Cards ─── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
-        
-        {/* Card 1: Gross Sales */}
-        <div className="bg-white p-5 sm:p-6 rounded-3xl border border-emerald-100/80 shadow-xs hover:shadow-lg transition-all space-y-2 group">
-          <div className="flex items-center justify-between text-xs font-bold text-farmMuted uppercase tracking-wider">
-            <span>{timeframe.toUpperCase()} GROSS SALES</span>
-            <span className="p-1.5 rounded-xl bg-emerald-50 text-emerald-700">
-              <TrendingUp className="w-4 h-4" />
-            </span>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {[
+          { label: `${timeframe.toUpperCase()} GROSS SALES`, value: `₹${currentDataset.gross.toLocaleString('en-IN')}`, sub: '+21.4% vs last period', subBadge: true, icon: TrendingUp, iconBg: 'bg-farmGreen-100/80', iconColor: 'text-farmGreen-700', border: 'border-farmGreen-200/30' },
+          { label: '0% COMMISSION SAVED', value: `₹${commissionSaved.toLocaleString('en-IN')}`, sub: '100% revenue direct to bank', subPulse: true, icon: ShieldCheck, iconBg: 'bg-teal-100', iconColor: 'text-teal-700', border: 'border-teal-100', accent: 'from-teal-50/60' },
+          { label: 'COMPLETED ORDERS', value: `${currentDataset.ordersCount}`, sub: '99.4% on-time fulfillment', icon: ShoppingBag, iconBg: 'bg-blue-100', iconColor: 'text-blue-700', border: 'border-blue-100' },
+          { label: 'AVG BASKET (AOV)', value: `₹${currentDataset.avgBasket}`, sub: '~2.8 items per order', icon: Receipt, iconBg: 'bg-farmGold-100', iconColor: 'text-farmGold-700', border: 'border-amber-100' },
+        ].map((card, i) => (
+          <div key={i} className={`bg-gradient-to-br ${card.accent || 'from-white'} to-white p-5 rounded-3xl border-2 ${card.border} shadow-glass hover:shadow-lg hover:-translate-y-1 transition-all duration-300 space-y-3 group`}>
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-black text-farmMuted uppercase tracking-widest leading-tight max-w-[70%]">{card.label}</span>
+              <div className={`p-2 ${card.iconBg} ${card.iconColor} rounded-xl group-hover:scale-110 transition-transform shadow-sm`}>
+                <card.icon className="w-4 h-4" />
+              </div>
+            </div>
+            <div className="font-black text-3xl text-farmGreen-950 leading-none tracking-tight font-mono tabular-nums">{card.value}</div>
+            <div className="flex items-center gap-1.5 text-[11px] font-semibold text-farmMuted">
+              {card.subBadge && <span className="px-2 py-0.5 rounded-full bg-farmGreen-100/80 text-emerald-900 font-black text-[10px]">{card.sub}</span>}
+              {card.subPulse && <><span className="w-2 h-2 rounded-full bg-farmGreen-600 animate-pulse" /><span className="text-farmGreen-800 font-bold">{card.sub}</span></>}
+              {!card.subBadge && !card.subPulse && <span>{card.sub}</span>}
+            </div>
           </div>
-          <div className="font-extrabold text-3xl text-farmGreen-950 tracking-tight">
-            ₹{currentDataset.gross.toLocaleString()}
-          </div>
-          <div className="text-[11px] text-emerald-700 font-bold flex items-center gap-1">
-            <span className="px-1.5 py-0.5 rounded-md bg-emerald-100/80 text-emerald-900 text-[10px] font-black">+21.4%</span>
-            <span>vs previous {timeframe}</span>
-          </div>
-        </div>
-
-        {/* Card 2: 0% Commission Savings */}
-        <div className="bg-gradient-to-br from-emerald-500/10 via-emerald-500/5 to-white p-5 sm:p-6 rounded-3xl border border-emerald-300/60 shadow-xs hover:shadow-lg transition-all space-y-2">
-          <div className="flex items-center justify-between text-xs font-bold text-emerald-900 uppercase tracking-wider">
-            <span>0% COMMISSION SAVED</span>
-            <span className="p-1.5 rounded-xl bg-emerald-100 text-emerald-800">
-              <ShieldCheck className="w-4 h-4" />
-            </span>
-          </div>
-          <div className="font-extrabold text-3xl text-emerald-800 tracking-tight">
-            ₹{commissionSaved.toLocaleString()}
-          </div>
-          <div className="text-[11px] text-emerald-800 font-bold flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span>100% of revenue paid to you</span>
-          </div>
-        </div>
-
-        {/* Card 3: Orders Completed */}
-        <div className="bg-white p-5 sm:p-6 rounded-3xl border border-emerald-100/80 shadow-xs hover:shadow-lg transition-all space-y-2">
-          <div className="flex items-center justify-between text-xs font-bold text-farmMuted uppercase tracking-wider">
-            <span>COMPLETED HARVEST ORDERS</span>
-            <span className="p-1.5 rounded-xl bg-emerald-50 text-emerald-700">
-              <ShoppingBag className="w-4 h-4" />
-            </span>
-          </div>
-          <div className="font-extrabold text-3xl text-farmGreen-950 tracking-tight">
-            {currentDataset.ordersCount} Orders
-          </div>
-          <div className="text-[11px] text-farmMuted font-bold flex items-center gap-1">
-            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-            <span>99.4% on-time fulfillment</span>
-          </div>
-        </div>
-
-        {/* Card 4: Average Order Value */}
-        <div className="bg-white p-5 sm:p-6 rounded-3xl border border-emerald-100/80 shadow-xs hover:shadow-lg transition-all space-y-2">
-          <div className="flex items-center justify-between text-xs font-bold text-farmMuted uppercase tracking-wider">
-            <span>AVG BASKET SIZE (AOV)</span>
-            <span className="p-1.5 rounded-xl bg-emerald-50 text-emerald-700">
-              <Receipt className="w-4 h-4" />
-            </span>
-          </div>
-          <div className="font-extrabold text-3xl text-farmGreen-950 tracking-tight">
-            ₹{currentDataset.avgBasket}
-          </div>
-          <div className="text-[11px] text-farmMuted font-bold flex items-center gap-1">
-            <span>~2.8 harvest items / customer</span>
-          </div>
-        </div>
-
+        ))}
       </div>
 
-      {/* ─── Interactive Sales Chart Visualizer & Category Mix ─── */}
+      {/* ─── SVG Area Chart & Category Mix ─── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
-        {/* Left: Interactive Revenue Bar Chart (2 cols) */}
-        <div className="lg:col-span-2 bg-white p-6 sm:p-7 rounded-3xl border border-emerald-100/80 shadow-sm space-y-6">
-          
-          {/* Chart Header Controls */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-gray-100">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-emerald-50 text-emerald-700 rounded-2xl border border-emerald-100">
-                <BarChart3 className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="font-extrabold text-base text-farmGreen-950">
-                  {timeframe.toUpperCase()} Revenue Visualizer
-                </h3>
-                <p className="text-xs text-farmMuted font-semibold">
-                  Click any bar to filter transactions for that interval
-                </p>
-              </div>
-            </div>
-
-            {/* Metric Toggle */}
-            <div className="flex items-center gap-1.5 bg-gray-100 p-1 rounded-xl">
-              <button
-                onClick={() => setChartMetric('revenue')}
-                className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                  chartMetric === 'revenue' ? 'bg-white text-farmGreen-950 shadow-xs' : 'text-farmMuted hover:text-farmGreen-900'
-                }`}
-              >
-                Revenue (₹)
-              </button>
-              <button
-                onClick={() => setChartMetric('orders')}
-                className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                  chartMetric === 'orders' ? 'bg-white text-farmGreen-950 shadow-xs' : 'text-farmMuted hover:text-farmGreen-900'
-                }`}
-              >
-                Orders (#)
-              </button>
-            </div>
-          </div>
-
-          {/* Active Filter Pill if bar is clicked */}
-          {selectedDayFilter && (
-            <div className="flex items-center justify-between p-2.5 bg-emerald-50 rounded-xl border border-emerald-200 text-xs font-bold text-emerald-900 animate-fadeIn">
-              <span>Filtering transactions for: <strong>{selectedDayFilter}</strong></span>
-              <button
-                onClick={() => setSelectedDayFilter(null)}
-                className="text-emerald-700 hover:text-emerald-950 underline cursor-pointer"
-              >
-                Show All Days
-              </button>
-            </div>
-          )}
-
-          {/* Visual Interactive Bars */}
-          <div className="h-56 flex items-end justify-between gap-2.5 sm:gap-4 pt-4 px-2">
-            {chartPoints.map((item, idx) => {
-              const heightPercent = chartMetric === 'revenue' 
-                ? Math.round((item.sales / maxSales) * 100)
-                : Math.round((item.orders / maxOrders) * 100);
-
-              const isSelected = selectedDayFilter === item.label;
-
-              return (
-                <div 
-                  key={idx} 
-                  onClick={() => setSelectedDayFilter(isSelected ? null : item.label)}
-                  className="flex-1 flex flex-col items-center gap-2 group h-full justify-end cursor-pointer"
-                >
-                  {/* Floating Tooltip Value on Hover */}
-                  <div className={`text-[10px] font-black px-2 py-0.5 rounded-md transition-all whitespace-nowrap ${
-                    isSelected
-                      ? 'bg-farmGreen-900 text-white opacity-100'
-                      : 'bg-emerald-100 text-emerald-900 opacity-0 group-hover:opacity-100 shadow-xs'
-                  }`}>
-                    {chartMetric === 'revenue' ? `₹${item.sales}` : `${item.orders} ord`}
-                  </div>
-
-                  {/* The Bar */}
-                  <div 
-                    className={`w-full max-w-[48px] rounded-2xl transition-all duration-500 shadow-xs relative ${
-                      isSelected
-                        ? 'bg-gradient-to-t from-farmGreen-950 to-emerald-400 ring-2 ring-emerald-500 ring-offset-2'
-                        : 'bg-gradient-to-t from-farmGreen-800 to-emerald-500 group-hover:from-farmGreen-700 group-hover:to-emerald-400 group-hover:scale-105'
-                    }`}
-                    style={{ height: `${Math.max(heightPercent, 12)}%` }}
-                  >
-                    {/* Top Glow Cap */}
-                    <div className="absolute top-0 left-0 right-0 h-1.5 bg-white/40 rounded-t-2xl" />
-                  </div>
-
-                  {/* Label */}
-                  <span className={`text-xs font-bold transition-colors ${
-                    isSelected ? 'text-farmGreen-950 font-black' : 'text-farmMuted group-hover:text-farmGreen-950'
-                  }`}>
-                    {item.label}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-
-          <div className="flex items-center justify-between text-xs text-farmMuted pt-2 border-t border-gray-100 font-semibold">
-            <span>Peak Day: <strong>Saturday (₹6,800)</strong></span>
-            <span>Zero payment processing fees applied</span>
-          </div>
-
-        </div>
+        {/* Left: Smooth SVG Area Chart (2 cols) */}
+        <AreaChartPanel
+          chartPoints={chartPoints}
+          chartMetric={chartMetric}
+          setChartMetric={setChartMetric}
+          selectedDayFilter={selectedDayFilter}
+          setSelectedDayFilter={setSelectedDayFilter}
+          timeframe={timeframe}
+          maxSales={maxSales}
+          maxOrders={maxOrders}
+        />
 
         {/* Right: Produce Sales Mix & Top Items (1 col) */}
-        <div className="bg-white p-6 sm:p-7 rounded-3xl border border-emerald-100/80 shadow-sm space-y-6 flex flex-col justify-between">
+        <div className="glass-surface p-6 sm:p-7 rounded-3xl border border-farmGreen-200/40 shadow-sm space-y-6 flex flex-col justify-between">
           
           <div className="space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+            <div className="flex items-center justify-between pb-3 border-b border-farmSage-100/40">
               <div className="flex items-center gap-2">
-                <PieChart className="w-4 h-4 text-emerald-700" />
+                <PieChart className="w-4 h-4 text-farmGreen-700" />
                 <h3 className="font-extrabold text-base text-farmGreen-950">Produce Sales Mix</h3>
               </div>
-              <span className="text-[11px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full">
+              <span className="text-[11px] font-bold text-farmGreen-800 bg-farmGreen-50/60 px-2 py-0.5 rounded-full">
                 4 Categories
               </span>
             </div>
@@ -566,7 +571,7 @@ export const FarmerSales = ({ orders = [] }) => {
                     <span className="text-farmGreen-950">{cat.name}</span>
                     <span className="text-emerald-900 font-extrabold">₹{cat.amount.toLocaleString()} ({cat.percent}%)</span>
                   </div>
-                  <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
+                  <div className="h-2.5 bg-farmSage-100/40 rounded-full overflow-hidden">
                     <div 
                       className={`h-full bg-gradient-to-r ${cat.barColor} rounded-full transition-all duration-700`}
                       style={{ width: `${cat.percent}%` }}
@@ -578,16 +583,16 @@ export const FarmerSales = ({ orders = [] }) => {
           </div>
 
           {/* Top Earning Harvest Produce */}
-          <div className="pt-4 border-t border-gray-100 space-y-3">
+          <div className="pt-4 border-t border-farmSage-100/40 space-y-3">
             <div className="text-xs font-extrabold text-farmGreen-950 uppercase tracking-wider">
               Top Earning Produce
             </div>
             
             <div className="space-y-2.5">
               {topProduceItems.slice(0, 3).map((item, idx) => (
-                <div key={idx} className="flex items-center justify-between gap-3 p-2.5 rounded-2xl bg-gray-50/80 border border-gray-100 hover:bg-emerald-50/40 transition-colors">
+                <div key={idx} className="flex items-center justify-between gap-3 p-2.5 rounded-2xl bg-white/70 border border-farmSage-100/40 hover:bg-farmGreen-50/60/40 transition-colors">
                   <div className="flex items-center gap-2.5 min-w-0">
-                    <img src={item.img} alt={item.name} className="w-9 h-9 rounded-xl object-cover border shrink-0" />
+                    <img src={item.img} alt={item.name} className="w-9 h-9 rounded-xl object-cover border shrink-0" loading="lazy" />
                     <div className="min-w-0">
                       <div className="font-extrabold text-xs text-farmGreen-950 truncate">{item.name}</div>
                       <div className="text-[10px] text-farmMuted font-bold">{item.sold}</div>
@@ -595,7 +600,7 @@ export const FarmerSales = ({ orders = [] }) => {
                   </div>
                   <div className="text-right shrink-0">
                     <div className="font-black text-xs text-emerald-900">{item.revenue}</div>
-                    <div className="text-[10px] text-emerald-600 font-bold">{item.growth}</div>
+                    <div className="text-[10px] text-farmGreen-600 font-bold">{item.growth}</div>
                   </div>
                 </div>
               ))}
@@ -607,10 +612,10 @@ export const FarmerSales = ({ orders = [] }) => {
       </div>
 
       {/* ─── Completed Transactions & Orders Ledger ─── */}
-      <div className="bg-white rounded-3xl border border-emerald-100/80 p-6 sm:p-7 shadow-sm space-y-5">
+      <div className="glass-surface rounded-3xl border border-farmGreen-200/40 p-6 sm:p-7 shadow-sm space-y-5">
         
         {/* Ledger Header & Search/Filter Controls */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-gray-100">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-farmSage-100/40">
           <div>
             <h3 className="font-extrabold text-lg text-farmGreen-950">Earnings & Payout Ledger</h3>
             <p className="text-xs text-farmMuted font-semibold">Direct customer payments settled instantly to your bank account</p>
@@ -621,29 +626,29 @@ export const FarmerSales = ({ orders = [] }) => {
             
             {/* Search Input */}
             <div className="relative min-w-[200px]">
-              <Search className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <Search className="w-3.5 h-3.5 text-farmSage-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
                 placeholder="Search order ID, buyer…"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-8 pr-7 py-1.5 bg-gray-50 border border-gray-200 focus:border-emerald-500 rounded-xl text-xs font-bold text-farmGreen-950 placeholder-gray-400 outline-none transition-all"
+                className="w-full pl-8 pr-7 py-1.5 bg-white/50 border border-farmSage-200/50 focus:border-emerald-500 rounded-xl text-xs font-bold text-farmGreen-950 placeholder-farmSage-400  transition-all"
               />
               {searchQuery && (
-                <button onClick={() => setSearchQuery('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 p-0.5">
+                <button onClick={() => setSearchQuery('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-farmSage-400 p-0.5">
                   <X className="w-3 h-3" />
                 </button>
               )}
             </div>
 
             {/* Payment Filter Pill */}
-            <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-xl text-xs font-bold">
+            <div className="flex items-center gap-1 bg-farmSage-100/40 p-1 rounded-xl text-xs font-bold">
               {['all', 'upi', 'card', 'cod'].map(m => (
                 <button
                   key={m}
                   onClick={() => setPaymentFilter(m)}
                   className={`px-2.5 py-1 rounded-lg uppercase text-[10px] font-black transition-all cursor-pointer ${
-                    paymentFilter === m ? 'bg-white text-farmGreen-950 shadow-xs' : 'text-farmMuted hover:text-farmGreen-950'
+                    paymentFilter === m ? 'bg-white text-farmGreen-950 shadow-sm' : 'text-farmMuted hover:text-farmGreen-950'
                   }`}
                 >
                   {m}
@@ -655,7 +660,7 @@ export const FarmerSales = ({ orders = [] }) => {
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="p-1.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-farmGreen-950 outline-none cursor-pointer"
+              className="p-1.5 bg-white/50 border border-farmSage-200/50 rounded-xl text-xs font-bold text-farmGreen-950  cursor-pointer"
             >
               <option value="newest">Newest First</option>
               <option value="highest">Highest Amount</option>
@@ -668,7 +673,7 @@ export const FarmerSales = ({ orders = [] }) => {
         {/* Ledger Table */}
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
-            <thead className="bg-farmBg/80 border-b border-farmGreen-100 text-farmMuted font-bold uppercase tracking-wider">
+            <thead className="bg-white/40 backdrop-blur-sm/80 border-b border-farmGreen-100 text-farmMuted font-bold uppercase tracking-wider">
               <tr>
                 <th className="p-3.5 rounded-l-2xl">Order ID</th>
                 <th className="p-3.5">Customer & Harvest Items</th>
@@ -681,20 +686,20 @@ export const FarmerSales = ({ orders = [] }) => {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {filteredTransactions.map((ord) => (
-                <tr key={ord.id} className="hover:bg-emerald-50/30 transition-colors group">
+                <tr key={ord.id} className="hover:bg-farmGreen-50/60/30 transition-colors group">
                   
                   {/* Order ID with Copy */}
                   <td className="p-3.5 font-black text-farmGreen-950">
                     <button
                       onClick={() => handleCopyId(ord.id)}
-                      className="flex items-center gap-1.5 hover:text-emerald-700 cursor-pointer"
+                      className="flex items-center gap-1.5 hover:text-farmGreen-700 cursor-pointer"
                       title="Copy ID"
                     >
                       <span>{ord.id}</span>
                       {copiedId === ord.id ? (
-                        <Check className="w-3 h-3 text-emerald-600" />
+                        <Check className="w-3 h-3 text-farmGreen-600" />
                       ) : (
-                        <Copy className="w-3 h-3 text-gray-300 group-hover:text-emerald-700 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        <Copy className="w-3 h-3 text-gray-300 group-hover:text-farmGreen-700 opacity-0 group-hover:opacity-100 transition-opacity" />
                       )}
                     </button>
                   </td>
@@ -712,7 +717,7 @@ export const FarmerSales = ({ orders = [] }) => {
 
                   {/* Payment */}
                   <td className="p-3.5">
-                    <span className="px-2.5 py-1 bg-emerald-50 border border-emerald-100 text-emerald-800 rounded-full font-bold text-[11px]">
+                    <span className="px-2.5 py-1 bg-farmGreen-50/60 border border-farmGreen-200/30 text-farmGreen-800 rounded-full font-bold text-[11px]">
                       {ord.paymentMethod || 'UPI (Paid)'}
                     </span>
                   </td>
@@ -724,15 +729,15 @@ export const FarmerSales = ({ orders = [] }) => {
 
                   {/* Net Payout */}
                   <td className="p-3.5">
-                    <div className="font-black text-emerald-800 text-sm">₹{ord.netFarmerShare}</div>
-                    <div className="text-[10px] text-emerald-600 font-bold">0% fee deducted</div>
+                    <div className="font-black text-farmGreen-800 text-sm">₹{ord.netFarmerShare}</div>
+                    <div className="text-[10px] text-farmGreen-600 font-bold">0% fee deducted</div>
                   </td>
 
                   {/* Action Inspect Button */}
                   <td className="p-3.5 text-right">
                     <button
                       onClick={() => setSelectedTransaction(ord)}
-                      className="px-3 py-1.5 bg-farmBg hover:bg-emerald-100 border border-emerald-200 text-emerald-950 rounded-xl font-bold text-xs transition-all cursor-pointer active:scale-95"
+                      className="px-3 py-1.5 bg-white/40 backdrop-blur-sm hover:bg-farmGreen-100/80 border border-emerald-200 text-emerald-950 rounded-xl font-bold text-xs transition-all cursor-pointer active:scale-95"
                     >
                       Inspect
                     </button>
@@ -749,11 +754,11 @@ export const FarmerSales = ({ orders = [] }) => {
       {/* ─── Instant Payout Modal / Drawer ─── */}
       {showPayoutModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-md animate-fadeIn">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl border border-emerald-100 space-y-6 animate-scaleUp">
+          <div className="glass-surface rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl border border-farmGreen-200/30 space-y-6 animate-scaleUp">
             
-            <div className="flex items-center justify-between border-b border-gray-100 pb-4">
+            <div className="flex items-center justify-between border-b border-farmSage-100/40 pb-4">
               <div className="flex items-center gap-3">
-                <div className="p-3 bg-emerald-500/15 text-emerald-800 rounded-2xl border border-emerald-200">
+                <div className="p-3 bg-farmGreen-600/15 text-farmGreen-800 rounded-2xl border border-emerald-200">
                   <Wallet className="w-6 h-6" />
                 </div>
                 <div>
@@ -763,7 +768,7 @@ export const FarmerSales = ({ orders = [] }) => {
               </div>
               <button 
                 onClick={() => setShowPayoutModal(false)}
-                className="p-1.5 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 cursor-pointer"
+                className="p-1.5 text-farmSage-400 hover:text-gray-600 rounded-full hover:bg-farmSage-100/40 cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -771,29 +776,29 @@ export const FarmerSales = ({ orders = [] }) => {
 
             {/* Available Balance Box */}
             <div className="p-4 bg-gradient-to-br from-emerald-50 to-farmBg rounded-2xl border border-emerald-200/80 space-y-1">
-              <div className="text-xs font-bold text-emerald-800">Ready for Instant Withdrawal</div>
-              <div className="font-black text-3xl text-farmGreen-950">₹12,450.00</div>
-              <div className="text-[11px] text-emerald-700 font-bold">100% Cleared Harvest Earnings</div>
+              <div className="text-xs font-bold text-farmGreen-800">Ready for Instant Withdrawal</div>
+              <div className="font-black text-3xl text-farmGreen-950">{currencySymbol}12,450.00</div>
+              <div className="text-[11px] text-farmGreen-700 font-bold">100% Cleared Harvest Earnings</div>
             </div>
 
             {/* Destination Bank / Account */}
             <div className="space-y-2">
               <label className="text-xs font-bold text-farmGreen-950 block">Destination Bank Account:</label>
-              <div className="p-3.5 rounded-2xl border-2 border-emerald-500 bg-emerald-50/40 flex items-center justify-between">
+              <div className="p-3.5 rounded-2xl border-2 border-emerald-500 bg-farmGreen-50/60/40 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <Building2 className="w-5 h-5 text-emerald-700" />
+                  <Building2 className="w-5 h-5 text-farmGreen-700" />
                   <div>
                     <div className="font-extrabold text-xs text-farmGreen-950">HDFC Bank · A/C **4920</div>
                     <div className="text-[10px] text-farmMuted font-bold">IFSC: HDFC0001492 · Rajesh Kumar</div>
                   </div>
                 </div>
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                <span className="w-2.5 h-2.5 rounded-full bg-farmGreen-600" />
               </div>
             </div>
 
             {/* Quick Amount Chips */}
             <div className="space-y-2">
-              <label className="text-xs font-bold text-farmGreen-950 block">Withdrawal Amount (₹):</label>
+              <label className="text-xs font-bold text-farmGreen-950 block">Withdrawal Amount ({currencySymbol}):</label>
               <div className="grid grid-cols-4 gap-2">
                 {['2000', '5000', '10000', '12450'].map(amt => (
                   <button
@@ -801,11 +806,11 @@ export const FarmerSales = ({ orders = [] }) => {
                     onClick={() => setPayoutAmount(amt)}
                     className={`py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
                       payoutAmount === amt
-                        ? 'bg-farmGreen-900 text-white border-farmGreen-900 shadow-xs'
-                        : 'bg-gray-50 border-gray-200 text-farmGreen-950 hover:bg-gray-100'
+                        ? 'bg-farmGreen-900 text-white border-farmGreen-900 shadow-sm'
+                        : 'bg-white/50 border-farmSage-200/50 text-farmGreen-950 hover:bg-farmSage-100/40'
                     }`}
                   >
-                    {amt === '12450' ? 'All (₹12k)' : `₹${amt}`}
+                    {amt === '12450' ? `All (${currencySymbol}12k)` : `${currencySymbol}${amt}`}
                   </button>
                 ))}
               </div>
@@ -827,7 +832,7 @@ export const FarmerSales = ({ orders = [] }) => {
               ) : (
                 <>
                   <CheckCircle2 className="w-4 h-4" />
-                  <span>Transfer ₹{payoutAmount} to Bank</span>
+                  <span>Transfer {currencySymbol}{payoutAmount} to Bank</span>
                 </>
               )}
             </button>
@@ -838,20 +843,24 @@ export const FarmerSales = ({ orders = [] }) => {
 
       {/* ─── Transaction Detail Breakdown Modal ─── */}
       {selectedTransaction && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-md animate-fadeIn">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-7 shadow-2xl border border-emerald-100 space-y-5 animate-scaleUp">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-fadeIn">
+          <div className="glass-surface rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-[0_24px_64px_rgba(7,26,11,0.16)] border border-emerald-500/10 space-y-6 relative overflow-hidden animate-scaleUp">
             
+            {/* Ambient subtle glow background */}
+            <div className="absolute top-0 right-0 w-36 h-36 bg-farmGreen-600/5 rounded-full blur-3xl pointer-events-none" />
+
             {/* Header */}
-            <div className="flex items-center justify-between border-b border-gray-100 pb-4">
+            <div className="flex items-center justify-between border-b border-farmSage-100/40 pb-4 relative z-10">
               <div className="flex items-center gap-3.5">
-                <div className="w-12 h-12 rounded-2xl bg-emerald-500/15 text-emerald-800 border border-emerald-300/60 flex items-center justify-center shrink-0 shadow-xs">
-                  <Receipt className="w-6 h-6" />
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-50 to-emerald-100/80 border border-emerald-200/60 flex items-center justify-center shrink-0 shadow-[0_4px_12px_rgba(16,185,129,0.08)]">
+                  <Receipt className="w-6 h-6 text-farmGreen-700 stroke-[2.2]" />
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <h3 className="font-black text-base sm:text-lg text-farmGreen-950">Payout Settlement Breakdown</h3>
-                    <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-[10px] font-black">
-                      Settled
+                    <h3 className="font-black text-base sm:text-lg text-farmGreen-950">Payout Settlement</h3>
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-farmGreen-500/10 text-farmGreen-700 border border-emerald-500/20 text-[10px] font-black uppercase tracking-wide">
+                      <span className="w-1.5 h-1.5 rounded-full bg-farmGreen-600 animate-pulse" />
+                      <span>Settled</span>
                     </span>
                   </div>
                   <p className="text-xs text-farmMuted font-bold mt-0.5">
@@ -861,75 +870,77 @@ export const FarmerSales = ({ orders = [] }) => {
               </div>
               <button 
                 onClick={() => setSelectedTransaction(null)}
-                className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 flex items-center justify-center transition-all cursor-pointer shrink-0"
+                className="w-8 h-8 rounded-full bg-white/50 hover:bg-farmSage-100/40 text-farmMuted flex items-center justify-center transition-all cursor-pointer shrink-0 border border-farmSage-100/40"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             {/* Customer & Order Details Card */}
-            <div className="p-4 bg-gradient-to-r from-gray-50 to-emerald-50/30 rounded-2xl border border-emerald-100 space-y-3">
+            <div className="p-5 bg-gradient-to-r from-gray-50 to-emerald-50/20 rounded-2xl border border-farmGreen-200/30/50 space-y-3.5 relative z-10">
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold text-farmMuted uppercase tracking-wider">Customer Profile:</span>
-                <span className="font-extrabold text-xs text-farmGreen-950 flex items-center gap-1.5">
-                  <span className="w-5 h-5 rounded-full bg-emerald-700 text-white text-[10px] font-black flex items-center justify-center">
+                <span className="text-[11px] font-extrabold text-farmMuted uppercase tracking-wider">Customer Profile</span>
+                <span className="font-extrabold text-xs text-farmGreen-950 flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-full bg-emerald-700 text-white text-[10px] font-black flex items-center justify-center border border-white shadow-sm">
                     {selectedTransaction.customerName?.charAt(0) || 'C'}
                   </span>
                   {selectedTransaction.customerName}
                 </span>
               </div>
               
-              <div className="flex items-start justify-between gap-3 pt-2 border-t border-emerald-100/80">
-                <span className="text-[11px] font-bold text-farmMuted uppercase tracking-wider shrink-0">Items Delivered:</span>
-                <span className="font-extrabold text-xs text-farmGreen-950 text-right">
+              <div className="flex items-start justify-between gap-3 pt-3.5 border-t border-farmGreen-200/30/60">
+                <span className="text-[11px] font-extrabold text-farmMuted uppercase tracking-wider shrink-0 mt-0.5">Items Delivered</span>
+                <span className="font-bold text-xs text-farmGreen-950 text-right leading-relaxed max-w-[240px]">
                   {selectedTransaction.items}
                 </span>
               </div>
 
-              <div className="flex items-center justify-between pt-2 border-t border-emerald-100/80">
-                <span className="text-[11px] font-bold text-farmMuted uppercase tracking-wider">Payment Method:</span>
-                <span className="px-2.5 py-0.5 rounded-lg bg-emerald-100 text-emerald-800 text-xs font-black flex items-center gap-1">
-                  <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                  {selectedTransaction.paymentMethod || 'UPI Paid'}
+              <div className="flex items-center justify-between pt-3.5 border-t border-farmGreen-200/30/60">
+                <span className="text-[11px] font-extrabold text-farmMuted uppercase tracking-wider">Payment Method</span>
+                <span className="px-2.5 py-1 rounded-full bg-farmGreen-500/10 text-farmGreen-800 text-[11px] font-black border border-emerald-500/20 flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-farmGreen-600" />
+                  <span>{selectedTransaction.paymentMethod || 'UPI Paid'}</span>
                 </span>
               </div>
             </div>
 
             {/* Financial Ledger Calculation */}
-            <div className="p-4 bg-gradient-to-b from-emerald-50/60 to-teal-50/60 rounded-2xl border border-emerald-200 space-y-2 text-xs font-semibold">
-              <div className="flex justify-between text-farmMuted">
+            <div className="p-5 bg-gradient-to-b from-emerald-50/40 to-teal-50/40 rounded-2xl border border-emerald-500/15 space-y-3 text-xs font-bold relative z-10">
+              <div className="flex justify-between items-center text-farmMuted">
                 <span>Customer Order Total</span>
-                <span className="font-black text-farmGreen-950 font-mono">₹{selectedTransaction.total}</span>
+                <span className="font-black text-farmGreen-950 font-mono text-sm">{currencySymbol}{selectedTransaction.total}</span>
               </div>
-              <div className="flex justify-between text-emerald-800">
+              <div className="flex justify-between items-center text-emerald-850">
                 <span>Platform Commission Rate</span>
-                <span className="font-extrabold bg-emerald-100 text-emerald-900 px-1.5 py-0.5 rounded text-[10px]">0.00% (FREE)</span>
+                <span className="font-extrabold bg-farmGreen-600/15 text-farmGreen-800 border border-emerald-500/25 px-2 py-0.5 rounded-full text-[10px]">0.00% (FREE)</span>
               </div>
-              <div className="flex justify-between text-emerald-800">
+              <div className="flex justify-between items-center text-emerald-850">
                 <span>Payment Gateway Processing</span>
-                <span className="font-extrabold text-emerald-800">₹0.00 (Platform Covered)</span>
+                <span className="font-extrabold bg-farmGreen-500/10 text-emerald-850 border border-emerald-500/10 px-2.5 py-0.5 rounded-full text-[10px]">{currencySymbol}0.00 (Platform Covered)</span>
               </div>
               
-              <div className="pt-2 border-t border-emerald-200/80 flex items-center justify-between">
+              <div className="pt-4 border-t border-emerald-500/15 flex items-center justify-between">
                 <div>
                   <span className="text-xs font-black text-farmGreen-950 block">Net Farmer Direct Credit</span>
-                  <span className="text-[10px] text-emerald-700 font-bold">Transferred to HDFC Bank A/C **4920</span>
+                  <span className="text-[10px] text-farmGreen-700 font-bold tracking-wide">Transferred to HDFC Bank A/C **4920</span>
                 </div>
-                <span className="text-emerald-800 text-2xl font-mono font-black">
-                  ₹{selectedTransaction.total}
-                </span>
+                <div className="text-right">
+                  <span className="text-farmGreen-800 text-3xl font-mono font-black tracking-tight">
+                    {currencySymbol}{selectedTransaction.total}
+                  </span>
+                </div>
               </div>
             </div>
 
             {/* Interactive Actions */}
-            <div className="grid grid-cols-2 gap-3 pt-1">
+            <div className="grid grid-cols-2 gap-3 pt-2 relative z-10">
               <button
                 onClick={() => {
                   handleCopyId(selectedTransaction.id);
                 }}
-                className="py-2.5 px-3 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-xl font-extrabold text-xs transition-all cursor-pointer flex items-center justify-center gap-1.5 active:scale-95"
+                className="py-3 px-4 bg-white/50 hover:bg-farmSage-100/40 text-gray-800 rounded-2xl font-black text-xs transition-all flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-97 border border-farmSage-200/50/50 cursor-pointer shadow-2xs"
               >
-                <Copy className="w-3.5 h-3.5 text-gray-600" />
+                <Copy className="w-4 h-4 text-gray-600 shrink-0" />
                 <span>Copy Receipt ID</span>
               </button>
 
@@ -938,9 +949,9 @@ export const FarmerSales = ({ orders = [] }) => {
                   showToast('PDF Downloaded 📄', `Tax invoice for ${selectedTransaction.id} saved.`);
                   setSelectedTransaction(null);
                 }}
-                className="py-2.5 px-3 bg-farmGreen-900 hover:bg-farmGreen-950 text-white rounded-xl font-extrabold text-xs transition-all cursor-pointer flex items-center justify-center gap-1.5 active:scale-95 shadow-sm"
+                className="py-3 px-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-2xl font-black text-xs transition-all flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-97 shadow-[0_4px_14px_rgba(16,185,129,0.25)] border border-emerald-500/25 cursor-pointer"
               >
-                <Download className="w-3.5 h-3.5 text-emerald-300" />
+                <Download className="w-4 h-4 text-emerald-300 shrink-0" />
                 <span>Download Invoice</span>
               </button>
             </div>
@@ -954,3 +965,4 @@ export const FarmerSales = ({ orders = [] }) => {
 };
 
 export default FarmerSales;
+

@@ -31,7 +31,7 @@ export const CustomerWishlist = ({ wishlist, toggleWishlist, setActiveTab }) => 
             <div key={prod.id} className="bg-white rounded-3xl p-4 flex flex-col justify-between space-y-3 card-hover" style={{ border: '1.5px solid #f0f4f0', boxShadow: '0 2px 10px rgba(0,0,0,0.06)' }}>
               <div className="space-y-3">
                 <div className="relative h-40 rounded-2xl overflow-hidden bg-farmBg">
-                  <img src={prod.image} alt={prod.name} className="w-full h-full object-cover" />
+                  <img src={prod.image} alt={prod.name} className="w-full h-full object-cover" loading="lazy" />
                   <span className="absolute top-2.5 left-2.5 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-[#0F2818] text-emerald-300 shadow-sm">
                     {prod.category}
                   </span>

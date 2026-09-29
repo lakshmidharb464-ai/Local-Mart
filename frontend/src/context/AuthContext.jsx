@@ -1,14 +1,39 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { authService } from '../services/authService';
+import { ToastContainer } from '../components/ui/Toast';
 
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
+  const navigate = useNavigate();
+  const [user, setUser] = useState(() => authService.getCurrentUser());
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authInitialTab, setAuthInitialTab] = useState('signin'); // 'signin' | 'signup'
   const [selectedRole, setSelectedRole] = useState('Customer'); // 'Customer' | 'Farmer' | 'Delivery' | 'Admin'
   const [isPrdOpen, setIsPrdOpen] = useState(false);
   const [toast, setToast] = useState(null);
+  
+  const [currency, setCurrencyState] = useState(() => localStorage.getItem('localfarm_currency') || '₹ (INR)');
+  const currencySymbol = currency.startsWith('$') ? '$' : '₹';
+
+  // Validate session on app initialization
+  useEffect(() => {
+    if (authService.getToken()) {
+      authService.getMe().then((freshUser) => {
+        if (freshUser) {
+          setUser(freshUser);
+        } else {
+          setUser(null);
+        }
+      });
+    }
+  }, []);
+
+  const setCurrency = (newCurrency) => {
+    setCurrencyState(newCurrency);
+    localStorage.setItem('localfarm_currency', newCurrency);
+  };
 
   const showToast = (title, message, type = 'success') => {
     setToast({ title, message, type });
@@ -17,35 +42,37 @@ export const AuthProvider = ({ children }) => {
     }, 4000);
   };
 
-  const login = (email, password, role = 'Customer') => {
-    const mockUser = {
-      id: 'usr_' + Date.now(),
-      name: email.split('@')[0] || 'User',
-      email: email,
-      role: role,
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80'
-    };
-    setUser(mockUser);
-    setIsAuthModalOpen(false);
-    showToast('Welcome back!', `Logged in successfully as ${role}`);
+  const login = async (email, password, role = 'Customer') => {
+    try {
+      const loggedUser = await authService.login(email, password, role);
+      setUser(loggedUser);
+      setIsAuthModalOpen(false);
+      showToast('Welcome back!', `Logged in successfully as ${role}`);
+      return loggedUser;
+    } catch (e) {
+      showToast('Login Failed', e.message || 'Unable to sign in. Please try again.', 'error');
+      throw e;
+    }
   };
 
-  const signup = (name, email, password, role = 'Customer') => {
-    const mockUser = {
-      id: 'usr_' + Date.now(),
-      name: name || 'New User',
-      email: email,
-      role: role,
-      avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80'
-    };
-    setUser(mockUser);
-    setIsAuthModalOpen(false);
-    showToast('Account Created!', `Welcome to Local Farm Direct as a ${role}`);
+  const signup = async (name, email, password, role = 'Customer') => {
+    try {
+      const newUser = await authService.register(name, email, password, role);
+      setUser(newUser);
+      setIsAuthModalOpen(false);
+      showToast('Account Created!', `Welcome to Local Farm Direct as a ${role}`);
+      return newUser;
+    } catch (e) {
+      showToast('Signup Failed', e.message || 'Unable to create account.', 'error');
+      throw e;
+    }
   };
 
-  const logout = () => {
+  const logout = async () => {
+    await authService.logout();
     setUser(null);
     showToast('Logged Out', 'You have been logged out safely.');
+    navigate('/');
   };
 
   const openAuthModal = (tab = 'signin', role = 'Customer') => {
@@ -74,23 +101,14 @@ export const AuthProvider = ({ children }) => {
       signup,
       logout,
       openAuthModal,
-      closeAuthModal
+      closeAuthModal,
+      currency,
+      currencySymbol,
+      setCurrency
     }}>
       {children}
-      {/* Global Toast Notification Component */}
-      {toast && (
-        <div className="fixed bottom-6 right-6 z-50 transition-all transform animate-bounce">
-          <div className={`px-5 py-4 rounded-xl shadow-farm-xl border flex items-center gap-3 bg-white ${
-            toast.type === 'error' ? 'border-red-500 text-red-700' : 'border-farmGreen-500 text-farmGreen-900'
-          }`}>
-            <div className={`w-3 h-3 rounded-full ${toast.type === 'error' ? 'bg-red-500' : 'bg-farmGreen-500'}`} />
-            <div>
-              <h4 className="font-display font-bold text-sm">{toast.title}</h4>
-              <p className="text-xs text-farmMuted">{toast.message}</p>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Global Toast Notification */}
+      <ToastContainer toast={toast} onDismiss={() => setToast(null)} />
     </AuthContext.Provider>
   );
 };

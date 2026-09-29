@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { STATS } from '../data/mockData';
-import { User, Heart, TrendingUp, Sprout, Tractor, Users, ShoppingBag, MapPin, Sparkles, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { useMarketplace } from '../context/MarketplaceContext';
+import { User, Heart, TrendingUp, Sprout, Tractor, Users, ShoppingBag, MapPin, Sparkles, ArrowRight, CheckCircle2, ChevronDown } from 'lucide-react';
 import { useScrollReveal, useCountUp } from '../hooks/useScrollReveal';
 
 const StatCounter = ({ stat, trigger }) => {
-  const count = useCountUp(stat.count, 2200, trigger);
+  const count = useCountUp(stat.count, 2000, trigger);
 
   const getStatIcon = (iconType) => {
     switch (iconType) {
@@ -19,7 +19,7 @@ const StatCounter = ({ stat, trigger }) => {
   const Icon = getStatIcon(stat.iconType);
 
   return (
-    <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/15 hover:border-emerald-400/50 hover:bg-white/15 transition-all duration-300 shadow-xl group hover:-translate-y-1.5 flex flex-col items-center justify-between text-center relative overflow-hidden cursor-pointer">
+    <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/15 hover:border-emerald-400/50 hover:bg-white/15 transition-all duration-300 shadow-xl group hover:-translate-y-1.5 flex flex-col items-center justify-between text-center relative overflow-hidden cursor-default">
       <div className="w-12 h-12 rounded-2xl bg-emerald-400/20 text-emerald-300 border border-emerald-400/30 flex items-center justify-center mb-4 group-hover:scale-110 group-hover:bg-emerald-400/30 transition-all duration-300 shadow-md">
         <Icon className="w-6 h-6 text-emerald-300" />
       </div>
@@ -43,6 +43,7 @@ const StatCounter = ({ stat, trigger }) => {
 };
 
 export const AboutSection = () => {
+  const { products } = useMarketplace();
   const [headerRef, headerVisible] = useScrollReveal();
   const [leftRef, leftVisible] = useScrollReveal();
   const [rightRef, rightVisible] = useScrollReveal();
@@ -50,6 +51,18 @@ export const AboutSection = () => {
   const [statsRef, statsVisible] = useScrollReveal();
 
   const [activeItem, setActiveItem] = useState(null);
+
+  const stats = React.useMemo(() => {
+    const set = new Set(products.map(p => p.farmerName).filter(Boolean));
+    const activeFarmers = Math.max(set.size, 12);
+    const activeProducts = Math.max(products.length, 24);
+    return [
+      { label: 'Active Farm Hubs', count: activeFarmers, suffix: '+', subtext: 'Verified AP & MH Producers', iconType: 'farmer' },
+      { label: 'Direct Value to Farmers', count: 98, suffix: '%', subtext: 'Of Consumer Rupee to Growers', iconType: 'customer' },
+      { label: 'Fresh Harvests Listed', count: activeProducts, suffix: '+', subtext: 'Updated Daily from Fields', iconType: 'product' },
+      { label: 'Farm Belts Connected', count: 18, suffix: '+', subtext: 'Chittoor, Pune & Satara Clusters', iconType: 'village' }
+    ];
+  }, [products]);
 
   const missionItems = [
     {
@@ -59,7 +72,7 @@ export const AboutSection = () => {
       barColor: 'bg-emerald-600',
       barGlow: 'group-hover:shadow-[0_0_15px_rgba(22,163,74,0.5)]',
       textColor: 'text-emerald-700',
-      bgHover: 'hover:bg-emerald-50/40',
+      bgHover: 'hover:bg-emerald-50/50',
       iconBg: 'bg-emerald-100 text-emerald-700',
       text: "Put more of every food dollar back into the hands of the people who actually grow our food — while giving customers produce that's days fresher than the supermarket shelf.",
       impact: '80% Revenue Direct to Farmers'
@@ -71,7 +84,7 @@ export const AboutSection = () => {
       barColor: 'bg-amber-500',
       barGlow: 'group-hover:shadow-[0_0_15px_rgba(245,158,11,0.5)]',
       textColor: 'text-amber-700',
-      bgHover: 'hover:bg-amber-50/40',
+      bgHover: 'hover:bg-amber-50/50',
       iconBg: 'bg-amber-100 text-amber-700',
       text: 'A food system where the distance between farm and plate is measured in kilometers, not weeks. Where farmers know their customers by name.',
       impact: 'Same-Day Harvest & Delivery'
@@ -83,7 +96,7 @@ export const AboutSection = () => {
       barColor: 'bg-rose-500',
       barGlow: 'group-hover:shadow-[0_0_15px_rgba(244,63,94,0.5)]',
       textColor: 'text-rose-600',
-      bgHover: 'hover:bg-rose-50/40',
+      bgHover: 'hover:bg-rose-50/50',
       iconBg: 'bg-rose-100 text-rose-600',
       text: 'Traditional supply chains take 40–60% margin. We collapse that distance — farmers keep 80%, customers pay 20% less, food arrives within hours of harvest.',
       impact: 'Eliminating Middlemen Margins'
@@ -94,7 +107,11 @@ export const AboutSection = () => {
     <section id="about" className="py-24 bg-white relative overflow-hidden font-display">
 
       {/* Background Decorative Element */}
-      <div className="absolute -top-32 -right-32 w-[500px] h-[500px] rounded-full pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(76,175,80,0.06) 0%, transparent 70%)' }} />
+      <div
+        className="absolute -top-32 -right-32 w-[500px] h-[500px] rounded-full pointer-events-none"
+        style={{ background: 'radial-gradient(circle, rgba(76,175,80,0.06) 0%, transparent 70%)' }}
+        aria-hidden="true"
+      />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
@@ -122,7 +139,7 @@ export const AboutSection = () => {
           {/* Left: Mission / Vision / Why We Exist Cards */}
           <div
             ref={leftRef}
-            className={`space-y-6 reveal-left ${leftVisible ? 'visible' : ''}`}
+            className={`space-y-4 reveal-left ${leftVisible ? 'visible' : ''}`}
           >
             {missionItems.map((item) => {
               const Icon = item.icon;
@@ -131,29 +148,40 @@ export const AboutSection = () => {
                 <div
                   key={item.id}
                   onClick={() => setActiveItem(isSelected ? null : item.id)}
-                  className={`group relative pl-6 pr-5 py-4 sm:py-5 rounded-2xl transition-all duration-300 cursor-pointer border border-transparent ${item.bgHover} ${
-                    isSelected ? 'bg-gray-50 border-gray-200 shadow-md scale-[1.01]' : ''
-                  }`}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setActiveItem(isSelected ? null : item.id);
+                    }
+                  }}
+                  className={`group relative pl-6 pr-5 py-4 sm:py-5 rounded-2xl transition-all duration-300 cursor-pointer border ${item.bgHover} ${isSelected ? 'bg-emerald-50/40 border-emerald-200 shadow-md scale-[1.01]' : 'border-gray-100/80 bg-gray-50/40 hover:border-gray-200'
+                    }`}
+                  aria-expanded={isSelected}
                 >
-                  {/* Vertical Left Bar Accent matching Screenshot */}
-                  <div 
-                    className={`absolute left-0 top-1 bottom-1 w-1.5 rounded-full ${item.barColor} transition-all duration-300 ${item.barGlow} group-hover:w-2`} 
+                  {/* Vertical Left Bar Accent */}
+                  <div
+                    className={`absolute left-0 top-1 bottom-1 w-1.5 rounded-full ${item.barColor} transition-all duration-300 ${item.barGlow} group-hover:w-2`}
                   />
 
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2.5">
-                        <div className={`p-1.5 rounded-xl ${item.iconBg} transition-transform group-hover:scale-110`}>
+                        <div className={`p-2 rounded-xl ${item.iconBg} transition-transform group-hover:scale-110 shadow-xs`}>
                           <Icon className={`w-4 h-4 ${item.textColor}`} />
                         </div>
-                        <h3 className="font-extrabold text-xl text-farmGreen-950 tracking-tight">
+                        <h3 className="font-extrabold text-lg sm:text-xl text-farmGreen-950 tracking-tight">
                           {item.label}
                         </h3>
                       </div>
 
-                      <span className="opacity-0 group-hover:opacity-100 transition-opacity text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-white border border-gray-200 shadow-2xs text-gray-700">
-                        {item.impact}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-white border border-gray-200 shadow-2xs text-gray-700">
+                          {item.impact}
+                        </span>
+                        <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform duration-300 ${isSelected ? 'rotate-180 text-emerald-600' : 'group-hover:translate-y-0.5'}`} />
+                      </div>
                     </div>
 
                     <p className="text-farmMuted font-bold leading-relaxed text-sm sm:text-base pl-0.5">
@@ -161,9 +189,9 @@ export const AboutSection = () => {
                     </p>
 
                     {isSelected && (
-                      <div className="pt-2 animate-fadeIn flex items-center gap-2 text-xs font-black text-emerald-800">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                        <span>Interactive Impact Verified • Zero Middlemen Commission</span>
+                      <div className="pt-2 animate-fadeIn flex items-center gap-2 text-xs font-black text-emerald-800 border-t border-emerald-100 mt-2">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                        <span>Interactive Impact Verified • Zero Middlemen Commission & Direct Farmer Payouts</span>
                       </div>
                     )}
                   </div>
@@ -183,6 +211,7 @@ export const AboutSection = () => {
                 src="https://images.unsplash.com/photo-1500937386664-56d1dfef3854?auto=format&fit=crop&w=600&q=80"
                 alt="Green farm field"
                 className="w-full h-full object-cover"
+                loading="lazy"
               />
             </div>
 
@@ -190,15 +219,16 @@ export const AboutSection = () => {
             <div className="absolute bottom-0 right-0 w-[60%] h-[54%] rounded-3xl overflow-hidden shadow-2xl border-4 border-white img-zoom">
               <img
                 src="https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=600&q=80"
-                alt="Vegetable crates"
+                alt="Vegetable crates harvested directly"
                 className="w-full h-full object-cover"
+                loading="lazy"
               />
             </div>
 
             {/* Year badge */}
             <div
-              className="absolute top-4 right-4 rounded-2xl p-4 text-center z-10 border border-emerald-100 shadow-lg"
-              style={{ background: 'rgba(255,255,255,0.95)', backdropFilter: 'blur(12px)', minWidth: 90 }}
+              className="absolute top-4 right-4 rounded-2xl p-4 text-center z-10 border border-emerald-100 shadow-lg bg-white/95 backdrop-blur-md"
+              style={{ minWidth: 90 }}
             >
               <div className="font-extrabold text-3xl text-emerald-800 leading-none">2021</div>
               <div className="text-[10px] text-farmMuted uppercase tracking-widest mt-1 font-black">Since</div>
@@ -206,22 +236,11 @@ export const AboutSection = () => {
 
             {/* Floating organic badge */}
             <div
-              className="absolute -left-4 bottom-24 rounded-full px-4 py-2 flex items-center gap-2 shadow-xl z-20 border border-lime-400/40"
-              style={{
-                background: 'linear-gradient(135deg, #0d2516, #16381d)',
-                animation: 'heroFloatAlt 5s ease-in-out infinite'
-              }}
+              className="absolute -left-3 bottom-20 rounded-full px-4 py-2 flex items-center gap-2 shadow-xl z-20 border border-lime-400/40 bg-gradient-to-r from-[#071a0b] to-[#16381d] animate-hero-float-alt"
             >
               <Sprout className="w-4 h-4 text-amber-300" />
               <span className="text-white font-black text-xs">100% Organic Direct</span>
             </div>
-
-            <style>{`
-              @keyframes heroFloatAlt {
-                0%, 100% { transform: translateY(-5px); }
-                50% { transform: translateY(5px); }
-              }
-            `}</style>
           </div>
         </div>
 
@@ -290,8 +309,7 @@ export const AboutSection = () => {
         {/* Animated Stats Strip */}
         <div
           ref={statsRef}
-          className={`relative rounded-[32px] p-8 sm:p-12 overflow-hidden border border-emerald-500/20 shadow-2xl reveal ${statsVisible ? 'visible' : ''}`}
-          style={{ background: 'linear-gradient(135deg, #071a0b 0%, #0d2516 40%, #16381d 80%, #1a4423 100%)' }}
+          className={`relative rounded-[32px] p-8 sm:p-12 overflow-hidden border border-emerald-500/20 shadow-2xl reveal ${statsVisible ? 'visible' : ''} bg-gradient-to-br from-[#071a0b] via-[#0d2516] to-[#1a4423]`}
         >
           {/* Live Banner Header */}
           <div className="flex items-center justify-center gap-2 mb-8 relative z-10">
@@ -302,7 +320,7 @@ export const AboutSection = () => {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 relative z-10">
-            {STATS.map((stat, idx) => (
+            {stats.map((stat, idx) => (
               <StatCounter key={idx} stat={stat} trigger={statsVisible} />
             ))}
           </div>
@@ -314,3 +332,4 @@ export const AboutSection = () => {
 };
 
 export default AboutSection;
+

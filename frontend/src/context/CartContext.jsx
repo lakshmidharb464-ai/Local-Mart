@@ -1,15 +1,34 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from './AuthContext';
 
 const CartContext = createContext();
 
 export const CartProvider = ({ children }) => {
-  const [cartItems, setCartItems] = useState([]);
+  const navigate = useNavigate();
+
+  const [cartItems, setCartItems] = useState(() => {
+    try {
+      const saved = localStorage.getItem('localfarm_cart');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  React.useEffect(() => {
+    try {
+      localStorage.setItem('localfarm_cart', JSON.stringify(cartItems));
+    } catch (e) {
+      console.error('Error saving cart:', e);
+    }
+  }, [cartItems]);
+
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isCheckoutSuccess, setIsCheckoutSuccess] = useState(false);
-  const { showToast, isAuthenticated, openAuthModal } = useAuth();
+  const { showToast } = useAuth();
 
-  const addToCart = (product, quantity = 1) => {
+  const addToCart = useCallback((product, quantity = 1) => {
     setCartItems(prev => {
       const existing = prev.find(item => item.product.id === product.id);
       if (existing) {
@@ -23,15 +42,15 @@ export const CartProvider = ({ children }) => {
       }
     });
     showToast('Added to Basket!', `${product.name} added to your cart.`);
-  };
+  }, [showToast]);
 
-  const removeFromCart = (productId) => {
+  const removeFromCart = useCallback((productId) => {
     setCartItems(prev => prev.filter(item => item.product.id !== productId));
-  };
+  }, []);
 
-  const updateQuantity = (productId, quantity) => {
+  const updateQuantity = useCallback((productId, quantity) => {
     if (quantity <= 0) {
-      removeFromCart(productId);
+      setCartItems(prev => prev.filter(item => item.product.id !== productId));
       return;
     }
     setCartItems(prev =>
@@ -39,32 +58,41 @@ export const CartProvider = ({ children }) => {
         item.product.id === productId ? { ...item, quantity } : item
       )
     );
-  };
+  }, []);
 
-  const clearCart = () => {
+  const clearCart = useCallback(() => {
     setCartItems([]);
-  };
+  }, []);
 
   const subtotal = cartItems.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
-  const deliveryFee = subtotal > 0 ? (subtotal > 300 ? 0 : 30) : 0;
+  // Free delivery for orders ₹300 and above; otherwise ₹30 flat fee. Must match backend orderController.js logic.
+  const deliveryFee = subtotal > 0 ? (subtotal >= 300 ? 0 : 30) : 0;
   const total = subtotal + deliveryFee;
 
-  const checkout = () => {
-    if (!isAuthenticated) {
-      setIsCartOpen(false);
-      openAuthModal('signin', 'Customer');
-      showToast('Authentication Required', 'Please sign in as Customer to checkout.', 'error');
+  /**
+   * Initiates checkout.
+   * Guest users are allowed — no auth gate.
+   * Navigates to the dedicated /checkout page for the multi-step flow.
+   */
+  const checkout = useCallback(() => {
+    if (cartItems.length === 0) {
+      showToast('Empty Cart', 'Add some items before checking out.', 'error');
       return;
     }
-    if (cartItems.length === 0) return;
+    setIsCartOpen(false);
+    navigate('/checkout');
+  }, [cartItems.length, navigate, showToast]);
 
-    setIsCheckoutSuccess(true);
+  /**
+   * Called by CheckoutPage after a successful order placement.
+   * Clears cart and shows success state.
+   */
+  const completeOrder = useCallback((orderId, orderDetails) => {
     clearCart();
-    setTimeout(() => {
-      setIsCheckoutSuccess(false);
-      setIsCartOpen(false);
-    }, 4000);
-  };
+    setIsCheckoutSuccess(true);
+    setTimeout(() => setIsCheckoutSuccess(false), 4000);
+    navigate(`/order-confirmation/${orderId}`, { state: { order: orderDetails } });
+  }, [clearCart, navigate]);
 
   return (
     <CartContext.Provider value={{
@@ -79,7 +107,8 @@ export const CartProvider = ({ children }) => {
       deliveryFee,
       total,
       checkout,
-      isCheckoutSuccess
+      completeOrder,
+      isCheckoutSuccess,
     }}>
       {children}
     </CartContext.Provider>

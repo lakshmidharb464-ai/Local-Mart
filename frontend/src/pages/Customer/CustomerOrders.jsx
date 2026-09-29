@@ -41,14 +41,15 @@ export const CustomerOrders = ({ orders, setOrders }) => {
   const { addToCart } = useCart();
   
   const [selectedOrder, setSelectedOrder] = useState(null);
-  const [activeFilter, setActiveFilter] = useState('all'); // 'all' | 'active' | 'delivered' | 'cancelled'
-  const [viewMode, setViewMode] = useState('card'); // 'card' | 'table' | 'grid' | 'timeline'
+  const [activeFilter, setActiveFilter] = useState('all');
+  const [viewMode, setViewMode] = useState('card');
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedOrderId, setExpandedOrderId] = useState(null);
   const [copiedId, setCopiedId] = useState(null);
   const [orderToCancel, setOrderToCancel] = useState(null);
   const [cancelReason, setCancelReason] = useState('Ordered by mistake');
-  const [modalTab, setModalTab] = useState('receipt'); // 'receipt' | 'live-tracker'
+  const [modalTab, setModalTab] = useState('receipt');
+  const [invoiceOrder, setInvoiceOrder] = useState(null); // For PDF print
 
   // Copy order ID
   const handleCopyOrderId = (id) => {
@@ -75,8 +76,19 @@ export const CustomerOrders = ({ orders, setOrders }) => {
     setOrderToCancel(null);
   };
 
-  const handleDownloadInvoice = (orderId) => {
-    showToast('Invoice Downloaded', `PDF Tax Invoice for ${orderId} downloaded successfully!`);
+  const handleDownloadInvoice = (order) => {
+    // Support both orderId string (legacy) and full order object
+    const target = typeof order === 'string' ? orders.find(o => o.id === order) : order;
+    if (!target) {
+      showToast('Invoice Error', 'Could not find order details.', 'error');
+      return;
+    }
+    setInvoiceOrder(target);
+    // Wait one frame for React to render the hidden template, then print
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => window.print());
+    });
+    showToast('Generating Invoice 📄', `Tax invoice for ${target.id} opening in print dialog.`);
   };
 
   const handleReorder = (order) => {
@@ -186,6 +198,75 @@ export const CustomerOrders = ({ orders, setOrders }) => {
   return (
     <div className="space-y-6 animate-fadeIn max-w-5xl font-display pb-20">
       
+      {/* ── Hidden Invoice Print Template — visible only when browser prints ── */}
+      {invoiceOrder && (
+        <div id="invoice-print-root" style={{ display: 'none' }}>
+          <div style={{ fontFamily: 'Plus Jakarta Sans, Inter, sans-serif', padding: 40, color: '#0B3D2E', maxWidth: 600, margin: '0 auto' }}>
+            {/* Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 32, paddingBottom: 16, borderBottom: '2px solid #D6F0E2' }}>
+              <div>
+                <div style={{ fontWeight: 900, fontSize: 22, color: '#14553E' }}>🌱 LocalFarm Direct</div>
+                <div style={{ fontSize: 11, color: '#5C6B5E', marginTop: 4 }}>GSTIN: 37AAACU0000L1ZI &nbsp;|&nbsp; support@localfarm.in</div>
+                <div style={{ fontSize: 11, color: '#5C6B5E', marginTop: 2 }}>Chittoor District AP Hub, Andhra Pradesh — 517001</div>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontWeight: 900, fontSize: 14, color: '#0B3D2E' }}>TAX INVOICE</div>
+                <div style={{ fontWeight: 800, fontSize: 13, marginTop: 4 }}>#{invoiceOrder.id}</div>
+                <div style={{ fontSize: 11, color: '#5C6B5E', marginTop: 2 }}>Date: {invoiceOrder.date}</div>
+              </div>
+            </div>
+            {/* Billing info */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 28, fontSize: 12 }}>
+              <div>
+                <div style={{ fontWeight: 800, fontSize: 11, textTransform: 'uppercase', color: '#5C6B5E', marginBottom: 4 }}>Bill To</div>
+                <div style={{ fontWeight: 700 }}>Customer</div>
+                <div style={{ color: '#5C6B5E', marginTop: 2 }}>{invoiceOrder.address || 'Address on file'}</div>
+                <div style={{ color: '#5C6B5E' }}>{invoiceOrder.paymentMethod}</div>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontWeight: 800, fontSize: 11, textTransform: 'uppercase', color: '#5C6B5E', marginBottom: 4 }}>Fulfilled By</div>
+                <div style={{ fontWeight: 700 }}>{invoiceOrder.farmer || 'LocalFarm Direct'}</div>
+                <div style={{ color: '#5C6B5E', marginTop: 2 }}>Organic Certified Farmer</div>
+              </div>
+            </div>
+            {/* Line items table */}
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, marginBottom: 20 }}>
+              <thead>
+                <tr style={{ background: '#EDF8F2', borderBottom: '2px solid #D6F0E2' }}>
+                  <th style={{ padding: '10px 8px', textAlign: 'left', fontWeight: 800 }}>Item</th>
+                  <th style={{ padding: '10px 8px', textAlign: 'center', fontWeight: 800 }}>Qty</th>
+                  <th style={{ padding: '10px 8px', textAlign: 'right', fontWeight: 800 }}>Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(invoiceOrder.itemsList || [{ name: invoiceOrder.items, qty: '—', price: invoiceOrder.total }]).map((item, i) => (
+                  <tr key={i} style={{ borderBottom: '1px solid #D6F0E2' }}>
+                    <td style={{ padding: '9px 8px', fontWeight: 600 }}>{item.name}</td>
+                    <td style={{ padding: '9px 8px', textAlign: 'center', color: '#5C6B5E' }}>{item.qty}</td>
+                    <td style={{ padding: '9px 8px', textAlign: 'right', fontWeight: 700 }}>₹{item.price}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {/* Totals */}
+            <div style={{ borderTop: '2px solid #D6F0E2', paddingTop: 16, textAlign: 'right' }}>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 32, fontSize: 12, marginBottom: 6, color: '#5C6B5E' }}>
+                <span>Subtotal</span><span style={{ fontWeight: 700, color: '#0B3D2E' }}>₹{invoiceOrder.total}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 32, fontSize: 12, marginBottom: 10, color: '#5C6B5E' }}>
+                <span>GST (incl.)</span><span>Included</span>
+              </div>
+              <div style={{ fontWeight: 900, fontSize: 18, color: '#14553E' }}>Grand Total: ₹{invoiceOrder.total}</div>
+              <div style={{ fontSize: 10, color: '#5C6B5E', marginTop: 4 }}>Payment: {invoiceOrder.paymentMethod} &nbsp;·&nbsp; Status: {invoiceOrder.status}</div>
+            </div>
+            {/* Footer */}
+            <div style={{ marginTop: 40, paddingTop: 16, borderTop: '1px solid #D6F0E2', fontSize: 10, color: '#5C6B5E', textAlign: 'center' }}>
+              Thank you for supporting local farmers. This is a computer-generated invoice. | localfarm.in
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header Overview Banner */}
       <div 
         className="relative overflow-hidden rounded-3xl p-6 sm:p-8 shadow-xl"
@@ -385,6 +466,7 @@ export const CustomerOrders = ({ orders, setOrders }) => {
                             src={ord.image || 'https://images.unsplash.com/photo-1550583724-b2692b85b150?auto=format&fit=crop&w=200&q=80'} 
                             alt={ord.items}
                             className="w-13 h-13 sm:w-14 sm:h-14 rounded-2xl object-cover ring-2 ring-emerald-500/20 shadow-xs"
+                            loading="lazy"
                           />
                           <span className={`absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full ${config.dotBg} ring-2 ring-white`} />
                         </div>
@@ -439,10 +521,10 @@ export const CustomerOrders = ({ orders, setOrders }) => {
                             setSelectedOrder(ord);
                             setModalTab('receipt');
                           }}
-                          className="px-4 py-2.5 bg-farmGreen-900 hover:bg-farmGreen-950 text-white rounded-2xl font-extrabold text-xs shadow-farm-sm hover:shadow-farm-md transition-all active:scale-95 cursor-pointer flex items-center gap-2 shrink-0"
+                          title="Inspect Order Details & Tax Invoice"
+                          className="w-9 h-9 bg-farmGreen-900 hover:bg-farmGreen-950 text-white rounded-2xl flex items-center justify-center shadow-farm-sm hover:shadow-farm-md transition-all hover:scale-110 active:scale-90 cursor-pointer shrink-0"
                         >
                           <Eye className="w-4 h-4" />
-                          <span>Inspect Details</span>
                         </button>
                       </div>
                     </div>
@@ -455,7 +537,7 @@ export const CustomerOrders = ({ orders, setOrders }) => {
                             <ShoppingBag className="w-4 h-4" />
                           </div>
                           <div className="min-w-0">
-                            <div className="font-extrabold text-xs sm:text-sm text-farmGreen-950 truncate">
+                            <div className="font-display font-extrabold text-xs sm:text-sm text-farmGreen-950 truncate">
                               {ord.items}
                             </div>
                             <div className="text-[11px] text-farmMuted font-medium flex items-center gap-1.5 flex-wrap">
@@ -467,31 +549,31 @@ export const CustomerOrders = ({ orders, setOrders }) => {
                           </div>
                         </div>
 
-                        {/* Action Buttons */}
+                        {/* Icon-Only Action Buttons */}
                         <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
                           <button
                             onClick={() => toggleExpand(ord.id)}
-                            className="px-3 py-1.5 bg-white border border-gray-200 hover:border-emerald-300 text-farmGreen-950 rounded-xl text-xs font-bold flex items-center gap-1 transition-all cursor-pointer shadow-xs"
+                            title={isExpanded ? "Collapse Package Items" : "View Package Items"}
+                            className="w-9 h-9 bg-white border border-gray-200 hover:border-emerald-300 text-farmGreen-950 rounded-xl flex items-center justify-center transition-all hover:scale-110 active:scale-90 cursor-pointer shadow-2xs"
                           >
-                            <span>View Items</span>
-                            {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                            <ShoppingBag className="w-4 h-4 text-emerald-700" />
                           </button>
 
                           <button
                             onClick={() => handleReorder(ord)}
-                            className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200/80 rounded-xl text-xs font-extrabold flex items-center gap-1 transition-all cursor-pointer shadow-xs active:scale-95"
+                            title="Reorder Package Items"
+                            className="w-9 h-9 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200/80 rounded-xl flex items-center justify-center transition-all hover:scale-110 active:scale-90 cursor-pointer shadow-2xs"
                           >
-                            <RotateCcw className="w-3.5 h-3.5" />
-                            <span>Reorder</span>
+                            <RotateCcw className="w-4 h-4" />
                           </button>
 
                           {!isCancelled && !isDelivered && (
                             <button
                               onClick={() => setOrderToCancel(ord)}
-                              className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200/80 rounded-xl text-xs font-extrabold flex items-center gap-1 transition-all cursor-pointer shadow-xs active:scale-95"
+                              title="Cancel Order"
+                              className="w-9 h-9 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200/80 rounded-xl flex items-center justify-center transition-all hover:scale-110 active:scale-90 cursor-pointer shadow-2xs"
                             >
-                              <XCircle className="w-3.5 h-3.5" />
-                              <span>Cancel Order</span>
+                              <XCircle className="w-4 h-4" />
                             </button>
                           )}
                         </div>
@@ -506,7 +588,7 @@ export const CustomerOrders = ({ orders, setOrders }) => {
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                             {ord.itemsList.map((item, idx) => (
                               <div key={idx} className="p-2.5 bg-white rounded-xl border border-gray-100 flex items-center gap-2.5 shadow-2xs">
-                                <img src={item.img || ord.image} alt={item.name} className="w-10 h-10 rounded-lg object-cover" />
+                                <img src={item.img || ord.image} alt={item.name} className="w-10 h-10 rounded-lg object-cover" loading="lazy" />
                                 <div className="min-w-0 flex-1">
                                   <div className="font-bold text-xs text-farmGreen-950 truncate">{item.name}</div>
                                   <div className="text-[10px] text-gray-500">{item.qty} · ₹{item.price}</div>
@@ -528,45 +610,60 @@ export const CustomerOrders = ({ orders, setOrders }) => {
                                   <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-blue-600"></span>
                                 </span>
                               ) : (
-                                <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                               )}
-                              <span className="text-farmGreen-950 font-extrabold">Dispatch Journey Status:</span>
+                              <span className="text-farmGreen-950 font-extrabold">Dispatch Journey Progress:</span>
                             </div>
 
-                            <div className={`flex items-center gap-1 px-3 py-1 rounded-full border text-xs font-extrabold ${
+                            <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full border text-xs font-extrabold shadow-2xs ${
                               isOutForDelivery 
                                 ? 'bg-blue-50 text-blue-900 border-blue-200' 
                                 : 'bg-emerald-50 text-emerald-800 border-emerald-200'
                             }`}>
-                              <Clock className="w-3.5 h-3.5" />
+                              <Clock className="w-3.5 h-3.5 text-emerald-600" />
                               <span>{ord.eta || '25-35 mins'}</span>
                             </div>
                           </div>
 
-                          {/* 4-Step Stepper Progress Bar */}
-                          <div className="relative pt-1">
-                            <div className="grid grid-cols-4 gap-2">
+                          {/* Horizontal Stepper with Icon Nodes & Animated Progress Line */}
+                          <div className="relative pt-2 pb-1 px-4">
+                            {/* Background Connector Line */}
+                            <div className="absolute top-6 left-10 right-10 h-1 bg-gray-200 rounded-full pointer-events-none" />
+                            
+                            {/* Active Progress Connector Line */}
+                            <div 
+                              className="absolute top-6 left-10 h-1 bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 rounded-full transition-all duration-700 pointer-events-none shadow-xs" 
+                              style={{ width: `${Math.max(0, (currentStepIdx / 3) * 78)}%` }}
+                            />
+
+                            <div className="grid grid-cols-4 gap-2 relative z-10">
                               {steps.map((step, idx) => {
                                 const isCompleted = currentStepIdx >= idx;
                                 const isCurrent = currentStepIdx === idx;
+                                const StepNodeIcon = idx === 0 ? Clock : idx === 1 ? Sprout : idx === 2 ? Truck : CheckCircle2;
 
                                 return (
-                                  <div key={step} className="space-y-1.5 text-center">
-                                    <div className={`h-2.5 rounded-full transition-all duration-500 relative ${
-                                      isCompleted 
-                                        ? 'bg-gradient-to-r from-emerald-500 to-farmGreen-700 shadow-xs' 
-                                        : 'bg-gray-200/80'
-                                    } ${isCurrent ? 'ring-2 ring-emerald-400 ring-offset-1' : ''}`}>
-                                      {isCurrent && (
-                                        <span className="absolute -top-1 left-1/2 -translate-x-1/2 w-4 h-4 rounded-full bg-emerald-500 shadow-md border-2 border-white animate-pulse" />
-                                      )}
+                                  <div key={step} className="flex flex-col items-center text-center space-y-1.5 group/step">
+                                    {/* Icon Circle Node */}
+                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 ${
+                                      isCurrent
+                                        ? 'bg-gradient-to-br from-emerald-500 to-teal-700 text-white ring-4 ring-emerald-400/40 shadow-lg shadow-emerald-500/30 scale-110 animate-pulse'
+                                        : isCompleted
+                                          ? 'bg-gradient-to-br from-emerald-500 to-farmGreen-700 text-white shadow-md shadow-emerald-500/20 scale-100'
+                                          : 'bg-white border-2 border-gray-200 text-gray-400 scale-95'
+                                    }`}>
+                                      <StepNodeIcon className="w-3.5 h-3.5" />
                                     </div>
-                                    <div className="pt-0.5">
-                                      <div className={`text-[11px] font-extrabold truncate ${
-                                        isCompleted ? 'text-farmGreen-950' : 'text-gray-400'
-                                      }`}>
-                                        {step}
-                                      </div>
+
+                                    {/* Step Label */}
+                                    <div className={`text-[10px] font-black tracking-tight leading-tight transition-colors ${
+                                      isCurrent 
+                                        ? 'text-emerald-800' 
+                                        : isCompleted 
+                                          ? 'text-farmGreen-950 font-bold' 
+                                          : 'text-gray-400'
+                                    }`}>
+                                      {step}
                                     </div>
                                   </div>
                                 );
@@ -666,7 +763,7 @@ export const CustomerOrders = ({ orders, setOrders }) => {
                   <div key={ord.id} className="bg-white rounded-3xl border border-gray-100 shadow-farm-md hover:shadow-farm-lg transition-all p-5 flex flex-col justify-between space-y-4">
                     <div className="space-y-3">
                       <div className="relative rounded-2xl overflow-hidden h-36 bg-gray-100">
-                        <img src={ord.image || 'https://images.unsplash.com/photo-1550583724-b2692b85b150?auto=format&fit=crop&w=400&q=80'} alt={ord.items} className="w-full h-full object-cover" />
+                        <img src={ord.image || 'https://images.unsplash.com/photo-1550583724-b2692b85b150?auto=format&fit=crop&w=400&q=80'} alt={ord.items} className="w-full h-full object-cover" loading="lazy" />
                         <span className={`absolute top-3 right-3 px-3 py-1 rounded-full border text-[10px] font-extrabold backdrop-blur-md shadow-md ${config.bg}`}>
                           <StatusIcon className="w-3 h-3 inline mr-1" />
                           {config.label}
@@ -683,19 +780,28 @@ export const CustomerOrders = ({ orders, setOrders }) => {
                       </div>
                     </div>
 
-                    <div className="pt-3 border-t border-gray-100 flex items-center gap-2">
-                      <button
-                        onClick={() => { setSelectedOrder(ord); setModalTab('receipt'); }}
-                        className="flex-1 py-2 bg-farmGreen-900 text-white rounded-xl font-extrabold text-xs hover:bg-farmGreen-950 transition-all cursor-pointer flex items-center justify-center gap-1"
-                      >
-                        <Eye className="w-3.5 h-3.5" /> Inspect
-                      </button>
-                      <button
-                        onClick={() => handleReorder(ord)}
-                        className="py-2 px-3 bg-emerald-50 text-emerald-800 rounded-xl font-extrabold text-xs hover:bg-emerald-100 transition-all cursor-pointer flex items-center justify-center gap-1"
-                      >
-                        <RotateCcw className="w-3.5 h-3.5" />
-                      </button>
+                    <div className="pt-3 border-t border-gray-100 flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1 text-[10px] text-emerald-800 font-extrabold bg-emerald-50 px-2 py-1 rounded-lg">
+                        <User className="w-3 h-3 text-emerald-600 shrink-0" />
+                        <span className="truncate max-w-[120px]">{ord.farmer}</span>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <button
+                          onClick={() => { setSelectedOrder(ord); setModalTab('receipt'); }}
+                          title="Inspect Order Details & Tax Invoice"
+                          className="w-8 h-8 bg-farmGreen-900 hover:bg-farmGreen-950 text-white rounded-xl flex items-center justify-center transition-all hover:scale-110 active:scale-90 cursor-pointer shadow-xs"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => handleReorder(ord)}
+                          title="Reorder Package Items"
+                          className="w-8 h-8 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-xl flex items-center justify-center transition-all hover:scale-110 active:scale-90 cursor-pointer shadow-xs border border-emerald-200/60"
+                        >
+                          <RotateCcw className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 );
@@ -728,12 +834,14 @@ export const CustomerOrders = ({ orders, setOrders }) => {
                               {config.label}
                             </span>
                           </div>
-                          <span className="text-[10px] text-farmMuted font-medium">{ord.date} · {ord.farmer}</span>
+                          <span className="text-[10px] text-farmMuted font-medium flex items-center gap-1 mt-0.5">
+                            <User className="w-3 h-3 text-emerald-600" /> {ord.farmer} · {ord.date}
+                          </span>
                         </div>
                         <span className="font-black text-lg text-emerald-700">₹{ord.total}</span>
                       </div>
 
-                      <p className="text-xs font-bold text-farmGreen-950">{ord.items}</p>
+                      <p className="font-display text-xs font-bold text-farmGreen-950">{ord.items}</p>
 
                       <div className="flex items-center justify-between pt-2">
                         <span className="text-[11px] text-farmMuted font-medium flex items-center gap-1">
@@ -741,12 +849,20 @@ export const CustomerOrders = ({ orders, setOrders }) => {
                           <span className="truncate max-w-[200px]">{ord.address}</span>
                         </span>
 
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1.5 shrink-0">
                           <button
                             onClick={() => { setSelectedOrder(ord); setModalTab('receipt'); }}
-                            className="px-3 py-1.5 bg-farmGreen-900 text-white rounded-xl font-extrabold text-xs hover:bg-farmGreen-950 transition-all cursor-pointer flex items-center gap-1"
+                            title="Inspect Details"
+                            className="w-8 h-8 bg-farmGreen-900 hover:bg-farmGreen-950 text-white rounded-xl flex items-center justify-center transition-all hover:scale-110 active:scale-90 cursor-pointer shadow-xs"
                           >
-                            <Eye className="w-3.5 h-3.5" /> Details
+                            <Eye className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => handleReorder(ord)}
+                            title="Reorder Package"
+                            className="w-8 h-8 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-xl flex items-center justify-center transition-all hover:scale-110 active:scale-90 cursor-pointer shadow-xs border border-emerald-200/60"
+                          >
+                            <RotateCcw className="w-3.5 h-3.5" />
                           </button>
                         </div>
                       </div>
@@ -842,25 +958,27 @@ export const CustomerOrders = ({ orders, setOrders }) => {
                 </button>
               </div>
 
-              {/* Modal Sub-Tab Selector */}
+              {/* Modal Sub-Tab Selector (100% Icon-Only with Tooltips) */}
               <div className="flex items-center gap-2 border-t border-emerald-800/60 pt-3">
                 {[
-                  { id: 'receipt', label: '📄 Tax Invoice & Receipt', icon: FileText },
-                  { id: 'live-tracker', label: '🚚 Live Dispatch Journey', icon: Truck },
-                  { id: 'producer', label: '🌾 Farm Producer Info', icon: Sprout }
+                  { id: 'receipt', label: 'Tax Invoice & Receipt', icon: FileText },
+                  { id: 'live-tracker', label: 'Live Dispatch Journey', icon: Truck },
+                  { id: 'producer', label: 'Farm Producer Info', icon: Sprout }
                 ].map(t => {
                   const isTabActive = modalTab === t.id;
+                  const TabIcon = t.icon;
                   return (
                     <button
                       key={t.id}
                       onClick={() => setModalTab(t.id)}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                      title={t.label}
+                      className={`w-10 h-10 rounded-2xl flex items-center justify-center transition-all duration-300 cursor-pointer hover:scale-110 active:scale-90 ${
                         isTabActive
-                          ? 'bg-emerald-400 text-emerald-950 shadow-xs'
-                          : 'text-emerald-200/70 hover:text-white hover:bg-white/10'
+                          ? 'bg-gradient-to-br from-emerald-400 to-teal-500 text-emerald-950 shadow-md shadow-emerald-400/30 ring-2 ring-emerald-300 scale-105'
+                          : 'text-emerald-200/70 hover:text-white hover:bg-white/10 border border-white/10'
                       }`}
                     >
-                      {t.label}
+                      <TabIcon className="w-5 h-5" />
                     </button>
                   );
                 })}
@@ -910,7 +1028,7 @@ export const CustomerOrders = ({ orders, setOrders }) => {
                         {selectedOrder.itemsList.map((item, i) => (
                           <div key={i} className="p-3 bg-gray-50/80 rounded-2xl border border-gray-100 flex items-center justify-between gap-3">
                             <div className="flex items-center gap-3">
-                              <img src={item.img || selectedOrder.image} alt={item.name} className="w-11 h-11 rounded-xl object-cover ring-1 ring-gray-200" />
+                              <img src={item.img || selectedOrder.image} alt={item.name} className="w-11 h-11 rounded-xl object-cover ring-1 ring-gray-200" loading="lazy" />
                               <div>
                                 <div className="font-extrabold text-xs text-farmGreen-950">{item.name}</div>
                                 <div className="text-[10px] text-farmMuted font-medium">Quantity: {item.qty}</div>
@@ -923,7 +1041,7 @@ export const CustomerOrders = ({ orders, setOrders }) => {
                     ) : (
                       <div className="p-3.5 bg-gray-50/80 rounded-2xl border border-gray-100 flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                          <img src={selectedOrder.image || 'https://images.unsplash.com/photo-1550583724-b2692b85b150?auto=format&fit=crop&w=200&q=80'} alt={selectedOrder.items} className="w-11 h-11 rounded-xl object-cover ring-1 ring-gray-200" />
+                          <img src={selectedOrder.image || 'https://images.unsplash.com/photo-1550583724-b2692b85b150?auto=format&fit=crop&w=200&q=80'} alt={selectedOrder.items} className="w-11 h-11 rounded-xl object-cover ring-1 ring-gray-200" loading="lazy" />
                           <div>
                             <div className="font-extrabold text-xs text-farmGreen-950">{selectedOrder.items}</div>
                             <div className="text-[10px] text-farmMuted font-medium">Farm Direct Produce Box</div>
@@ -1051,31 +1169,35 @@ export const CustomerOrders = ({ orders, setOrders }) => {
                 </div>
               )}
 
-              {/* Action Footer */}
-              <div className="pt-4 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-gray-100">
-                <div className="flex items-center gap-2 w-full sm:w-auto">
+              {/* Action Footer (100% Icon-Only with Tooltips) */}
+              <div className="pt-4 flex items-center justify-between gap-3 border-t border-gray-100">
+                <div className="flex items-center gap-2">
                   <button
+                    type="button"
                     onClick={() => handleDownloadInvoice(selectedOrder.id)}
-                    className="flex-1 sm:flex-initial px-4 py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-2xl font-extrabold text-xs flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-95"
+                    title="Download PDF Tax Invoice"
+                    className="w-10 h-10 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200/80 rounded-2xl flex items-center justify-center cursor-pointer transition-all duration-300 hover:scale-110 active:scale-90 shadow-2xs"
                   >
-                    <Download className="w-4 h-4" />
-                    <span>PDF Tax Invoice</span>
+                    <Download className="w-4.5 h-4.5" />
                   </button>
 
                   <button
+                    type="button"
                     onClick={() => { handleReorder(selectedOrder); setSelectedOrder(null); }}
-                    className="flex-1 sm:flex-initial px-4 py-2.5 bg-emerald-800 hover:bg-emerald-900 text-white rounded-2xl font-extrabold text-xs flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-95 shadow-xs"
+                    title="Reorder Package Items"
+                    className="w-10 h-10 bg-emerald-800 hover:bg-emerald-900 text-white rounded-2xl flex items-center justify-center cursor-pointer transition-all duration-300 hover:scale-110 active:scale-90 shadow-md shadow-emerald-800/20"
                   >
-                    <RotateCcw className="w-4 h-4" />
-                    <span>Reorder Package</span>
+                    <RotateCcw className="w-4.5 h-4.5" />
                   </button>
                 </div>
 
                 <button
+                  type="button"
                   onClick={() => setSelectedOrder(null)}
-                  className="w-full sm:w-auto px-6 py-2.5 bg-gray-900 hover:bg-black text-white rounded-2xl font-extrabold text-xs cursor-pointer transition-all active:scale-95"
+                  title="Close Details Window"
+                  className="w-10 h-10 rounded-2xl bg-gray-100 hover:bg-gray-200 text-gray-700 flex items-center justify-center transition-all duration-300 hover:scale-110 active:scale-90 cursor-pointer"
                 >
-                  Close Window
+                  <X className="w-5 h-5" />
                 </button>
               </div>
             </div>

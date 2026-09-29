@@ -1,145 +1,140 @@
-import React, { useState, useMemo, lazy, Suspense } from 'react';
+import React, { useState, useMemo, lazy, Suspense, useEffect, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { AdminSidebar } from './AdminSidebar';
-import { FARMERS, PRODUCTS, ORDERS, CUSTOMERS, CATEGORIES } from '../../data/mockData';
+import { adminService } from '../../services/adminService';
+import { useAuth } from '../../context/AuthContext';
 import { Menu, X } from 'lucide-react';
 
 const AdminDashboardView = lazy(() => import('./AdminDashboardView').then(m => ({ default: m.AdminDashboardView || m.default })));
-const FarmerManagement = lazy(() => import('./FarmerManagement').then(m => ({ default: m.FarmerManagement || m.default })));
-const ProductManagement = lazy(() => import('./ProductManagement').then(m => ({ default: m.ProductManagement || m.default })));
-const OrderManagement = lazy(() => import('./OrderManagement').then(m => ({ default: m.OrderManagement || m.default })));
+const FarmerManagement   = lazy(() => import('./FarmerManagement').then(m => ({ default: m.FarmerManagement || m.default })));
+const ProductManagement  = lazy(() => import('./ProductManagement').then(m => ({ default: m.ProductManagement || m.default })));
+const OrderManagement    = lazy(() => import('./OrderManagement').then(m => ({ default: m.OrderManagement || m.default })));
 const CustomerManagement = lazy(() => import('./CustomerManagement').then(m => ({ default: m.CustomerManagement || m.default })));
 const DeliveryManagement = lazy(() => import('./DeliveryManagement').then(m => ({ default: m.DeliveryManagement || m.default })));
-const ReportsAnalytics = lazy(() => import('./ReportsAnalytics').then(m => ({ default: m.ReportsAnalytics || m.default })));
-const AdminSettings = lazy(() => import('./AdminSettings').then(m => ({ default: m.AdminSettings || m.default })));
+const ReportsAnalytics   = lazy(() => import('./ReportsAnalytics').then(m => ({ default: m.ReportsAnalytics || m.default })));
+const AdminSettings      = lazy(() => import('./AdminSettings').then(m => ({ default: m.AdminSettings || m.default })));
 
 const ViewLoader = () => (
-  <div className="flex items-center justify-center py-16">
-    <div className="flex flex-col items-center gap-3">
-      <div className="w-8 h-8 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin"></div>
-      <p className="text-emerald-700 text-xs font-medium animate-pulse">Loading view...</p>
+  <div className="flex items-center justify-center py-20">
+    <div className="flex flex-col items-center gap-4">
+      <div className="relative w-12 h-12">
+        <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-[#00FF85] animate-spin" />
+        <div className="absolute inset-2 rounded-full border-2 border-transparent border-t-[#D4A745] animate-spin" style={{ animationDirection: 'reverse', animationDuration: '0.7s' }} />
+      </div>
+      <p className="text-[#7FA882] text-xs font-bold tracking-wider uppercase animate-pulse">Loading module...</p>
     </div>
   </div>
 );
 
-const INITIAL_DELIVERY_PARTNERS = [
-  {
-    id: 'DP-101',
-    name: 'Rohan Sharma',
-    email: 'rohan.delivery@localfarm.in',
-    phone: '+91 98765 43210',
-    vehicleType: 'EV Scooter (Ather 450X)',
-    vehicleNumber: 'MH 12 FX 4920',
-    licenseNumber: 'DL-MH12-2022-00492',
-    hubLocation: 'Pune West Metro Hub',
-    totalDeliveries: 342,
-    rating: 4.9,
-    approvalStatus: 'Approved',
-    accountStatus: 'Active',
-    isOnline: true,
-    joinedDate: '14 Jan 2024',
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80'
-  },
-  {
-    id: 'DP-102',
-    name: 'Suresh Verma',
-    email: 'suresh.v@localfarm.in',
-    phone: '+91 98221 55443',
-    vehicleType: 'Motorcycle (Hero Splendor)',
-    vehicleNumber: 'MH 12 GT 8812',
-    licenseNumber: 'DL-MH12-2021-08812',
-    hubLocation: 'Baner Express Hub',
-    totalDeliveries: 189,
-    rating: 4.85,
-    approvalStatus: 'Approved',
-    accountStatus: 'Active',
-    isOnline: true,
-    joinedDate: '02 Mar 2024',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80'
-  },
-  {
-    id: 'DP-103',
-    name: 'Ganesh Shinde',
-    email: 'ganesh.rider@localfarm.in',
-    phone: '+91 94220 77112',
-    vehicleType: 'EV Scooter (Ola S1 Pro)',
-    vehicleNumber: 'MH 12 AB 9910',
-    licenseNumber: 'DL-MH12-2024-99102',
-    hubLocation: 'Aundh Chilled Depot',
-    totalDeliveries: 94,
-    rating: 4.7,
-    approvalStatus: 'Pending',
-    accountStatus: 'Active',
-    isOnline: false,
-    joinedDate: '10 Aug 2026',
-    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80'
-  },
-  {
-    id: 'DP-104',
-    name: 'Vikram Deshmukh',
-    email: 'vikram.cargo@localfarm.in',
-    phone: '+91 91580 33221',
-    vehicleType: 'Light Cargo Van',
-    vehicleNumber: 'MH 12 CZ 1120',
-    licenseNumber: 'DL-MH12-2019-11200',
-    hubLocation: 'Hadapsar Central Hub',
-    totalDeliveries: 420,
-    rating: 4.95,
-    approvalStatus: 'Approved',
-    accountStatus: 'Active',
-    isOnline: true,
-    joinedDate: '15 Nov 2023',
-    avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=200&q=80'
-  }
-];
+const FAB_CONFIG = {
+  dashboard: { label: 'Analytics Hub',   icon: '📊' },
+  farmers:   { label: 'Add Farmer',      icon: '👨‍🌾' },
+  customers: { label: 'Add Customer',    icon: '👤' },
+  delivery:  { label: 'Add Rider',       icon: '🛵' },
+  products:  { label: 'Add Product',     icon: '📦' },
+  orders:    { label: 'Export Orders',   icon: '📋' },
+  reports:   { label: 'Export Report',   icon: '⬇️' },
+  settings:  { label: 'Save Settings',   icon: '💾' },
+};
 
 export const AdminPanel = () => {
-  const location = useLocation();
-  const navigate = useNavigate();
+  const location  = useLocation();
+  const navigate  = useNavigate();
+  const { showToast } = useAuth();
 
+  // ── Dark mode ────────────────────────────────────────────────
+  const [isDark, setIsDark] = useState(() => {
+    try { return localStorage.getItem('adminDarkMode') !== 'false'; }
+    catch { return true; }
+  });
+  const toggleDark = () => {
+    setIsDark(prev => {
+      const next = !prev;
+      try { localStorage.setItem('adminDarkMode', String(next)); } catch {}
+      return next;
+    });
+  };
+
+  // ── Active tab via URL ────────────────────────────────────────
   const validTabs = useMemo(() => ['dashboard', 'farmers', 'products', 'orders', 'customers', 'delivery', 'reports', 'settings'], []);
-
   const activeTab = useMemo(() => {
-    const rawPath = location.pathname.replace(/^\/admin\/?/, '');
+    const rawPath  = location.pathname.replace(/^\/admin\/?/, '');
     const cleanTab = rawPath.split('/')[0];
-    if (validTabs.includes(cleanTab)) return cleanTab;
-    return 'dashboard';
+    return validTabs.includes(cleanTab) ? cleanTab : 'dashboard';
   }, [location.pathname, validTabs]);
 
   const setActiveTab = (tab) => {
-    if (tab === 'dashboard') {
-      navigate('/admin');
-    } else {
-      navigate(`/admin/${tab}`);
-    }
+    if (tab === 'dashboard') navigate('/admin');
+    else navigate(`/admin/${tab}`);
   };
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isLoading, setIsLoading]     = useState(true);
 
-  // Global Admin Master States
-  const [farmers, setFarmers] = useState(FARMERS);
-  const [products, setProducts] = useState(PRODUCTS);
-  const [orders, setOrders] = useState(ORDERS);
-  const [customers, setCustomers] = useState(CUSTOMERS);
-  const [categories, setCategories] = useState(CATEGORIES);
-  const [deliveryPartners, setDeliveryPartners] = useState(INITIAL_DELIVERY_PARTNERS);
+  // ── Real API State ─────────────────────────────────────────────
+  const [farmers,          setFarmers]          = useState([]);
+  const [products,         setProducts]         = useState([]);
+  const [orders,           setOrders]           = useState([]);
+  const [customers,        setCustomers]        = useState([]);
+  const [categories,       setCategories]       = useState([]);
+  const [deliveryPartners, setDeliveryPartners] = useState([]);
 
+  // ── Load all admin data from real backend ─────────────────────
+  const loadAllData = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const [
+        farmersData,
+        productsData,
+        ordersData,
+        customersData,
+        fleetData,
+        categoriesData,
+      ] = await Promise.allSettled([
+        adminService.getFarmers(),
+        adminService.getProducts(),
+        adminService.getOrders(),
+        adminService.getCustomers(),
+        adminService.getDeliveryFleet(),
+        adminService.getCategories(),
+      ]);
+
+      if (farmersData.status === 'fulfilled')   setFarmers(farmersData.value);
+      if (productsData.status === 'fulfilled')  setProducts(productsData.value);
+      if (ordersData.status === 'fulfilled')    setOrders(ordersData.value);
+      if (customersData.status === 'fulfilled') setCustomers(customersData.value);
+      if (fleetData.status === 'fulfilled')     setDeliveryPartners(fleetData.value);
+      if (categoriesData.status === 'fulfilled') setCategories(categoriesData.value);
+    } catch (err) {
+      console.error('[AdminPanel] Failed to load data:', err);
+      if (showToast) showToast('Load Error', 'Could not fetch admin data from server.', 'error');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [showToast]);
+
+  useEffect(() => {
+    loadAllData();
+  }, [loadAllData]);
+
+  // ── Notification counts ───────────────────────────────────────
+  const pendingCount = useMemo(() =>
+    farmers.filter(f => f.approvalStatus === 'Pending' || f.approval_status === 'Pending').length +
+    deliveryPartners.filter(d => d.approvalStatus === 'Pending' || d.approval_status === 'Pending').length +
+    products.filter(p => p.status === 'Pending').length,
+  [farmers, deliveryPartners, products]);
+
+  // ── Render active view ────────────────────────────────────────
   const renderActiveView = () => {
+    if (isLoading) return <ViewLoader />;
     switch (activeTab) {
-      case 'farmers':
-        return <FarmerManagement farmers={farmers} setFarmers={setFarmers} />;
-      case 'products':
-        return <ProductManagement products={products} setProducts={setProducts} categories={categories} setCategories={setCategories} />;
-      case 'orders':
-        return <OrderManagement orders={orders} setOrders={setOrders} />;
-      case 'customers':
-        return <CustomerManagement customers={customers} setCustomers={setCustomers} />;
-      case 'delivery':
-        return <DeliveryManagement deliveryPartners={deliveryPartners} setDeliveryPartners={setDeliveryPartners} />;
-      case 'reports':
-        return <ReportsAnalytics />;
-      case 'settings':
-        return <AdminSettings />;
+      case 'farmers':   return <FarmerManagement   farmers={farmers}     setFarmers={setFarmers} isDark={isDark} refreshData={loadAllData} />;
+      case 'products':  return <ProductManagement  products={products}   setProducts={setProducts} categories={categories} setCategories={setCategories} isDark={isDark} refreshData={loadAllData} />;
+      case 'orders':    return <OrderManagement    orders={orders}       setOrders={setOrders} isDark={isDark} refreshData={loadAllData} />;
+      case 'customers': return <CustomerManagement customers={customers} setCustomers={setCustomers} isDark={isDark} refreshData={loadAllData} />;
+      case 'delivery':  return <DeliveryManagement deliveryPartners={deliveryPartners} setDeliveryPartners={setDeliveryPartners} isDark={isDark} refreshData={loadAllData} />;
+      case 'reports':   return <ReportsAnalytics isDark={isDark} />;
+      case 'settings':  return <AdminSettings isDark={isDark} />;
       case 'dashboard':
       default:
         return (
@@ -150,58 +145,95 @@ export const AdminPanel = () => {
             orders={orders}
             deliveryPartners={deliveryPartners}
             setActiveTab={setActiveTab}
+            isDark={isDark}
           />
         );
     }
   };
 
+  const fab = FAB_CONFIG[activeTab] || FAB_CONFIG.dashboard;
+
+  const surface = isDark
+    ? 'bg-[#06090A] text-[#D4EAD9]'
+    : 'bg-farmBg text-[#1A2E1D]';
+
   return (
-    <div className="min-h-screen md:h-screen md:overflow-hidden bg-farmBg flex flex-col md:flex-row">
-      
-      {/* Desktop Fixed Persistent Sidebar */}
-      <aside className="hidden md:flex flex-col w-64 h-screen shrink-0 sticky top-0 z-30">
-        <AdminSidebar activeTab={activeTab} setActiveTab={setActiveTab} />
+    <div className={`min-h-screen md:h-screen md:overflow-hidden flex flex-col md:flex-row ${surface} ${isDark ? 'admin-midnight' : ''}`}>
+
+      {/* ── Desktop Sidebar ── */}
+      <aside className="hidden md:flex flex-col shrink-0 sticky top-0 z-30 h-screen">
+        <AdminSidebar
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          isDark={isDark}
+          toggleDark={toggleDark}
+          pendingCount={pendingCount}
+        />
       </aside>
 
-      {/* Mobile Header Bar & Sidebar Drawer */}
-      <div className="md:hidden bg-farmGreen-900 text-white p-4 flex items-center justify-between sticky top-0 z-40">
-        <div className="font-display font-bold text-sm tracking-wider uppercase">
-          LOCAL FARM Admin Panel
+      {/* ── Mobile Header ── */}
+      <div className={`md:hidden p-4 flex items-center justify-between sticky top-0 z-40 ${isDark ? 'bg-[#060C08] border-b border-[rgba(0,255,133,0.08)]' : 'bg-farmGreen-900 text-white'}`}>
+        <div className="flex items-center gap-3">
+          <div className={`w-7 h-7 rounded-xl flex items-center justify-center text-sm font-black ${isDark ? 'bg-[#00FF85] text-[#06090A]' : 'bg-white text-emerald-900'}`}>🌿</div>
+          <span className={`font-display font-bold text-sm tracking-wider uppercase ${isDark ? 'text-[#D4EAD9]' : 'text-white'}`}>
+            LOCAL FARM Admin
+          </span>
         </div>
-        <button
-          onClick={() => setSidebarOpen(!sidebarOpen)}
-          className="p-1.5 text-white hover:bg-white/10 rounded-lg cursor-pointer"
-        >
-          {sidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-        </button>
+        <div className="flex items-center gap-3">
+          {pendingCount > 0 && (
+            <div className="relative">
+              <span className="text-xl">🔔</span>
+              <span className="adm-bell-badge">{pendingCount}</span>
+            </div>
+          )}
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className={`p-1.5 rounded-lg cursor-pointer ${isDark ? 'text-[#00FF85] hover:bg-[rgba(0,255,133,0.08)]' : 'text-white hover:bg-white/10'}`}
+          >
+            {sidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          </button>
+        </div>
       </div>
 
-      {mobileMenuDrawer(sidebarOpen, setSidebarOpen, activeTab, setActiveTab)}
+      {/* ── Mobile Drawer ── */}
+      {sidebarOpen && (
+        <div className="fixed inset-0 z-50 md:hidden flex">
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setSidebarOpen(false)} />
+          <div className="relative z-10 w-72 h-full">
+            <AdminSidebar
+              activeTab={activeTab}
+              setActiveTab={(tab) => { setActiveTab(tab); setSidebarOpen(false); }}
+              isDark={isDark}
+              toggleDark={toggleDark}
+              pendingCount={pendingCount}
+            />
+          </div>
+        </div>
+      )}
 
-      {/* Main Admin Content Body */}
-      <main className="flex-1 md:h-full overflow-y-auto p-4 sm:p-8 w-full max-w-7xl mx-auto">
+      {/* ── Main Content ── */}
+      <main className={`flex-1 md:h-full overflow-y-auto p-4 sm:p-8 w-full max-w-7xl mx-auto`}>
         <Suspense fallback={<ViewLoader />}>
-          {renderActiveView()}
+          <div key={activeTab} className="adm-tab-enter">
+            {renderActiveView()}
+          </div>
         </Suspense>
       </main>
 
-    </div>
-  );
-};
-
-const mobileMenuDrawer = (sidebarOpen, setSidebarOpen, activeTab, setActiveTab) => {
-  if (!sidebarOpen) return null;
-  return (
-    <div className="fixed inset-0 z-50 md:hidden flex">
-      <div className="fixed inset-0 bg-black/60" onClick={() => setSidebarOpen(false)} />
-      <div className="relative z-10 w-72 bg-farmGreen-900 h-full">
-        <AdminSidebar 
-          activeTab={activeTab} 
-          setActiveTab={(tab) => {
-            setActiveTab(tab);
-            setSidebarOpen(false);
-          }} 
-        />
+      {/* ── Floating Action Button ── */}
+      <div className="adm-fab-wrap">
+        <span className="adm-fab-label">{fab.label}</span>
+        <button
+          className="adm-fab"
+          onClick={() => {
+            if (activeTab === 'reports' || activeTab === 'orders') return;
+            window.dispatchEvent(new CustomEvent('adm-fab-click', { detail: { tab: activeTab } }));
+          }}
+          title={fab.label}
+          aria-label={fab.label}
+        >
+          <span className="text-xl relative z-10">{fab.icon}</span>
+        </button>
       </div>
     </div>
   );

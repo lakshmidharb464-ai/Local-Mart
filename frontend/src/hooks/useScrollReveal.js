@@ -10,6 +10,20 @@ export const useScrollReveal = (options = {}) => {
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
+    if (typeof window === 'undefined' || !('IntersectionObserver' in window)) {
+      setIsVisible(true);
+      return;
+    }
+
+    // Check immediately if element is already within viewport on mount
+    if (ref.current) {
+      const rect = ref.current.getBoundingClientRect();
+      if (rect.top < window.innerHeight + 100 && rect.bottom > -100) {
+        setIsVisible(true);
+        return;
+      }
+    }
+
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
@@ -17,9 +31,15 @@ export const useScrollReveal = (options = {}) => {
           observer.disconnect();
         }
       },
-      { threshold: 0.12, rootMargin: '0px 0px -60px 0px', ...options }
+      { threshold: 0.01, rootMargin: '100px 0px 50px 0px', ...options }
     );
-    if (ref.current) observer.observe(ref.current);
+
+    if (ref.current) {
+      observer.observe(ref.current);
+    } else {
+      setIsVisible(true);
+    }
+
     return () => observer.disconnect();
   }, []);
 

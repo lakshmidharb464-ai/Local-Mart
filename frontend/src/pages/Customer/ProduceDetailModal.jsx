@@ -55,8 +55,11 @@ export const ProduceDetailModal = ({ product, onClose, toggleWishlist, isWishlis
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fadeIn" style={{ background: 'rgba(5,15,8,0.75)', backdropFilter: 'blur(16px)' }}>
-      <div className="bg-white rounded-3xl max-w-2xl w-full overflow-hidden relative max-h-[90vh] flex flex-col" style={{ boxShadow: '0 32px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(168,240,96,0.15)' }}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fadeIn" style={{ background: 'rgba(4,12,7,0.80)', backdropFilter: 'blur(20px)' }}>
+      <div
+        className="bg-white rounded-3xl max-w-2xl w-full overflow-hidden relative max-h-[90vh] flex flex-col"
+        style={{ boxShadow: '0 40px 100px rgba(0,0,0,0.55), 0 0 0 1.5px rgba(34,197,94,0.18)' }}
+      >
         
         {/* Close Button */}
         <button
@@ -79,6 +82,7 @@ export const ProduceDetailModal = ({ product, onClose, toggleWishlist, isWishlis
                 src={product.image}
                 alt={product.name}
                 className="w-full h-full object-cover"
+                loading="lazy"
               />
               <button
                 onClick={() => toggleWishlist(product)}
@@ -107,18 +111,23 @@ export const ProduceDetailModal = ({ product, onClose, toggleWishlist, isWishlis
             {/* Right Product Details & Farm Provenance */}
             <div className="space-y-4">
               <div>
-                <span className="px-3 py-1 rounded-full text-[11px] font-extrabold bg-farmGreen-900 text-emerald-300">
+                <span
+                  className="px-3 py-1 rounded-full text-[11px] font-extrabold"
+                  style={{ background: 'rgba(26,107,60,0.10)', color: '#1a6b3c', border: '1px solid rgba(26,107,60,0.20)' }}
+                >
                   {product.category}
                 </span>
-                <h2 className="font-display font-extrabold text-2xl text-farmGreen-900 mt-2 leading-tight">
+                <h2
+                  className="font-display font-extrabold text-2xl mt-2 leading-tight text-farmGreen-950"
+                >
                   {product.name}
                 </h2>
                 <div className="flex items-center gap-2 mt-1">
-                  <div className="flex items-center gap-1 text-xs font-bold text-amber-600 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-200">
+                  <div className="flex items-center gap-1 text-xs font-bold px-2.5 py-0.5 rounded-full border" style={{ color: '#92400e', background: '#fffbeb', borderColor: '#fde68a' }}>
                     <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
                     <span>{product.rating} ({product.reviewsCount || 142} Reviews)</span>
                   </div>
-                  <span className="text-xs text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-full">
+                  <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ color: '#16a34a', background: '#dcfce7', border: '1px solid #bbf7d0' }}>
                     100% Organic Certified
                   </span>
                 </div>
@@ -151,11 +160,13 @@ export const ProduceDetailModal = ({ product, onClose, toggleWishlist, isWishlis
             </div>
           </div>
 
-          {/* Pack Size Selector (Buy First Concept) */}
-          <div className="p-5 bg-farmBg rounded-3xl border border-emerald-100/80 space-y-3">
+          <div
+            className="p-5 rounded-3xl space-y-3"
+            style={{ background: '#f5f8f5', border: '1.5px solid #d8eed9' }}
+          >
             <div className="flex items-center justify-between text-xs">
-              <span className="font-bold text-farmGreen-900 uppercase tracking-wider">Select Pack Quantity & Savings</span>
-              <span className="text-emerald-700 font-bold">Standard Price: ₹{product.price}/{product.unit}</span>
+              <span className="font-bold uppercase tracking-wider" style={{ color: '#0d2214' }}>Select Pack Quantity &amp; Savings</span>
+              <span className="font-bold" style={{ color: '#1a6b3c' }}>Standard Price: ₹{product.price}/{product.unit}</span>
             </div>
 
             <div className="grid grid-cols-3 gap-3">
@@ -168,25 +179,25 @@ export const ProduceDetailModal = ({ product, onClose, toggleWishlist, isWishlis
                     onClick={() => setSelectedPack(pack)}
                     style={{
                       padding: '12px 8px', borderRadius: 16, textAlign: 'center',
-                      cursor: 'pointer', transition: 'all .22s cubic-bezier(.22,1,.36,1)',
-                      border: isSelected ? 'none' : '1.5px solid #e0ece0',
+                      cursor: 'pointer', transition: 'all .28s cubic-bezier(0.34,1.56,0.64,1)',
+                      border: isSelected ? 'none' : '1.5px solid #d8eed9',
                       background: isSelected
-                        ? 'linear-gradient(135deg,#2e7d32,#1b5e20)'
+                        ? 'linear-gradient(135deg,#1a6b3c,#22c55e)'
                         : '#fff',
                       color: isSelected ? '#fff' : '#0d2214',
                       boxShadow: isSelected
-                        ? '0 6px 20px rgba(46,125,50,0.35), 0 0 0 3px rgba(168,240,96,0.25)'
-                        : '0 1px 4px rgba(0,0,0,0.06)',
-                      transform: isSelected ? 'scale(1.03)' : 'scale(1)',
+                        ? '0 8px 24px rgba(26,107,60,0.40), 0 0 0 3px rgba(34,197,94,0.20)'
+                        : '0 2px 6px rgba(0,0,0,0.05)',
+                      transform: isSelected ? 'scale(1.05) translateY(-2px)' : 'scale(1)',
                       fontFamily: 'Plus Jakarta Sans, sans-serif',
                     }}
                   >
                     <div style={{ fontWeight: 800, fontSize: 11, marginBottom: 4 }}>{pack.label}</div>
-                    <div style={{ fontSize: 13, fontWeight: 900, color: isSelected ? '#a8f060' : '#2e7d32' }}>
+                    <div style={{ fontSize: 14, fontWeight: 900, color: isSelected ? '#86efac' : '#1a6b3c' }}>
                       ₹{Math.round(basePricePerUnit * (1 - pack.discount) * pack.multiplier)}
                     </div>
                     {pack.discount > 0 && (
-                      <div style={{ fontSize: 9, fontWeight: 800, marginTop: 3, background: isSelected ? 'rgba(168,240,96,0.2)' : '#f0faf0', color: isSelected ? '#a8f060' : '#2e7d32', padding: '1px 6px', borderRadius: 99, display: 'inline-block' }}>
+                      <div style={{ fontSize: 9, fontWeight: 800, marginTop: 3, background: isSelected ? 'rgba(134,239,172,0.2)' : '#dcfce7', color: isSelected ? '#86efac' : '#16a34a', padding: '1px 6px', borderRadius: 99, display: 'inline-block' }}>
                         {(pack.discount * 100).toFixed(0)}% OFF
                       </div>
                     )}
@@ -195,24 +206,30 @@ export const ProduceDetailModal = ({ product, onClose, toggleWishlist, isWishlis
               })}
             </div>
 
-            {/* Quantity +/- Control */}
-            <div className="flex items-center justify-between pt-2 border-t border-gray-200/80 text-xs">
-              <span className="font-bold text-farmGreen-900">Number of Packs:</span>
-              <div className="flex items-center gap-2 bg-white px-2 py-1 rounded-xl border border-gray-200">
+            {/* Quantity stepper */}
+            <div className="flex items-center justify-between pt-2 text-xs" style={{ borderTop: '1.5px solid #d8eed9' }}>
+              <span className="font-bold" style={{ color: '#0d2214' }}>Number of Packs:</span>
+              <div className="flex items-center gap-2 px-2 py-1 rounded-xl" style={{ background: '#fff', border: '1.5px solid #d8eed9' }}>
                 <button
                   type="button"
                   onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                  className="w-7 h-7 rounded-lg bg-farmBg flex items-center justify-center text-farmGreen-900 hover:bg-gray-200 cursor-pointer font-bold"
+                  className="w-7 h-7 rounded-lg flex items-center justify-center font-bold cursor-pointer transition-all duration-200"
+                  style={{ background: '#f5f8f5', color: '#1a6b3c' }}
+                  onMouseEnter={e => { e.currentTarget.style.background = '#1a6b3c'; e.currentTarget.style.color = '#fff'; e.currentTarget.style.transform = 'scale(1.1)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = '#f5f8f5'; e.currentTarget.style.color = '#1a6b3c'; e.currentTarget.style.transform = 'scale(1)'; }}
                 >
                   <Minus className="w-3.5 h-3.5" />
                 </button>
-                <span className="w-8 text-center font-display font-extrabold text-sm text-farmGreen-900">
+                <span className="w-8 text-center font-display font-extrabold text-sm text-farmGreen-950">
                   {quantity}
                 </span>
                 <button
                   type="button"
                   onClick={() => setQuantity(quantity + 1)}
-                  className="w-7 h-7 rounded-lg bg-emerald-700 text-white flex items-center justify-center hover:bg-emerald-800 cursor-pointer font-bold shadow-xs"
+                  className="w-7 h-7 rounded-lg flex items-center justify-center font-bold cursor-pointer transition-all duration-200"
+                  style={{ background: 'linear-gradient(135deg,#1a6b3c,#22c55e)', color: '#fff', boxShadow: '0 2px 8px rgba(34,197,94,0.3)' }}
+                  onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.12)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; }}
                 >
                   <Plus className="w-3.5 h-3.5" />
                 </button>
@@ -221,10 +238,12 @@ export const ProduceDetailModal = ({ product, onClose, toggleWishlist, isWishlis
           </div>
 
           {/* Bottom Action Footer */}
-          <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-gray-100">
+          <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-4" style={{ borderTop: '1.5px solid #e4ede7' }}>
             <div>
-              <div className="text-[10px] font-bold uppercase text-farmMuted">Calculated Total</div>
-              <div className="font-display font-extrabold text-2xl text-farmGreen-900">
+              <div className="text-[10px] font-bold uppercase tracking-wider" style={{ color: '#4b6355' }}>Calculated Total</div>
+              <div
+                className="font-display font-extrabold text-2xl text-farmGreen-950"
+              >
                 ₹{itemTotal}
               </div>
             </div>
@@ -233,9 +252,9 @@ export const ProduceDetailModal = ({ product, onClose, toggleWishlist, isWishlis
               <button
                 type="button"
                 onClick={handleAddToCart}
-                style={{ flex: 1, padding: '12px 20px', borderRadius: 16, background: '#f0faf0', border: '1.5px solid #c8e6c9', color: '#2e7d32', fontWeight: 800, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontFamily: 'Plus Jakarta Sans, sans-serif', transition: 'all .22s' }}
-                onMouseEnter={e => { e.currentTarget.style.background = '#2e7d32'; e.currentTarget.style.color = '#fff'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(46,125,50,0.3)'; }}
-                onMouseLeave={e => { e.currentTarget.style.background = '#f0faf0'; e.currentTarget.style.color = '#2e7d32'; e.currentTarget.style.boxShadow = 'none'; }}
+                style={{ flex: 1, padding: '12px 20px', borderRadius: 16, background: '#f5f8f5', border: '1.5px solid #d8eed9', color: '#1a6b3c', fontWeight: 800, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontFamily: 'Plus Jakarta Sans, sans-serif', transition: 'all .28s cubic-bezier(0.34,1.56,0.64,1)' }}
+                onMouseEnter={e => { e.currentTarget.style.background = '#1a6b3c'; e.currentTarget.style.color = '#fff'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(26,107,60,0.3)'; e.currentTarget.style.transform = 'scale(1.02)'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = '#f5f8f5'; e.currentTarget.style.color = '#1a6b3c'; e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.transform = 'scale(1)'; }}
               >
                 <ShoppingCart style={{ width: 15, height: 15 }} />
                 <span>+ Add to Basket</span>
@@ -244,9 +263,9 @@ export const ProduceDetailModal = ({ product, onClose, toggleWishlist, isWishlis
               <button
                 type="button"
                 onClick={handleInstantBuyNow}
-                style={{ flex: 1, padding: '12px 20px', borderRadius: 16, background: 'linear-gradient(135deg,#FF9800,#F57C00)', color: '#fff', fontWeight: 900, fontSize: 12, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontFamily: 'Plus Jakarta Sans, sans-serif', boxShadow: '0 6px 22px rgba(255,152,0,0.4)', transition: 'all .22s' }}
-                onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 10px 32px rgba(255,152,0,0.55)'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
-                onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 6px 22px rgba(255,152,0,0.4)'; e.currentTarget.style.transform = 'translateY(0)'; }}
+                style={{ flex: 1, padding: '12px 20px', borderRadius: 16, background: 'linear-gradient(135deg,#FF9800,#F57C00)', color: '#fff', fontWeight: 900, fontSize: 12, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontFamily: 'Plus Jakarta Sans, sans-serif', boxShadow: '0 6px 22px rgba(255,152,0,0.40)', transition: 'all .28s cubic-bezier(0.34,1.56,0.64,1)' }}
+                onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 12px 32px rgba(255,152,0,0.55)'; e.currentTarget.style.transform = 'translateY(-2px) scale(1.02)'; }}
+                onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 6px 22px rgba(255,152,0,0.40)'; e.currentTarget.style.transform = 'translateY(0) scale(1)'; }}
               >
                 <Zap style={{ width: 14, height: 14, fill: '#fff' }} />
                 <span>Buy Now</span>
