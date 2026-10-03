@@ -266,9 +266,10 @@ export async function deleteProduct(req, res, next) {
 export async function getFarmerOrders(req, res, next) {
   try {
     const farmerId = req.user.id;
+    const { filter, status } = req.query;
 
-    const orders = await query(
-      `SELECT 
+    let sql = `
+      SELECT 
         o.id, o.created_at, o.status, o.payment_method, o.payment_status, o.address_text,
         u.name AS customer_name,
         u.phone AS customer_phone,
@@ -277,11 +278,26 @@ export async function getFarmerOrders(req, res, next) {
        JOIN orders o ON oi.order_id = o.id
        JOIN users u ON o.customer_id = u.id
        WHERE oi.farmer_id = ?
-       ORDER BY o.created_at DESC`,
-      [farmerId]
-    );
+    `;
 
-    res.json({ success: true, orders });
+    const params = [farmerId];
+
+    if (status && status !== 'all') {
+      sql += ` AND o.status = ?`;
+      params.push(status);
+    } else if (filter === 'active') {
+      sql += ` AND o.status IN ("Pending", "Approved", "Packed", "Assigned", "Accepted", "Picked Up", "Out for Delivery")`;
+    } else if (filter === 'delivered') {
+      sql += ` AND o.status = "Delivered"`;
+    } else if (filter === 'cancelled') {
+      sql += ` AND o.status IN ("Cancelled", "Failed")`;
+    }
+
+    sql += ` ORDER BY o.created_at DESC`;
+
+    const orders = await query(sql, params);
+
+    res.json({ success: true, count: orders.length, orders });
   } catch (error) {
     next(error);
   }
@@ -496,6 +512,45 @@ export async function updateFarmerProfile(req, res, next) {
     );
 
     res.json({ success: true, message: 'Farmer profile updated.' });
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * Submit KYC Verification Document (Cloudinary URL)
+ * POST /api/farmer/kyc
+ */
+export async function submitFarmerKyc(req, res, next) {
+  try {
+    const farmerId = req.user.id;
+    const { docType = 'Organic Farming Certificate', docUrl } = req.body;
+
+    if (!docUrl) {
+      return res.status(400).json({ success: false, message: 'docUrl is required.' });
+    }
+
+    const kycId = uuidv4();
+    await execute(
+      'INSERT INTO kyc_documents (id, user_id, doc_type, doc_url, status) VALUES (?, ?, ?, ?, "Pending")',
+      [kycId, farmerId, docType, docUrl]
+    );
+
+    res.status(201).json({ success: true, message: 'KYC Document submitted for verification!', kycId });
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * Get My KYC Documents
+ * GET /api/farmer/kyc
+ */
+export async function getFarmerKyc(req, res, next) {
+  try {
+    const farmerId = req.user.id;
+    const documents = await query('SELECT * FROM kyc_documents WHERE user_id = ? ORDER BY created_at DESC', [farmerId]);
+    res.json({ success: true, documents });
   } catch (error) {
     next(error);
   }

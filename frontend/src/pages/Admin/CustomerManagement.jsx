@@ -22,7 +22,7 @@ import {
   RotateCcw
 } from 'lucide-react';
 
-export const CustomerManagement = ({ customers, setCustomers, isDark = true }) => {
+export const CustomerManagement = ({ customers, setCustomers, isDark = false }) => {
   const { showToast } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');

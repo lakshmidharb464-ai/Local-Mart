@@ -38,7 +38,20 @@ export async function runMigrations() {
     console.log(`📜 Applying schema to database '${ENV.DB.NAME}'...`);
     await connection.query(schemaSql);
 
-    console.log('✅ Database schema migrated successfully! All 22 tables are ready.');
+    // 5. Ensure auth_token column exists in users table
+    try {
+      await connection.query(`
+        ALTER TABLE users ADD COLUMN auth_token TEXT NULL;
+      `);
+      console.log('✅ Added auth_token column to users table.');
+    } catch (colErr) {
+      // Ignore if column already exists (Error code 1060: Duplicate column name)
+      if (colErr.errno !== 1060 && !colErr.message.includes('Duplicate column')) {
+        console.warn('⚠️ auth_token column check note:', colErr.message);
+      }
+    }
+
+    console.log('✅ Database schema migrated successfully! All tables are ready.');
     return { success: true };
   } catch (error) {
     console.error('❌ Migration failed:', error.message);

@@ -31,7 +31,7 @@ import {
   RotateCcw
 } from 'lucide-react';
 
-export const DeliveryManagement = ({ deliveryPartners, setDeliveryPartners, isDark = true }) => {
+export const DeliveryManagement = ({ deliveryPartners, setDeliveryPartners, isDark = false }) => {
   const { showToast } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');

@@ -18,7 +18,7 @@ import {
   Moon,
 } from 'lucide-react';
 
-export const AdminSidebar = ({ activeTab, setActiveTab, isDark = true, toggleDark, pendingCount = 0 }) => {
+export const AdminSidebar = ({ activeTab, setActiveTab, isDark = false, toggleDark, pendingCount = 0 }) => {
   const { logout, user } = useAuth();
   const [isCollapsed, setIsCollapsed] = useState(false);
 

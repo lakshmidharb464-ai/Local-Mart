@@ -66,47 +66,8 @@ import {
   Download,
 } from 'lucide-react';
 
-/* ─────────────────────────── MOCK DATA ─────────────────────────── */
+/* ─────────────────────────── INITIAL CONFIG ─────────────────────────── */
 
-const MOCK_USERS = {
-  farmers: [
-    { id: 'F-001', name: 'Rajesh Kumar', email: 'rajesh@localfarm.in', phone: '+91 94401 22334', farm: 'Palamaner Organic Collective', status: 'Active', kyc: 'Approved', joined: '2026-03-12', orders: 142, avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=80&q=80' },
-    { id: 'F-002', name: 'Suresh Reddy', email: 'suresh@greenfields.in', phone: '+91 98230 44556', farm: 'Chittoor Agro Fields', status: 'Pending', kyc: 'Under Review', joined: '2026-08-01', orders: 0, avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=80&q=80' },
-    { id: 'F-003', name: 'Lakshmi Devi', email: 'lakshmi@nativecrops.in', phone: '+91 97440 33219', farm: 'Native Crops AP', status: 'Active', kyc: 'Approved', joined: '2026-01-20', orders: 298, avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=80&q=80' },
-    { id: 'F-004', name: 'Venkat Rao', email: 'venkat@madanapalle.in', phone: '+91 96310 78902', farm: 'Madanapalle Mango Estate', status: 'Suspended', kyc: 'Rejected', joined: '2025-11-05', orders: 45, avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=80&q=80' },
-  ],
-  customers: [
-    { id: 'C-001', name: 'Anita Sharma', email: 'anita.sharma@gmail.com', phone: '+91 98450 67123', status: 'Active', tier: 'Gold', orders: 35, joined: '2026-02-14', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=80&q=80' },
-    { id: 'C-002', name: 'Priya Menon', email: 'priya.menon@outlook.com', phone: '+91 97880 12345', status: 'Active', tier: 'Silver', orders: 18, joined: '2026-05-03', avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=80&q=80' },
-    { id: 'C-003', name: 'Amit Joshi', email: 'amit.joshi@yahoo.com', phone: '+91 93440 56789', status: 'Suspended', tier: 'Bronze', orders: 4, joined: '2026-07-20', avatar: 'https://images.unsplash.com/photo-1527980965255-d3b416303d12?auto=format&fit=crop&w=80&q=80' },
-    { id: 'C-004', name: 'Meena Pillai', email: 'meena.pillai@gmail.com', phone: '+91 99003 44321', status: 'Active', tier: 'Emerald', orders: 62, joined: '2025-12-01', avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=80&q=80' },
-  ],
-  delivery: [
-    { id: 'DEL-001', name: 'Rohan Sharma', email: 'rohan@greenmarket.in', phone: '+91 98765 43210', vehicle: 'EV Scooter (Ather 450X)', status: 'Active', rating: 4.9, deliveries: 312, joined: '2026-04-10', avatar: 'https://images.unsplash.com/photo-1568602471122-7832951cc4c5?auto=format&fit=crop&w=80&q=80' },
-    { id: 'DEL-002', name: 'Kiran Patil', email: 'kiran.patil@delivery.in', phone: '+91 97660 23456', vehicle: 'Motorcycle (Hero Splendor)', status: 'Offline', rating: 4.5, deliveries: 87, joined: '2026-06-15', avatar: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&w=80&q=80' },
-    { id: 'DEL-003', name: 'Pooja Nair', email: 'pooja.nair@delivery.in', phone: '+91 96550 34567', vehicle: 'Cold-Chain Mini Van', status: 'Active', rating: 4.7, deliveries: 156, joined: '2026-03-22', avatar: 'https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?auto=format&fit=crop&w=80&q=80' },
-  ],
-};
-
-const MOCK_KYC = [
-  { id: 'kyc-1', farmer: 'Suresh Reddy', farmerId: 'F-002', docType: 'Organic Farming Certificate', uploadDate: '2026-08-20', status: 'Pending', fileName: 'organic_cert_suresh.pdf' },
-  { id: 'kyc-2', farmer: 'Venkat Rao', farmerId: 'F-004', docType: 'FSSAI Food Business License', uploadDate: '2026-07-15', status: 'Rejected', fileName: 'fssai_venkat.pdf' },
-  { id: 'kyc-3', farmer: 'Suresh Reddy', farmerId: 'F-002', docType: 'Land Title Proof (Khata)', uploadDate: '2026-08-22', status: 'Pending', fileName: 'land_patta_suresh.jpg' },
-  { id: 'kyc-4', farmer: 'Priya Farm Co.', farmerId: 'F-005', docType: 'Organic Farming Certificate', uploadDate: '2026-08-24', status: 'Pending', fileName: 'organic_priyafarm.pdf' },
-];
-
-const MOCK_AUDIT_LOG = [
-  { id: 1, timestamp: '2026-08-25 21:30:14', admin: 'Lakshmidhar B', action: 'Suspended Farmer', entity: 'Venkat Rao (F-004)' },
-  { id: 2, timestamp: '2026-08-25 20:12:05', admin: 'Lakshmidhar B', action: 'Approved KYC Document', entity: 'Rajesh Kumar — Organic Cert' },
-  { id: 3, timestamp: '2026-08-25 18:44:32', admin: 'Lakshmidhar B', action: 'Updated Platform Commission', entity: '8% → 9%' },
-  { id: 4, timestamp: '2026-08-24 15:22:11', admin: 'Lakshmidhar B', action: 'Created Delivery Zone', entity: 'Wakad Zone (Pune West)' },
-  { id: 5, timestamp: '2026-08-24 11:05:48', admin: 'Lakshmidhar B', action: 'Activated Flash Sale Banner', entity: 'Independence Day Harvest Sale' },
-  { id: 6, timestamp: '2026-08-23 09:30:00', admin: 'Lakshmidhar B', action: 'Reset User Password', entity: 'Anita Sharma (C-001)' },
-  { id: 7, timestamp: '2026-08-22 16:20:55', admin: 'Lakshmidhar B', action: 'Rejected KYC Document', entity: 'Venkat Rao — FSSAI License' },
-  { id: 8, timestamp: '2026-08-21 14:10:22', admin: 'Lakshmidhar B', action: 'Onboarded Delivery Partner', entity: 'Pooja Nair (DEL-003)' },
-  { id: 9, timestamp: '2026-08-20 10:05:33', admin: 'Lakshmidhar B', action: 'Toggled Maintenance Mode', entity: 'Platform → Offline (Scheduled)' },
-  { id: 10, timestamp: '2026-08-19 08:45:00', admin: 'Lakshmidhar B', action: 'Updated Payout Schedule', entity: 'Weekly → Bi-weekly' },
-];
 
 const MOCK_BANNERS = [
   { id: 'b1', title: 'Mango Season — Alphonso at Farm Prices!', startDate: '2026-08-01', endDate: '2026-09-15', active: true, type: 'Seasonal' },
@@ -302,14 +263,14 @@ const UserModal = ({ user, roleType, onClose, onAction, showToast, isDark }) => 
 
 /* ─────────────────────────── MAIN COMPONENT ─────────────────────────── */
 
-export const AdminSettings = ({ isDark = true }) => {
+export const AdminSettings = ({ isDark = false }) => {
   const { user, showToast } = useAuth();
   const [activeSubTab, setActiveSubTab] = useState('profile');
   const [serverSettings, setServerSettings] = useState({});
 
-  const [usersData, setUsersData] = useState(MOCK_USERS);
-  const [kycItems, setKycItems] = useState(MOCK_KYC);
-  const [auditLogs, setAuditLogs] = useState(MOCK_AUDIT_LOG);
+  const [usersData, setUsersData] = useState({ farmers: [], customers: [], delivery: [] });
+  const [kycItems, setKycItems] = useState([]);
+  const [auditLogs, setAuditLogs] = useState([]);
 
   // Load real settings and user/audit collections from backend on mount
   useEffect(() => {
@@ -492,19 +453,20 @@ export const AdminSettings = ({ isDark = true }) => {
   };
 
   const filteredUsers = (() => {
-    const list = MOCK_USERS[userRoleFilter] || [];
+    const list = usersData[userRoleFilter] || [];
     if (!userSearch.trim()) return list;
     const q = userSearch.toLowerCase();
-    return list.filter(u => u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q) || u.id.toLowerCase().includes(q));
+    return list.filter(u => u.name?.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q) || u.id?.toLowerCase().includes(q));
   })();
 
   const auditActions = ['All', 'Suspended Farmer', 'Approved KYC Document', 'Updated Platform Commission', 'Created Delivery Zone', 'Activated Flash Sale Banner', 'Reset User Password'];
-  const filteredAudit = auditFilter === 'All' ? MOCK_AUDIT_LOG : MOCK_AUDIT_LOG.filter(a => a.action.includes(auditFilter));
+  const filteredAudit = auditFilter === 'All' ? auditLogs : auditLogs.filter(a => a.action?.includes(auditFilter));
 
   /* ── Tabs Config ── */
+  const totalUsersCount = (usersData.farmers?.length || 0) + (usersData.customers?.length || 0) + (usersData.delivery?.length || 0);
   const tabs = [
     { id: 'profile',       label: 'Admin Profile',    icon: User },
-    { id: 'users',         label: 'User Management',  icon: Users, badge: MOCK_USERS.farmers.length + MOCK_USERS.customers.length + MOCK_USERS.delivery.length },
+    { id: 'users',         label: 'User Management',  icon: Users, badge: totalUsersCount },
     { id: 'analytics',     label: 'Analytics',        icon: BarChart2, badge: '+32%' },
     { id: 'kyc',           label: 'KYC Queue',        icon: ClipboardList, badge: kycItems.filter(k => k.status === 'Pending').length },
     { id: 'commission',    label: 'Commission',       icon: Percent, badge: `${commission}%` },
@@ -514,7 +476,7 @@ export const AdminSettings = ({ isDark = true }) => {
     { id: 'marketplace',   label: 'Marketplace',      icon: Store },
     { id: 'notifications', label: 'Alerts',           icon: Bell },
     { id: 'security',      label: 'Security',         icon: Shield },
-    { id: 'audit',         label: 'Audit Log',        icon: ScrollText, badge: MOCK_AUDIT_LOG.length },
+    { id: 'audit',         label: 'Audit Log',        icon: ScrollText, badge: auditLogs.length },
   ];
 
   /* ── Reusable Section Header ── */
@@ -731,7 +693,7 @@ export const AdminSettings = ({ isDark = true }) => {
         {/* ══════════════ 2. USER MANAGEMENT ══════════════ */}
         {activeSubTab === 'users' && (
           <UsersTab
-            mockUsers={MOCK_USERS}
+            mockUsers={usersData}
             userRoleFilter={userRoleFilter}
             setUserRoleFilter={setUserRoleFilter}
             userSearch={userSearch}

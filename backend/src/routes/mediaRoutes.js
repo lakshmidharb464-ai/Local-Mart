@@ -4,7 +4,7 @@ import { verifyToken } from '../middlewares/authMiddleware.js';
 
 const router = Router();
 
-// Allow authenticated users to upload files (supports 'files' array or single 'file')
-router.post('/upload', verifyToken, uploadMiddleware.array('files', 5), uploadMedia);
+// Allow authenticated users to upload files (supports 'files', 'file', 'image', etc.)
+router.post('/upload', verifyToken, uploadMiddleware.any(), uploadMedia);
 
 export default router;

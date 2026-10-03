@@ -28,7 +28,7 @@ import {
   RotateCcw
 } from 'lucide-react';
 
-export const FarmerManagement = ({ farmers, setFarmers, isDark = true }) => {
+export const FarmerManagement = ({ farmers, setFarmers, isDark = false }) => {
   const { showToast } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');

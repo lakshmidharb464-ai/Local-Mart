@@ -36,7 +36,18 @@ export default function FarmProfilePage() {
     (p.farmerId === id || p.farmerName === farmer?.name) && p.status === 'Approved'
   );
 
-  if (!isLoading && !farmer) {
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-farmBg flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3 font-display">
+          <div className="w-10 h-10 border-4 border-farmGreen-600 border-t-transparent rounded-full animate-spin" aria-hidden="true" />
+          <p className="text-sm text-farmMuted font-medium" role="status">Loading farm profile…</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!farmer) {
     return (
       <div className="min-h-screen bg-farmBg">
         <div className="max-w-5xl mx-auto px-4 py-16 text-center">

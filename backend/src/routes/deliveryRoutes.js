@@ -12,6 +12,8 @@ import {
   getEarnings,
   getDeliveryProfile,
   updateDeliveryProfile,
+  submitDeliveryKyc,
+  getDeliveryKyc,
 } from '../controllers/deliveryController.js';
 import { verifyToken, requireRole } from '../middlewares/authMiddleware.js';
 
@@ -32,9 +34,11 @@ router.get('/hubs', getHubs);
 router.get('/shifts', getShifts);
 router.post('/shifts', bookShift);
 
-// Earnings & Profile
+// Earnings & Profile & KYC
 router.get('/earnings', getEarnings);
 router.get('/profile', getDeliveryProfile);
 router.put('/profile', updateDeliveryProfile);
+router.get('/kyc', getDeliveryKyc);
+router.post('/kyc', submitDeliveryKyc);
 
 export default router;

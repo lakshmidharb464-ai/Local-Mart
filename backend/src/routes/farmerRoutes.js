@@ -15,6 +15,8 @@ import {
   requestPayout,
   getFarmerProfile,
   updateFarmerProfile,
+  submitFarmerKyc,
+  getFarmerKyc,
 } from '../controllers/farmerController.js';
 import { verifyToken, requireRole } from '../middlewares/authMiddleware.js';
 
@@ -44,9 +46,11 @@ router.post('/harvest-plans/:id/broadcast', broadcastHarvestAlert);
 router.get('/inventory/batches', getBatches);
 router.post('/inventory/batches', logBatchSpoilage);
 
-// Payouts & Profile
+// Payouts & Profile & KYC
 router.post('/payouts', requestPayout);
 router.get('/profile', getFarmerProfile);
 router.put('/profile', updateFarmerProfile);
+router.get('/kyc', getFarmerKyc);
+router.post('/kyc', submitFarmerKyc);
 
 export default router;

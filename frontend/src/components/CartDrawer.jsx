@@ -14,24 +14,33 @@ export const CartDrawer = () => {
   const navigate = useNavigate();
   const {
     cartItems, isCartOpen, setIsCartOpen,
-    updateQuantity, removeFromCart,
+    addToCart, updateQuantity, removeFromCart,
     subtotal, deliveryFee, total
   } = useCart();
   const { currencySymbol = '₹' } = useAuth();
 
   const [removingId, setRemovingId] = useState(null);
+  const [recentlyRemoved, setRecentlyRemoved] = useState(null);
 
   // Focus trap for accessible dialog behavior
   const drawerRef = useFocusTrap(isCartOpen, () => setIsCartOpen(false));
 
   if (!isCartOpen) return null;
 
-  const handleRemove = (id) => {
-    setRemovingId(id);
+  const handleRemove = (product, quantity) => {
+    setRemovingId(product.id);
+    setRecentlyRemoved({ product, quantity });
     setTimeout(() => {
-      removeFromCart(id);
+      removeFromCart(product.id);
       setRemovingId(null);
     }, 250);
+  };
+
+  const handleUndoRemove = () => {
+    if (recentlyRemoved) {
+      addToCart(recentlyRemoved.product, recentlyRemoved.quantity);
+      setRecentlyRemoved(null);
+    }
   };
 
   const handleProceedToCheckout = () => {
@@ -189,7 +198,7 @@ export const CartDrawer = () => {
 
                   {/* Remove Button */}
                   <button
-                    onClick={() => handleRemove(product.id)}
+                    onClick={() => handleRemove(product, quantity)}
                     className="w-8 h-8 rounded-xl bg-rose-50 hover:bg-rose-500 hover:text-white text-rose-500 border border-rose-200 flex items-center justify-center transition-all cursor-pointer shrink-0"
                     title="Remove item"
                     aria-label={`Remove ${product.name} from basket`}
@@ -200,6 +209,30 @@ export const CartDrawer = () => {
               ))
             )}
           </div>
+
+          {/* ── Undo Removal Toast Banner ── */}
+          {recentlyRemoved && (
+            <div className="mx-4 mb-2 p-3 bg-slate-900/95 text-white rounded-xl shadow-xl flex items-center justify-between border border-white/10 animate-slideUp text-xs">
+              <span className="truncate pr-2 font-medium">
+                Removed <strong className="text-amber-300">{recentlyRemoved.product.name}</strong>
+              </span>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={handleUndoRemove}
+                  className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg transition-all active:scale-95"
+                >
+                  Undo
+                </button>
+                <button
+                  onClick={() => setRecentlyRemoved(null)}
+                  className="text-white/60 hover:text-white p-0.5"
+                  aria-label="Dismiss notification"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* ── Footer Checkout Block ── */}
           {cartItems.length > 0 && (

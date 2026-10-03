@@ -17,17 +17,26 @@ export const AuthProvider = ({ children }) => {
   const [currency, setCurrencyState] = useState(() => localStorage.getItem('localfarm_currency') || '₹ (INR)');
   const currencySymbol = currency.startsWith('$') ? '$' : '₹';
 
-  // Validate session on app initialization
+  const toastTimerRef = React.useRef(null);
+
+  // Validate session on app initialization via cookies & DB verification
   useEffect(() => {
-    if (authService.getToken()) {
-      authService.getMe().then((freshUser) => {
-        if (freshUser) {
-          setUser(freshUser);
-        } else {
-          setUser(null);
+    let isMounted = true;
+    authService.getMe()
+      .then((freshUser) => {
+        if (isMounted) {
+          setUser(freshUser || null);
         }
+      })
+      .catch((err) => {
+        console.warn('[AuthContext] Session validation failed:', err);
+        if (isMounted) setUser(null);
       });
-    }
+
+    return () => {
+      isMounted = false;
+      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    };
   }, []);
 
   const setCurrency = (newCurrency) => {
@@ -36,8 +45,9 @@ export const AuthProvider = ({ children }) => {
   };
 
   const showToast = (title, message, type = 'success') => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
     setToast({ title, message, type });
-    setTimeout(() => {
+    toastTimerRef.current = setTimeout(() => {
       setToast(null);
     }, 4000);
   };
@@ -55,9 +65,9 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const signup = async (name, email, password, role = 'Customer') => {
+  const signup = async (name, email, password, role = 'Customer', adminSecret = '') => {
     try {
-      const newUser = await authService.register(name, email, password, role);
+      const newUser = await authService.register(name, email, password, role, adminSecret);
       setUser(newUser);
       setIsAuthModalOpen(false);
       showToast('Account Created!', `Welcome to Local Farm Direct as a ${role}`);

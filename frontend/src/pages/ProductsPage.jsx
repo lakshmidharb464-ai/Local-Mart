@@ -9,9 +9,9 @@ import { ProductGrid } from '../components/product/ProductGrid';
 import { ProductFilters } from '../components/product/ProductFilters';
 import { FilterDrawer } from '../components/product/FilterDrawer';
 import { ProductSort } from '../components/product/ProductSort';
+import { ProductQuickViewModal } from '../components/product/ProductQuickViewModal';
 import { Breadcrumb } from '../components/navigation/Breadcrumb';
 import { SEOHead } from '../components/SEOHead';
-import { ProductQuickViewModal } from '../components/product/ProductQuickViewModal';
 
 /**
  * Public product discovery page (/products).
@@ -174,20 +174,20 @@ export default function ProductsPage() {
         </div>
       </div>
 
-      {/* Mobile filter drawer */}
-      <FilterDrawer
-        isOpen={isFilterOpen}
-        onClose={() => setIsFilterOpen(false)}
-        filterProps={filterProps}
-      />
-
-      {/* Quick view modal */}
+      {/* Quick View Modal */}
       {quickViewProduct && (
         <ProductQuickViewModal
           product={quickViewProduct}
           onClose={() => setQuickViewProduct(null)}
         />
       )}
+
+      {/* Mobile filter drawer */}
+      <FilterDrawer
+        isOpen={isFilterOpen}
+        onClose={() => setIsFilterOpen(false)}
+        filterProps={filterProps}
+      />
     </>
   );
 }

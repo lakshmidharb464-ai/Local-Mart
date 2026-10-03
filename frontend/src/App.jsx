@@ -55,10 +55,11 @@ const DashboardRedirect = () => {
 
 const ProtectedRoleRoute = ({ allowedRole, children }) => {
   const { user, isAuthenticated } = useAuth();
+  const location = useLocation();
 
   if (!isAuthenticated) {
     if (allowedRole === 'Customer') {
-      return <Navigate to="/" replace />;
+      return <Navigate to="/" state={{ from: location }} replace />;
     }
     return <UnauthorizedPage />;
   }
@@ -82,7 +83,7 @@ const MainLayout = () => {
   // Checkout gets minimal layout (no full navbar/footer distractions)
   const isCheckoutRoute = location.pathname.startsWith('/checkout');
 
-  const isKnownRoute = ['/', '/products', '/farms', '/checkout', '/order-confirmation', '/dashboard', '/customer', '/farmer', '/delivery', '/admin'].some(path =>
+  const isKnownRoute = ['/', '/products', '/farms', '/cart', '/checkout', '/order-confirmation', '/dashboard', '/customer', '/farmer', '/delivery', '/admin'].some(path =>
     location.pathname === '/' || location.pathname.startsWith(path)
   );
 
@@ -108,6 +109,7 @@ const MainLayout = () => {
               <Route path="/products" element={<ProductsPage />} />
               <Route path="/products/:id" element={<ProductDetailPage />} />
               <Route path="/farms/:id" element={<FarmProfilePage />} />
+              <Route path="/cart" element={<Navigate to="/checkout" replace />} />
               <Route path="/checkout" element={<CheckoutPage />} />
               <Route path="/order-confirmation/:id" element={<OrderConfirmationPage />} />
               <Route path="/dashboard" element={<DashboardRedirect />} />

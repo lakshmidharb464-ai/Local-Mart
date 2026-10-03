@@ -16,7 +16,7 @@
     -moz-osx-font-smoothing: grayscale;
   }
   body {
-    background-color: #F5F2EB;
+    background-color: #F7F5F0;
     color: #1A2E1D;
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
@@ -31,6 +31,16 @@
   }
   p, span, label, input, select, textarea, button {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+  
+  /* Universal Accessible Keyboard Focus-Visible */
+  :focus-visible {
+    outline: 2px solid #2EA672;
+    outline-offset: 2px;
+  }
+  button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+    outline: 2px solid #2EA672;
+    outline-offset: 2px;
   }
 }
 
@@ -883,6 +893,33 @@
 }
 
 /* ───────────────────────────────────────────────
+   Horizontal Scroll Cue Masks (For Mobile Affordance)
+─────────────────────────────────────────────── */
+.scroll-mask-x {
+  mask-image: linear-gradient(to right, transparent, black 16px, black calc(100% - 16px), transparent);
+  -webkit-mask-image: linear-gradient(to right, transparent, black 16px, black calc(100% - 16px), transparent);
+}
+
+.scroll-mask-right {
+  mask-image: linear-gradient(to right, black calc(100% - 24px), transparent);
+  -webkit-mask-image: linear-gradient(to right, black calc(100% - 24px), transparent);
+}
+
+/* ───────────────────────────────────────────────
+   Accessibility: Reduced Motion Preference
+─────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ───────────────────────────────────────────────
    PDF Invoice Print Mode
    Hides the full app UI and shows only #invoice-print-root
 ─────────────────────────────────────────────── */
@@ -894,4 +931,5 @@
     display: block !important;
   }
 }
+
 

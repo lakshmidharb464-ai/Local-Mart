@@ -42,10 +42,10 @@ export const AdminPanel = () => {
   const navigate  = useNavigate();
   const { showToast } = useAuth();
 
-  // ── Dark mode ────────────────────────────────────────────────
+  // ── Theme mode (defaults to light) ───────────────────────────
   const [isDark, setIsDark] = useState(() => {
-    try { return localStorage.getItem('adminDarkMode') !== 'false'; }
-    catch { return true; }
+    try { return localStorage.getItem('adminDarkMode') === 'true'; }
+    catch { return false; }
   });
   const toggleDark = () => {
     setIsDark(prev => {

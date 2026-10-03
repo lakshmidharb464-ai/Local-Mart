@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { productService } from '../services/productService';
 import { orderService } from '../services/orderService';
+import { realtimeService } from '../services/realtimeService';
 import { useAuth } from './AuthContext';
 
 const MarketplaceContext = createContext();
@@ -10,7 +11,7 @@ export const MarketplaceProvider = ({ children }) => {
   const [orders, setOrders] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
-  const { showToast } = useAuth();
+  const { showToast, user } = useAuth();
 
   // Initial load via API Service
   const loadMarketplaceData = useCallback(async () => {
@@ -34,6 +35,42 @@ export const MarketplaceProvider = ({ children }) => {
   useEffect(() => {
     loadMarketplaceData();
   }, [loadMarketplaceData]);
+
+  // Real-Time Event Subscriptions (SSE)
+  useEffect(() => {
+    const unsubStatus = realtimeService.on('ORDER_STATUS_UPDATED', (payload) => {
+      setOrders((prev) =>
+        prev.map((o) => (o.id === payload.orderId ? { ...o, status: payload.status, failureReason: payload.reason || o.failureReason } : o))
+      );
+      if (showToast && payload.status) {
+        showToast(`Order ${payload.orderId} Update`, `Status changed to ${payload.status}`);
+      }
+    });
+
+    const unsubCreated = realtimeService.on('ORDER_CREATED', (payload) => {
+      // Refresh or prepend
+      setOrders((prev) => {
+        if (prev.some((o) => o.id === payload.orderId)) return prev;
+        const newOrderObj = {
+          id: payload.orderId,
+          total: Number(payload.totalAmount),
+          status: payload.status || 'Pending',
+          items: payload.itemsSummary || 'Fresh Farm Items',
+          date: 'Just now',
+          paymentMethod: payload.paymentMethod || 'UPI',
+        };
+        return [newOrderObj, ...prev];
+      });
+      if (user?.role === 'Admin' || user?.role === 'Farmer' || user?.role === 'Delivery') {
+        if (showToast) showToast('New Order Received! 📦', `Order ${payload.orderId} was just placed.`);
+      }
+    });
+
+    return () => {
+      unsubStatus();
+      unsubCreated();
+    };
+  }, [showToast, user?.role]);
 
   // Product CRUD Handlers
   const addProduct = async (productData) => {

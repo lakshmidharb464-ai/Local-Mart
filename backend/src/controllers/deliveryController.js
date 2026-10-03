@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import { query, execute, withTransaction } from '../config/db.js';
+import { realtimeHub } from '../utils/realtimeEvents.js';
 
 /**
  * Delivery Partner Dashboard Overview
@@ -170,6 +171,13 @@ export async function acceptTask(req, res, next) {
       [uuidv4(), id, 'Delivery Accepted', 'Rider accepted dispatch task and is heading to farm.', riderId, 'Delivery']
     );
 
+    // Broadcast live event
+    realtimeHub.broadcastOrderUpdate('ORDER_STATUS_UPDATED', id, {
+      status: 'Accepted',
+      deliveryPartnerId: riderId,
+      actorRole: 'Delivery',
+    });
+
     res.json({ success: true, message: 'Delivery task accepted!' });
   } catch (error) {
     next(error);
@@ -183,32 +191,46 @@ export async function acceptTask(req, res, next) {
 export async function sendLocationBeacon(req, res, next) {
   try {
     const riderId = req.user.id;
-    const { orderId, latitude, longitude, speed = 0, heading = 0 } = req.body;
+    const { orderId, latitude, longitude, lat, lng, speed = 0, heading = 0 } = req.body;
 
-    if (!orderId || !latitude || !longitude) {
-      return res.status(400).json({ success: false, message: 'orderId, latitude, and longitude are required.' });
+    const resolvedLat = latitude !== undefined ? latitude : lat;
+    const resolvedLng = longitude !== undefined ? longitude : lng;
+
+    if (resolvedLat === undefined || resolvedLng === undefined) {
+      return res.status(400).json({ success: false, message: 'Latitude and longitude coordinates are required.' });
     }
 
-    // Upsert into delivery_tracking
-    await execute(
-      `INSERT INTO delivery_tracking (id, order_id, delivery_partner_id, current_lat, current_lng, speed_kmh, heading_deg)
-       VALUES (?, ?, ?, ?, ?, ?, ?)
-       ON DUPLICATE KEY UPDATE
-         current_lat = VALUES(current_lat),
-         current_lng = VALUES(current_lng),
-         speed_kmh = VALUES(speed_kmh),
-         heading_deg = VALUES(heading_deg),
-         last_beacon_at = CURRENT_TIMESTAMP`,
-      [uuidv4(), orderId, riderId, Number(latitude), Number(longitude), Number(speed), Number(heading)]
-    );
-
-    // Update rider profile current coords
+    // 1. Update rider profile current coords
     await execute(
       'UPDATE delivery_profiles SET current_lat = ?, current_lng = ? WHERE user_id = ?',
-      [Number(latitude), Number(longitude), riderId]
+      [Number(resolvedLat), Number(resolvedLng), riderId]
     );
 
-    res.json({ success: true, message: 'Beacon received.' });
+    // 2. If an active order ID is associated, upsert delivery_tracking table
+    if (orderId) {
+      await execute(
+        `INSERT INTO delivery_tracking (id, order_id, delivery_partner_id, current_lat, current_lng, speed_kmh, heading_deg)
+         VALUES (?, ?, ?, ?, ?, ?, ?)
+         ON DUPLICATE KEY UPDATE
+           current_lat = VALUES(current_lat),
+           current_lng = VALUES(current_lng),
+           speed_kmh = VALUES(speed_kmh),
+           heading_deg = VALUES(heading_deg),
+           last_beacon_at = CURRENT_TIMESTAMP`,
+        [uuidv4(), orderId, riderId, Number(resolvedLat), Number(resolvedLng), Number(speed), Number(heading)]
+      );
+
+      // Broadcast real-time beacon coordinate update to subscribers
+      realtimeHub.broadcastGpsBeacon(orderId, {
+        lat: Number(resolvedLat),
+        lng: Number(resolvedLng),
+        speed: Number(speed),
+        heading: Number(heading),
+        riderId,
+      });
+    }
+
+    res.json({ success: true, message: 'Beacon coordinates received.' });
   } catch (error) {
     next(error);
   }
@@ -240,10 +262,11 @@ export async function updateOrderStatus(req, res, next) {
     await execute(
       `UPDATE orders
        SET status = ?,
+           delivery_partner_id = COALESCE(delivery_partner_id, ?),
            proof_photo_url = COALESCE(?, proof_photo_url),
            failure_reason = COALESCE(?, failure_reason)
-       WHERE id = ? AND delivery_partner_id = ?`,
-      [status, proofPhotoUrl || null, failureReason || null, id, riderId]
+       WHERE id = ? AND (delivery_partner_id = ? OR delivery_partner_id IS NULL)`,
+      [status, riderId, proofPhotoUrl || null, failureReason || null, id, riderId]
     );
 
     // If Delivered, increment rider total deliveries
@@ -256,6 +279,15 @@ export async function updateOrderStatus(req, res, next) {
       'INSERT INTO order_timeline (id, order_id, title, description, actor_id, actor_role) VALUES (?, ?, ?, ?, ?, ?)',
       [uuidv4(), id, `Order ${status}`, note || `Delivery state moved to ${status}.`, riderId, 'Delivery']
     );
+
+    // Broadcast live event to customer, farmer, and admin
+    realtimeHub.broadcastOrderUpdate('ORDER_STATUS_UPDATED', id, {
+      status,
+      proofPhotoUrl: proofPhotoUrl || null,
+      failureReason: failureReason || null,
+      deliveryPartnerId: riderId,
+      actorRole: 'Delivery',
+    });
 
     res.json({ success: true, message: `Order status updated to ${status}.` });
   } catch (error) {
@@ -390,6 +422,45 @@ export async function updateDeliveryProfile(req, res, next) {
     );
 
     res.json({ success: true, message: 'Delivery profile updated.' });
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * Submit KYC Verification Document (Driving License, RC, etc.)
+ * POST /api/delivery/kyc
+ */
+export async function submitDeliveryKyc(req, res, next) {
+  try {
+    const riderId = req.user.id;
+    const { docType = 'Driving License', docUrl } = req.body;
+
+    if (!docUrl) {
+      return res.status(400).json({ success: false, message: 'docUrl is required.' });
+    }
+
+    const kycId = uuidv4();
+    await execute(
+      'INSERT INTO kyc_documents (id, user_id, doc_type, doc_url, status) VALUES (?, ?, ?, ?, "Pending")',
+      [kycId, riderId, docType, docUrl]
+    );
+
+    res.status(201).json({ success: true, message: 'KYC Document submitted for verification!', kycId });
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * Get Rider KYC Documents
+ * GET /api/delivery/kyc
+ */
+export async function getDeliveryKyc(req, res, next) {
+  try {
+    const riderId = req.user.id;
+    const documents = await query('SELECT * FROM kyc_documents WHERE user_id = ? ORDER BY created_at DESC', [riderId]);
+    res.json({ success: true, documents });
   } catch (error) {
     next(error);
   }

@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import { query, execute, withTransaction } from '../config/db.js';
+import { realtimeHub } from '../utils/realtimeEvents.js';
 
 /**
  * Place a new order
@@ -179,6 +180,14 @@ export async function createOrder(req, res, next) {
       };
     });
 
+    // Broadcast live order creation event
+    realtimeHub.broadcastOrderUpdate('ORDER_CREATED', orderResult.orderId, {
+      ...orderResult,
+      customerId,
+      addressText,
+      itemsSummary: items.map(i => `${i.name || 'Crop'} (x${i.quantity || 1})`).join(', ')
+    });
+
     res.status(201).json({
       success: true,
       message: 'Order placed successfully!',
@@ -196,9 +205,10 @@ export async function createOrder(req, res, next) {
 export async function getMyOrders(req, res, next) {
   try {
     const customerId = req.user.id;
+    const { filter, status } = req.query;
 
-    const orders = await query(
-      `SELECT 
+    let sql = `
+      SELECT 
         o.*,
         u.name AS delivery_partner_name,
         u.phone AS delivery_partner_phone,
@@ -208,10 +218,24 @@ export async function getMyOrders(req, res, next) {
        LEFT JOIN users u ON o.delivery_partner_id = u.id
        LEFT JOIN order_items oi ON o.id = oi.order_id
        WHERE o.customer_id = ?
-       GROUP BY o.id
-       ORDER BY o.created_at DESC`,
-      [customerId]
-    );
+    `;
+
+    const params = [customerId];
+
+    if (status && status !== 'all') {
+      sql += ` AND o.status = ?`;
+      params.push(status);
+    } else if (filter === 'active') {
+      sql += ` AND o.status IN ("Pending", "Approved", "Packed", "Assigned", "Accepted", "Picked Up", "Out for Delivery")`;
+    } else if (filter === 'delivered') {
+      sql += ` AND o.status = "Delivered"`;
+    } else if (filter === 'cancelled') {
+      sql += ` AND o.status IN ("Cancelled", "Failed")`;
+    }
+
+    sql += ` GROUP BY o.id ORDER BY o.created_at DESC`;
+
+    const orders = await query(sql, params);
 
     // Format orders
     const formatted = orders.map((o) => ({
@@ -439,6 +463,19 @@ export async function updateOrderStatus(req, res, next) {
       [uuidv4(), id, `Status: ${status}`, reason ? `Reason: ${reason}` : `Advanced to ${status}`, actorId, actorRole]
     );
 
+    // Fetch order owner details for targeted real-time delivery
+    const [orderInfo] = await query('SELECT customer_id, delivery_partner_id FROM orders WHERE id = ?', [id]);
+
+    // Broadcast live status update to all connected dashboard roles
+    realtimeHub.broadcastOrderUpdate('ORDER_STATUS_UPDATED', id, {
+      status,
+      reason,
+      actorRole,
+      actorId,
+      customerId: orderInfo?.customer_id,
+      deliveryPartnerId: orderInfo?.delivery_partner_id,
+    });
+
     res.json({ success: true, message: `Order status updated to ${status}.` });
   } catch (error) {
     next(error);
@@ -498,4 +535,25 @@ export async function validateCoupon(req, res, next) {
   } catch (error) {
     next(error);
   }
+}
+
+/**
+ * Global Real-Time SSE Stream for Orders & Dashboard Sync
+ * GET /api/orders/live/stream
+ */
+export function streamOrderEvents(req, res) {
+  const userId = req.user?.id || null;
+  const role = req.user?.role || 'Customer';
+  realtimeHub.registerClient(res, { userId, role });
+}
+
+/**
+ * Single Order Real-Time SSE Stream (for Customer Track Order view)
+ * GET /api/orders/:id/live/stream
+ */
+export function streamSingleOrderEvents(req, res) {
+  const { id } = req.params;
+  const userId = req.user?.id || null;
+  const role = req.user?.role || 'Customer';
+  realtimeHub.registerClient(res, { userId, role, orderId: id });
 }

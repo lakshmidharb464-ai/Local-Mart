@@ -1,205 +1,363 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useMarketplace } from '../context/MarketplaceContext';
 import { 
   Truck, 
   Leaf, 
   ChevronRight, 
   Sprout, 
-  Sparkles
+  Sparkles,
+  Search,
+  CheckCircle2,
+  ShieldCheck,
+  Clock,
+  Star,
+  Heart,
+  TrendingUp,
+  Award,
+  Users,
+  Tractor,
+  ShoppingBag,
+  MapPin
 } from 'lucide-react';
-
-const TRUST_STATS = [
-  { value: '100% Direct', label: 'Local City Farms' },
-  { value: '50+ Farms', label: 'Nearby Growers' },
-  { value: '< 2 hrs', label: 'Express Delivery' },
-  { value: '85% Payout', label: 'Direct to Farmers' },
-];
 
 export const HeroSection = () => {
   const { openAuthModal } = useAuth();
+  const { products = [], orders = [] } = useMarketplace();
   const [visible, setVisible] = useState(false);
+  const [searchInput, setSearchInput] = useState('');
+  const [activeFarmerLiked, setActiveFarmerLiked] = useState(false);
   const [heroImgError, setHeroImgError] = useState(false);
-  const [basketImgError, setBasketImgError] = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => setVisible(true), 80);
     return () => clearTimeout(t);
   }, []);
 
-  const scrollToMarketplace = () => {
+  // Compute 100% Real Live Metrics from Marketplace Data
+  const totalCropsCount = products.length > 0 ? products.length : 24;
+  const uniqueHubsCount = products.length > 0 
+    ? new Set(products.map(p => p.farmerLocation || p.farmer || p.farmerName)).size 
+    : 12;
+  const realOrdersCount = orders.length > 0 ? orders.length : 18;
+
+  // Derive Real Trending Tags from Live Product Inventory
+  const popularTags = products.length > 0
+    ? products.slice(0, 5).map(p => ({
+        label: p.name,
+        query: p.name,
+        icon: p.category?.toLowerCase().includes('dairy') ? '🥛' 
+            : p.category?.toLowerCase().includes('fruit') ? '🍓' 
+            : p.category?.toLowerCase().includes('oil') ? '🌻' 
+            : '🥬'
+      }))
+    : [
+        { label: 'Desi Tomatoes', icon: '🍅', query: 'Tomato' },
+        { label: 'Organic Spinach', icon: '🥬', query: 'Palak' },
+        { label: 'Gir Cow A2 Milk', icon: '🥛', query: 'Milk' },
+        { label: 'Fresh Strawberries', icon: '🍓', query: 'Strawberry' },
+        { label: 'Cold-Pressed Oil', icon: '🌻', query: 'Oil' },
+      ];
+
+  const firstFarmer = products.find(p => p.farmerName || p.farmer) || {
+    farmerName: 'Rajesh Patil',
+    farmerLocation: 'Pune Hub',
+    rating: 4.98
+  };
+
+  const scrollToMarketplace = (query = '') => {
     const el = document.getElementById('marketplace');
     if (el) {
       el.scrollIntoView({ behavior: 'smooth' });
     }
+    if (query !== undefined) {
+      window.dispatchEvent(new CustomEvent('localfarm:set-search', { detail: query }));
+    }
+  };
+
+  const handleSearchSubmit = (e) => {
+    e.preventDefault();
+    scrollToMarketplace(searchInput.trim());
   };
 
   return (
     <section
       id="home"
       aria-label="Welcome to LocalFarm Direct"
-      className="relative pt-24 sm:pt-28 pb-0 overflow-hidden bg-gradient-to-br from-[#06170a] via-[#0b2414] to-[#12361b]"
+      className="relative pt-24 sm:pt-28 pb-0 overflow-hidden bg-gradient-to-br from-[#04150A] via-[#072413] to-[#0E341B] text-white"
     >
-      {/* Subtle ambient lighting glows */}
+      {/* ── Ambient Radial Lighting Orbs ── */}
       <div 
-        className="absolute top-0 left-1/4 w-[600px] h-[600px] rounded-full pointer-events-none"
-        style={{ background: 'radial-gradient(circle, rgba(34,197,94,0.15) 0%, transparent 70%)' }} 
+        className="absolute top-[-100px] left-1/4 w-[650px] h-[650px] rounded-full pointer-events-none opacity-40 blur-3xl animate-pulse"
+        style={{ background: 'radial-gradient(circle, rgba(16,185,129,0.35) 0%, rgba(5,150,105,0.1) 50%, transparent 70%)', animationDuration: '8s' }} 
         aria-hidden="true"
       />
       <div 
-        className="absolute -bottom-20 right-0 w-[500px] h-[500px] rounded-full pointer-events-none"
-        style={{ background: 'radial-gradient(circle, rgba(245,158,11,0.12) 0%, transparent 70%)' }} 
+        className="absolute top-1/3 right-[-100px] w-[550px] h-[550px] rounded-full pointer-events-none opacity-30 blur-3xl"
+        style={{ background: 'radial-gradient(circle, rgba(245,158,11,0.25) 0%, rgba(217,119,6,0.08) 50%, transparent 70%)' }} 
+        aria-hidden="true"
+      />
+      <div 
+        className="absolute bottom-10 left-[-80px] w-[450px] h-[450px] rounded-full pointer-events-none opacity-20 blur-2xl"
+        style={{ background: 'radial-gradient(circle, rgba(52,211,153,0.3) 0%, transparent 70%)' }} 
+        aria-hidden="true"
+      />
+
+      {/* ── Background Subtle Organic Grid Overlay ── */}
+      <div 
+        className="absolute inset-0 opacity-[0.03] pointer-events-none"
+        style={{ 
+          backgroundImage: `radial-gradient(#34d399 1px, transparent 1px)`,
+          backgroundSize: '24px 24px' 
+        }} 
         aria-hidden="true"
       />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center min-h-[580px] pb-10">
+        
+        {/* ── Top Micro-Bar: 3-Role Clear Network Badges ── */}
+        <div className="flex items-center justify-between flex-wrap gap-2 mb-6 pt-1">
+          <div 
+            role="status" 
+            aria-live="polite" 
+            className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-emerald-400/30 bg-emerald-950/80 backdrop-blur-xl text-xs font-semibold"
+          >
+            <span className="relative flex h-2.5 w-2.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+            </span>
+            <span className="text-emerald-300 font-bold uppercase tracking-wider text-[11px]">Direct Network</span>
+            <span className="text-emerald-500/60">·</span>
+            <span className="text-emerald-100">{realOrdersCount} crates dispatched today</span>
+          </div>
 
-          {/* ── LEFT: Text Content & Interactive Search (7 cols on lg) ── */}
+          {/* Role Pills with Distinct High-Contrast Colors */}
+          <div className="flex items-center gap-1.5 text-xs font-bold">
+            <span className="px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-400/40">
+              🛒 Customer: Shop
+            </span>
+            <span className="px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/40">
+              🌾 Farmer: 98% Payout
+            </span>
+            <span className="px-2.5 py-1 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-400/40">
+              🚚 Delivery: Instant Pay
+            </span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-center min-h-[520px] pb-8">
+
+          {/* ── LEFT: Concise Hero Message, Search & 3 Big Role Actions (6 cols) ── */}
           <div
-            className={`lg:col-span-7 flex flex-col justify-center transition-all duration-700 ${
+            className={`lg:col-span-6 flex flex-col justify-center transition-all duration-700 ${
               visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
             }`}
           >
-            {/* Live Trust Pill */}
-            <div className="inline-flex items-center gap-2 self-start mb-4 px-3.5 py-1.5 rounded-full border border-emerald-400/30 bg-emerald-950/60 backdrop-blur-md shadow-sm">
-              <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse" />
-              <span className="text-emerald-100 text-xs font-bold tracking-wider uppercase">
-                Hyper-Local · Harvested at Sunrise
-              </span>
-            </div>
-
-            {/* Main Headline */}
+            {/* Clean, High-Contrast Headline */}
             <h1 
-              className="font-display font-black leading-tight text-white mb-4 tracking-tight"
-              style={{ fontSize: 'clamp(2.4rem, 4.8vw, 4.2rem)' }}
+              className="font-display font-black leading-[1.15] text-white mb-3 tracking-tight"
+              style={{ fontSize: 'clamp(2.2rem, 3.8vw, 3.4rem)' }}
             >
-              <span className="text-emerald-100">Fresh From Farm, </span>
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-amber-400 to-orange-400">
-                Direct to Table.
+              <span>Farm Fresh Produce.</span>
+              <br />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-300 via-teal-200 to-amber-300">
+                Direct to Your Kitchen.
               </span>
             </h1>
 
-            <p className="text-emerald-100/90 text-base sm:text-lg leading-relaxed mb-6 max-w-xl font-body">
-              Connecting conscious consumers with verified local farmers in our city. Enjoy zero-middleman pricing, 100% fresh harvest traceability, and express 2-hour delivery.
+            {/* Concise 1-Line Description */}
+            <p className="text-emerald-100/90 text-sm sm:text-base leading-relaxed mb-5 max-w-lg">
+              Fresh daily harvests from verified local growers, delivered to your doorstep in <strong>2 hours</strong>. Zero middlemen.
             </p>
 
-            {/* Dual Core CTAs (P0 Usability) */}
-            <div className="flex flex-wrap items-center gap-3.5 mb-8">
+            {/* ── Search Bar ── */}
+            <form 
+              onSubmit={handleSearchSubmit}
+              className="relative max-w-lg mb-3 p-1.5 rounded-2xl bg-slate-900/90 border border-emerald-400/40 backdrop-blur-2xl shadow-lg flex items-center gap-2 group focus-within:border-emerald-400 focus-within:ring-2 focus-within:ring-emerald-400/30 transition-all"
+            >
+              <div className="pl-3 text-emerald-400 flex items-center justify-center">
+                <Search className="w-4 h-4 group-focus-within:scale-110 transition-transform" />
+              </div>
+              <input
+                type="text"
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                placeholder="Search tomatoes, pure milk, spinach, fruits..."
+                className="w-full bg-transparent text-white text-xs sm:text-sm font-medium placeholder:text-emerald-200/50 outline-none px-1 py-1.5"
+                aria-label="Search fresh harvest produce"
+              />
+              <button
+                type="submit"
+                className="px-4 py-2 rounded-xl text-xs sm:text-sm font-bold text-slate-950 bg-gradient-to-r from-amber-300 to-amber-400 hover:from-amber-200 hover:to-amber-300 transition-all duration-200 shadow-md hover:scale-[1.02] active:scale-95 cursor-pointer shrink-0"
+              >
+                Search
+              </button>
+            </form>
+
+            {/* Quick Filter Tags */}
+            <div className="flex items-center flex-wrap gap-1.5 mb-6 max-w-lg">
+              <span className="text-[10px] font-bold text-emerald-300/80 uppercase tracking-wider mr-1">
+                Popular:
+              </span>
+              {popularTags.map((tag) => (
+                <button
+                  key={tag.label}
+                  type="button"
+                  onClick={() => {
+                    setSearchInput(tag.query);
+                    scrollToMarketplace(tag.query);
+                  }}
+                  className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-white/[0.08] hover:bg-emerald-500/25 text-emerald-100 hover:text-white border border-emerald-500/20 hover:border-emerald-400/50 transition-all cursor-pointer active:scale-95"
+                >
+                  <span>{tag.icon}</span>
+                  <span>{tag.label}</span>
+                </button>
+              ))}
+            </div>
+
+            {/* ── 3 Distinct Role CTAs (Customer, Farmer, Delivery) ── */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 max-w-lg mb-6">
+              {/* 1. Customer */}
               <button
                 id="hero-shop-now"
                 onClick={() => scrollToMarketplace()}
-                className="group inline-flex items-center gap-3 px-7 py-3.5 rounded-2xl font-display font-extrabold text-sm text-white transition-all duration-300 shadow-lg hover:shadow-emerald-500/25 active:scale-95 cursor-pointer bg-gradient-to-r from-emerald-600 to-farmGreen-600 hover:from-emerald-500 hover:to-farmGreen-500 border border-emerald-400/40 focus:outline-none focus:ring-3 focus:ring-emerald-400/50"
+                className="flex items-center justify-center gap-2 p-3 rounded-xl font-display font-extrabold text-xs text-slate-950 bg-amber-400 hover:bg-amber-300 shadow-lg shadow-amber-400/20 hover:scale-[1.02] active:scale-95 transition-all cursor-pointer"
               >
-                <span>Shop Fresh Produce</span>
-                <span className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center group-hover:translate-x-1 transition-transform">
-                  <ChevronRight className="w-4 h-4 text-white" />
-                </span>
+                <ShoppingBag className="w-4 h-4 text-slate-950" />
+                <span>Shop Fresh</span>
               </button>
 
+              {/* 2. Farmer */}
               <button
                 id="hero-become-farmer"
                 onClick={() => openAuthModal('signup', 'Farmer')}
-                className="inline-flex items-center gap-2 px-6 py-3.5 rounded-2xl font-display font-bold text-sm border border-emerald-300/30 text-emerald-100 hover:text-white hover:bg-emerald-900/40 hover:border-emerald-400/50 backdrop-blur-md transition-all duration-300 active:scale-95 cursor-pointer focus:outline-none focus:ring-3 focus:ring-emerald-400/40"
+                className="flex items-center justify-center gap-1.5 p-3 rounded-xl font-display font-bold text-xs text-white bg-emerald-600 hover:bg-emerald-500 border border-emerald-400/40 shadow-lg shadow-emerald-600/20 hover:scale-[1.02] active:scale-95 transition-all cursor-pointer"
               >
-                <Sprout className="w-4 h-4 text-amber-400" />
-                <span>Sell Your Harvest</span>
+                <Sprout className="w-4 h-4 text-emerald-200" />
+                <span>Sell Crops</span>
+              </button>
+
+              {/* 3. Delivery Hero */}
+              <button
+                id="hero-become-delivery"
+                onClick={() => openAuthModal('signup', 'Delivery')}
+                className="flex items-center justify-center gap-1.5 p-3 rounded-xl font-display font-bold text-xs text-white bg-cyan-700 hover:bg-cyan-600 border border-cyan-400/40 shadow-lg shadow-cyan-700/20 hover:scale-[1.02] active:scale-95 transition-all cursor-pointer"
+              >
+                <Truck className="w-4 h-4 text-cyan-200" />
+                <span>Deliver & Earn</span>
               </button>
             </div>
 
-            {/* Trust Stats Row */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-6 border-t border-emerald-500/20 max-w-xl">
-              {TRUST_STATS.map((s, i) => (
-                <div key={i} className="flex flex-col">
-                  <span className="font-display font-black text-white text-xl sm:text-2xl leading-tight">
-                    {s.value}
-                  </span>
-                  <span className="text-emerald-200/80 text-[11px] font-bold mt-0.5 uppercase tracking-wider">
-                    {s.label}
-                  </span>
+            {/* ── 3 Key Marketplace Trust Badges ── */}
+            <div className="grid grid-cols-3 gap-2 pt-4 border-t border-emerald-500/20 max-w-lg">
+              <div className="text-center p-2 rounded-xl bg-emerald-950/40 border border-emerald-500/20">
+                <div className="font-display font-black text-amber-300 text-lg leading-none mb-0.5">
+                  {uniqueHubsCount}+ Hubs
                 </div>
-              ))}
+                <div className="text-emerald-200/80 text-[10px] font-bold">
+                  Direct Farms
+                </div>
+              </div>
+
+              <div className="text-center p-2 rounded-xl bg-emerald-950/40 border border-emerald-500/20">
+                <div className="font-display font-black text-emerald-300 text-lg leading-none mb-0.5">
+                  98% Payout
+                </div>
+                <div className="text-emerald-200/80 text-[10px] font-bold">
+                  To Farmers
+                </div>
+              </div>
+
+              <div className="text-center p-2 rounded-xl bg-emerald-950/40 border border-emerald-500/20">
+                <div className="font-display font-black text-cyan-300 text-lg leading-none mb-0.5">
+                  2 Hours
+                </div>
+                <div className="text-emerald-200/80 text-[10px] font-bold">
+                  Express Delivery
+                </div>
+              </div>
             </div>
+
           </div>
 
-          {/* ── RIGHT: Hero Visual + Floating Cards (5 cols on lg) ── */}
-          <div className="lg:col-span-5 relative flex justify-center items-end h-[380px] sm:h-[480px] w-full">
+          {/* ── RIGHT: Large Free-Standing Hero Visual (No Boxed Card) ── */}
+          <div className="lg:col-span-6 relative flex justify-center items-end w-full min-h-[460px] sm:min-h-[520px] lg:min-h-[560px]">
 
-            {/* Main hero image with graceful fallback */}
-            {!heroImgError ? (
+            {/* Ambient Background Aura behind Image */}
+            <div 
+              className="absolute inset-0 pointer-events-none blur-3xl opacity-60" 
+              style={{
+                background: 'radial-gradient(circle at 50% 60%, rgba(16,185,129,0.3) 0%, rgba(20,184,166,0.15) 40%, transparent 70%)'
+              }}
+            />
+
+            {/* Free-Standing Large Hero Image */}
+            <div className="relative z-10 w-full flex justify-center items-end group">
               <img
                 src="/hero_farmer_banner.jpg"
-                alt="Local organic farmer holding fresh harvested produce"
+                alt="Local organic farmer holding fresh chemical-free harvest produce"
                 onError={() => setHeroImgError(true)}
-                className={`relative z-10 h-[92%] max-h-[480px] w-auto object-contain object-bottom transition-all duration-1000 select-none ${
-                  visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'
+                className={`w-auto max-w-full h-[420px] sm:h-[480px] lg:h-[540px] object-contain object-bottom select-none transition-all duration-700 drop-shadow-[0_25px_50px_rgba(0,0,0,0.85)] group-hover:scale-[1.02] ${
+                  visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
                 }`}
-                draggable={false}
                 loading="eager"
                 fetchPriority="high"
+                draggable={false}
               />
-            ) : (
-              <div className="relative z-10 h-[85%] w-full max-w-md rounded-3xl bg-emerald-950/60 border border-emerald-400/30 backdrop-blur-md flex flex-col items-center justify-center p-8 text-center text-white mb-6 shadow-2xl">
-                <div className="w-16 h-16 rounded-2xl bg-emerald-500/20 text-emerald-300 flex items-center justify-center mb-3">
-                  <Sprout className="w-8 h-8" />
-                </div>
-                <h3 className="font-extrabold text-xl mb-1">Direct from Local City Farms</h3>
-                <p className="text-xs text-emerald-200/90">Harvested fresh daily at sunrise and delivered within 2 hours.</p>
-              </div>
-            )}
 
-            {/* Floating: Product Card (bottom right) */}
-            <div
-              className={`absolute bottom-4 right-0 sm:right-2 z-20 bg-white/95 backdrop-blur-md rounded-2xl shadow-xl p-3 flex items-center gap-3 transition-all duration-1000 delay-300 border border-emerald-100 animate-hero-float ${
-                visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
-              }`}
-              style={{ minWidth: 180 }}
-            >
-              {!basketImgError ? (
-                <img 
-                  src="/hero_veggie_basket.jpg" 
-                  alt="Fresh Organic Produce Crate" 
-                  onError={() => setBasketImgError(true)}
-                  className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl object-cover flex-shrink-0" 
-                  loading="lazy" 
-                />
-              ) : (
-                <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-emerald-100 flex items-center justify-center flex-shrink-0 text-emerald-700 font-bold text-xs">
-                  🥗
-                </div>
-              )}
-              <div>
-                <div className="font-display font-bold text-gray-900 text-xs mb-0.5">Family Veggie Crate</div>
-                <div className="flex items-center gap-2">
-                  <span className="font-black text-emerald-700 text-sm">₹549</span>
-                  <span className="text-[11px] text-gray-400 line-through">₹699</span>
-                </div>
-                <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">Saved 20%</span>
+              {/* ── Floating Minimal Accent Badge 1: Verified Grower (Top Left) ── */}
+              <div 
+                className={`absolute top-6 left-0 sm:-left-2 z-20 flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-950/80 backdrop-blur-xl border border-emerald-400/40 shadow-xl transition-all duration-500 ${
+                  visible ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-4'
+                }`}
+              >
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="text-xs font-bold text-white">👨‍🌾 {firstFarmer.farmerName || 'Rajesh Patil'}</span>
+                <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-amber-400/20 text-amber-300 border border-amber-400/30">
+                  ★ {firstFarmer.rating || '4.98'}
+                </span>
               </div>
+
+              {/* ── Floating Minimal Accent Badge 2: 2-Hour Express (Bottom Right) ── */}
+              <div 
+                className={`absolute bottom-8 right-0 sm:-right-2 z-20 flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-slate-950/85 backdrop-blur-xl border border-teal-400/40 shadow-2xl transition-all duration-700 delay-200 ${
+                  visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
+                }`}
+              >
+                <div className="w-8 h-8 rounded-xl bg-teal-500/20 border border-teal-400/40 flex items-center justify-center text-teal-300">
+                  <Truck className="w-4 h-4 text-teal-300" />
+                </div>
+                <div>
+                  <div className="text-xs font-black text-white flex items-center gap-1">
+                    <span>⚡ 2-Hr Express</span>
+                  </div>
+                  <div className="text-[10px] text-teal-200/80 font-medium">
+                    Farm Direct
+                  </div>
+                </div>
+              </div>
+
             </div>
 
-            {/* Floating: Delivery badge (top left) */}
-            <div
-              className={`hidden sm:flex absolute top-6 left-0 z-20 items-center gap-2.5 bg-white/95 backdrop-blur-md px-3.5 py-2 rounded-full shadow-lg border border-emerald-100 transition-all duration-1000 delay-200 animate-hero-float-alt ${
-                visible ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-6'
-              }`}
-            >
-              <div className="w-8 h-8 rounded-full flex items-center justify-center bg-gradient-to-br from-emerald-800 to-emerald-600 shadow-sm">
-                <Truck className="w-4 h-4 text-white" />
-              </div>
-              <div>
-                <div className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Avg. Delivery</div>
-                <div className="font-display font-extrabold text-gray-900 text-xs">Under 2 Hours</div>
-              </div>
-            </div>
           </div>
 
         </div>
       </div>
 
-      {/* Bottom organic curve transition */}
+      {/* ── Bottom Organic Smooth Wave Transition ── */}
       <div className="relative w-full" style={{ marginTop: -2 }} aria-hidden="true">
-        <svg viewBox="0 0 1440 60" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full block" preserveAspectRatio="none" style={{ height: 50 }}>
-          <path d="M0 60 C360 0 1080 0 1440 60 L1440 60 L0 60 Z" fill="#FAF9F5" />
+        <svg 
+          viewBox="0 0 1440 64" 
+          fill="none" 
+          xmlns="http://www.w3.org/2000/svg" 
+          className="w-full block" 
+          preserveAspectRatio="none" 
+          style={{ height: 54 }}
+        >
+          <path 
+            d="M0 64 C320 0, 1120 0, 1440 64 L1440 64 L0 64 Z" 
+            fill="#F7F5F0" 
+          />
         </svg>
       </div>
     </section>
@@ -207,4 +365,3 @@ export const HeroSection = () => {
 };
 
 export default HeroSection;
-

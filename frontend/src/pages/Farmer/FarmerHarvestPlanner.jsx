@@ -61,21 +61,35 @@ export const FarmerHarvestPlanner = () => {
     }
   ];
 
+  // Data Normalization helper (supports both MySQL snake_case and UI camelCase)
+  const normalizePlan = (item) => ({
+    id: item?.id || `h-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+    name: item?.crop_name || item?.name || 'Seasonal Crop',
+    startDate: item?.start_date ? String(item.start_date).substring(0, 10) : (item?.startDate || ''),
+    endDate: item?.end_date ? String(item.end_date).substring(0, 10) : (item?.endDate || ''),
+    expectedVolume: Number(item?.expected_volume ?? item?.expectedVolume ?? 0),
+    currentYield: Number(item?.current_yield ?? item?.currentYield ?? 0),
+    status: item?.status || 'Active',
+    buyerNotified: Boolean(item?.buyer_notified ?? item?.buyerNotified),
+    lastBroadcastMsg: item?.last_broadcast_msg || item?.lastBroadcastMsg || ''
+  });
+
   // Primary State with backend sync & localStorage fallback
   const [seasons, setSeasons] = useState(() => {
     try {
       const saved = localStorage.getItem('localfarm_harvest_seasons');
-      return saved ? JSON.parse(saved) : defaultSeasons;
+      const parsed = saved ? JSON.parse(saved) : defaultSeasons;
+      return Array.isArray(parsed) ? parsed.map(normalizePlan) : defaultSeasons.map(normalizePlan);
     } catch {
-      return defaultSeasons;
+      return defaultSeasons.map(normalizePlan);
     }
   });
 
   useEffect(() => {
     farmerService.getHarvestPlans()
       .then(plans => {
-        if (plans && plans.length > 0) {
-          setSeasons(plans);
+        if (Array.isArray(plans) && plans.length > 0) {
+          setSeasons(plans.map(normalizePlan));
         }
       })
       .catch(err => console.warn('[HarvestPlanner] Using local plans:', err));
@@ -103,8 +117,8 @@ export const FarmerHarvestPlanner = () => {
   // Dashboard Stats
   const stats = useMemo(() => {
     const active = seasons.filter(s => s.status === 'Active').length;
-    const totalYield = seasons.reduce((sum, s) => sum + s.expectedVolume, 0);
-    const completedYield = seasons.reduce((sum, s) => sum + s.currentYield, 0);
+    const totalYield = seasons.reduce((sum, s) => sum + (s.expectedVolume || 0), 0);
+    const completedYield = seasons.reduce((sum, s) => sum + (s.currentYield || 0), 0);
     const progressPercent = totalYield > 0 ? Math.round((completedYield / totalYield) * 100) : 0;
     return { active, totalYield, completedYield, progressPercent };
   }, [seasons]);
@@ -133,25 +147,29 @@ export const FarmerHarvestPlanner = () => {
     return { startCol, endCol };
   };
 
-  const getCategoryColor = (name) => {
-    const n = name.toLowerCase();
-    if (n.includes('mango') || n.includes('fruit')) {
+  const getCategoryColor = (cropName = '') => {
+    const n = String(cropName || '').toLowerCase();
+    if (n.includes('mango') || n.includes('fruit') || n.includes('apple') || n.includes('berry')) {
       return 'from-amber-400 to-orange-500 text-amber-950';
     }
-    if (n.includes('tomato') || n.includes('vegetable')) {
+    if (n.includes('tomato') || n.includes('vegetable') || n.includes('chilli')) {
       return 'from-red-500 to-rose-600 text-white';
     }
-    if (n.includes('salad') || n.includes('greens') || n.includes('spinach')) {
+    if (n.includes('salad') || n.includes('greens') || n.includes('spinach') || n.includes('hydroponic')) {
       return 'from-emerald-500 to-teal-600 text-white';
     }
     return 'from-teal-600 to-emerald-700 text-white';
   };
 
-  const getCropEmoji = (name) => {
-    const n = name.toLowerCase();
-    if (n.includes('mango') || n.includes('fruit')) return '🥭';
-    if (n.includes('tomato') || n.includes('vegetable')) return '🍅';
-    if (n.includes('salad') || n.includes('greens') || n.includes('spinach')) return '🥬';
+  const getCropEmoji = (cropName = '') => {
+    const n = String(cropName || '').toLowerCase();
+    if (n.includes('mango')) return '🥭';
+    if (n.includes('apple')) return '🍎';
+    if (n.includes('berry') || n.includes('straw')) return '🍓';
+    if (n.includes('tomato')) return '🍅';
+    if (n.includes('carrot')) return '🥕';
+    if (n.includes('salad') || n.includes('greens') || n.includes('spinach') || n.includes('lettuce')) return '🥬';
+    if (n.includes('milk') || n.includes('dairy')) return '🥛';
     return '🌱';
   };
 
@@ -159,6 +177,7 @@ export const FarmerHarvestPlanner = () => {
     e.preventDefault();
     const newSeason = {
       id: `h-${Date.now()}`,
+      cropName: name,
       name,
       startDate,
       endDate,
@@ -169,11 +188,16 @@ export const FarmerHarvestPlanner = () => {
       lastBroadcastMsg: ''
     };
     try {
-      await farmerService.createHarvestPlan(newSeason).catch(err => console.warn('Sync plan error:', err));
+      await farmerService.createHarvestPlan({
+        cropName: name,
+        startDate,
+        endDate,
+        expectedVolume: Number(expectedVolume)
+      }).catch(err => console.warn('Sync plan error:', err));
     } catch (e) {
       console.warn('Harvest plan sync error:', e);
     }
-    setSeasons(prev => [...prev, newSeason]);
+    setSeasons(prev => [...prev, normalizePlan(newSeason)]);
     setName('');
     setStartDate('');
     setEndDate('');
@@ -194,14 +218,14 @@ export const FarmerHarvestPlanner = () => {
 
   const handleStartBroadcast = (id) => {
     const target = seasons.find(s => s.id === id);
-    setBroadcastMsg(`Fresh ${target.name} harvest begins soon! Subscriptions are now open. Order now for direct doorstep morning delivery.`);
+    setBroadcastMsg(`Fresh ${target?.name || 'crop'} harvest begins soon! Subscriptions are now open. Order now for direct doorstep morning delivery.`);
     setBroadcastingId(id);
   };
 
   const handleSendBroadcast = async (e) => {
     e.preventDefault();
     try {
-      await farmerService.broadcastHarvestAlert({ planId: broadcastingId, message: broadcastMsg }).catch(err => console.warn('Sync broadcast error:', err));
+      await farmerService.broadcastHarvestAlert(broadcastingId, broadcastMsg).catch(err => console.warn('Sync broadcast error:', err));
     } catch (e) {
       console.warn('Broadcast sync error:', e);
     }

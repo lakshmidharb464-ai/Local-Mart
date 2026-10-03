@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
+import { realtimeService } from '../../services/realtimeService';
 import { 
   Navigation, 
   MapPin, 
@@ -161,6 +162,26 @@ export const DeliveryTracking = ({ orders = [], selectedOrder, setSelectedOrder,
   const [osrmRouteCoords, setOsrmRouteCoords] = useState([]);
   const [osrmDistanceKm, setOsrmDistanceKm] = useState(null);
   const [osrmDurationMins, setOsrmDurationMins] = useState(null);
+
+  // Live Real-Time Telemetry Subscription
+  useEffect(() => {
+    if (!currentOrder?.orderId && !currentOrder?.id) return;
+    const activeId = currentOrder.orderId || currentOrder.id;
+    const unsub = realtimeService.subscribeToOrder(
+      activeId,
+      (beacon) => {
+        if (beacon.lat && beacon.lng && riderMarkerRef.current) {
+          riderMarkerRef.current.setLatLng([beacon.lat, beacon.lng]);
+        }
+      },
+      (statusData) => {
+        if (showToast && statusData.status) {
+          showToast(`Order Status Live: ${statusData.status}`, `Order is now ${statusData.status}`);
+        }
+      }
+    );
+    return unsub;
+  }, [currentOrder?.id, currentOrder?.orderId, showToast]);
 
   // Refs
   const leafletMapRef = useRef(null);

@@ -122,6 +122,18 @@ export const farmerService = {
   },
 
   /**
+   * Broadcast harvest alert to subscribers
+   * POST /api/farmer/harvest-plans/:id/broadcast
+   */
+  async broadcastHarvestAlert(id, message) {
+    const res = await apiClient(`/farmer/harvest-plans/${id}/broadcast`, {
+      method: 'POST',
+      body: { message },
+    });
+    return res;
+  },
+
+  /**
    * Get inventory batches
    * GET /api/farmer/inventory/batches
    */
@@ -140,6 +152,21 @@ export const farmerService = {
       body: payoutData,
     });
     return res;
+  },
+
+  /**
+   * Upload image/document to Cloudinary
+   * POST /api/media/upload
+   */
+  async uploadImage(file, folder = 'farmer-products') {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('folder', folder);
+    const res = await apiClient('/media/upload', {
+      method: 'POST',
+      body: formData,
+    });
+    return res?.secure_url || res?.url || null;
   },
 };
 

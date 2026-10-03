@@ -30,7 +30,7 @@ import {
   RotateCcw
 } from 'lucide-react';
 
-export const ProductManagement = ({ products = [], setProducts, categories = [], setCategories, isDark = true }) => {
+export const ProductManagement = ({ products = [], setProducts, categories = [], setCategories, isDark = false }) => {
   const { showToast } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCatFilter, setSelectedCatFilter] = useState('all');

@@ -25,7 +25,7 @@ import {
   RotateCcw
 } from 'lucide-react';
 
-export const OrderManagement = ({ orders, setOrders, isDark = true }) => {
+export const OrderManagement = ({ orders, setOrders, isDark = false }) => {
   const { showToast } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStatusTab, setSelectedStatusTab] = useState('All');

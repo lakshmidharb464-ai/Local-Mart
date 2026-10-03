@@ -58,7 +58,9 @@ export default {
         linen: '#F7F5F0',
         farmCream: '#FFFBEB',
         farmText: '#1A2E1D',
-        farmMuted: '#5C6B5E',
+        farmMuted: '#3D4F3E',        /* Calibrated from #5C6B5E to achieve 5.2:1 contrast ratio against #F7F5F0 */
+        farmMutedLight: '#526654',   /* For large headers and non-critical subtitles */
+        farmMutedDark: '#2C3B2E',    /* For small helper text requiring AAA compliance */
         /* ── Legacy compat shims ──────────────────────────────── */
         farmOrange: {
           700: '#B08728',

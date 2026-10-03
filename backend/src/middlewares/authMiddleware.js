@@ -2,29 +2,38 @@ import jwt from 'jsonwebtoken';
 import { ENV } from '../config/env.js';
 import { query } from '../config/db.js';
 
+function extractToken(req) {
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    return authHeader.split(' ')[1];
+  }
+  if (req.cookies && req.cookies.localfarm_token) {
+    return req.cookies.localfarm_token;
+  }
+  return null;
+}
+
 /**
- * Middleware to verify JWT Bearer Token
+ * Middleware to verify JWT Bearer Token or Cookie
  */
 export async function verifyToken(req, res, next) {
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+  const token = extractToken(req);
+  if (!token) {
     return res.status(401).json({
       success: false,
-      message: 'Access denied. No authorization token provided.',
+      message: 'Access denied. No authorization token or session cookie provided.',
     });
   }
-
-  const token = authHeader.split(' ')[1];
 
   try {
     const decoded = jwt.verify(token, ENV.JWT.SECRET);
     
-    // Verify user still exists and is active in DB
-    const users = await query('SELECT id, name, email, role, is_active FROM users WHERE id = ?', [decoded.id]);
+    // Verify user exists and check token in DB
+    const users = await query('SELECT id, name, email, role, is_active, auth_token FROM users WHERE id = ?', [decoded.id]);
     if (!users || users.length === 0) {
       return res.status(401).json({
         success: false,
-        message: 'Invalid session. User not found.',
+        message: 'Invalid session. User not found in database.',
       });
     }
 
@@ -33,6 +42,15 @@ export async function verifyToken(req, res, next) {
       return res.status(403).json({
         success: false,
         message: 'Your account has been deactivated. Please contact support.',
+      });
+    }
+
+    // Database Token Existence Check (Profile-based session validation)
+    // If auth_token is NULL (logged out) or does not match current token, session is invalid
+    if (!user.auth_token || user.auth_token !== token) {
+      return res.status(401).json({
+        success: false,
+        message: 'Session has been invalidated or expired. Please sign in again.',
       });
     }
 
@@ -71,20 +89,22 @@ export function requireRole(...roles) {
 }
 
 /**
- * Optional Authentication (attaches user if valid token exists, doesn't block otherwise)
+ * Optional Authentication (attaches user if valid token exists in headers/cookies and matches DB, doesn't block otherwise)
  */
 export async function optionalAuth(req, res, next) {
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+  const token = extractToken(req);
+  if (!token) {
     return next();
   }
 
-  const token = authHeader.split(' ')[1];
   try {
     const decoded = jwt.verify(token, ENV.JWT.SECRET);
-    const users = await query('SELECT id, name, email, role, is_active FROM users WHERE id = ?', [decoded.id]);
+    const users = await query('SELECT id, name, email, role, is_active, auth_token FROM users WHERE id = ?', [decoded.id]);
     if (users && users.length > 0 && users[0].is_active) {
-      req.user = users[0];
+      // Must have active matching auth_token in DB
+      if (users[0].auth_token && users[0].auth_token === token) {
+        req.user = users[0];
+      }
     }
   } catch (err) {
     // Ignore invalid token for optional auth

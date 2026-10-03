@@ -38,6 +38,9 @@ export async function uploadMedia(req, res, next) {
       return res.json({
         success: true,
         message: 'File uploaded successfully.',
+        url: results[0].secure_url,
+        secure_url: results[0].secure_url,
+        public_id: results[0].public_id,
         media: results[0],
       });
     }
@@ -45,6 +48,7 @@ export async function uploadMedia(req, res, next) {
     res.json({
       success: true,
       message: `${results.length} files uploaded successfully.`,
+      urls: results.map((r) => r.secure_url),
       media: results,
     });
   } catch (error) {

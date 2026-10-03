@@ -6,10 +6,16 @@ import {
   updateOrderStatus,
   trackOrder,
   validateCoupon,
+  streamOrderEvents,
+  streamSingleOrderEvents,
 } from '../controllers/orderController.js';
 import { verifyToken, optionalAuth } from '../middlewares/authMiddleware.js';
 
 const router = Router();
+
+// Live Real-Time SSE Streams
+router.get('/orders/live/stream', optionalAuth, streamOrderEvents);
+router.get('/orders/:id/live/stream', optionalAuth, streamSingleOrderEvents);
 
 // Order creation & customer history
 router.get('/orders', optionalAuth, getOrders);

@@ -190,7 +190,7 @@ const ProgressRow = ({ item, idx, maxSales, isDark }) => {
   );
 };
 
-export const ReportsAnalytics = ({ isDark = true }) => {
+export const ReportsAnalytics = ({ isDark = false }) => {
   const { showToast } = useAuth();
   const [timePeriod, setTimePeriod] = useState('2026 YTD');
   const [reportsData, setReportsData] = useState(null);
@@ -423,7 +423,7 @@ export const ReportsAnalytics = ({ isDark = true }) => {
                   <div className={`flex items-center gap-1 font-extrabold px-3 py-1 rounded-full border ${
                     isDark ? 'adm-badge-gold' : 'bg-amber-100 text-amber-900 border-amber-300'
                   }`}>
-                    <Star className="w-3.5 h-3.5 fill-current" />
+                    <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
                     <span>{f.rating}</span>
                   </div>
                 </div>

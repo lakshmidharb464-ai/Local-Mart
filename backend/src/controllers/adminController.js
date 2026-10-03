@@ -82,8 +82,10 @@ export async function moderateProduct(req, res, next) {
  */
 export async function getAdminOrders(req, res, next) {
   try {
-    const orders = await query(
-      `SELECT 
+    const { status, filter } = req.query;
+
+    let sql = `
+      SELECT 
         o.*,
         cu.name AS customer_name,
         cu.email AS customer_email,
@@ -94,11 +96,31 @@ export async function getAdminOrders(req, res, next) {
        JOIN users cu ON o.customer_id = cu.id
        LEFT JOIN users ru ON o.delivery_partner_id = ru.id
        LEFT JOIN order_items oi ON o.id = oi.order_id
-       GROUP BY o.id
-       ORDER BY o.created_at DESC`
-    );
+    `;
 
-    res.json({ success: true, orders });
+    const whereClauses = [];
+    const params = [];
+
+    if (status && status !== 'all') {
+      whereClauses.push('o.status = ?');
+      params.push(status);
+    } else if (filter === 'active') {
+      whereClauses.push('o.status IN ("Pending", "Approved", "Packed", "Assigned", "Accepted", "Picked Up", "Out for Delivery")');
+    } else if (filter === 'delivered') {
+      whereClauses.push('o.status = "Delivered"');
+    } else if (filter === 'cancelled') {
+      whereClauses.push('o.status IN ("Cancelled", "Failed")');
+    }
+
+    if (whereClauses.length > 0) {
+      sql += ` WHERE ${whereClauses.join(' AND ')}`;
+    }
+
+    sql += ` GROUP BY o.id ORDER BY o.created_at DESC`;
+
+    const orders = await query(sql, params);
+
+    res.json({ success: true, count: orders.length, orders });
   } catch (error) {
     next(error);
   }
@@ -160,7 +182,8 @@ export async function getAdminFarmers(req, res, next) {
 export async function verifyFarmer(req, res, next) {
   try {
     const { id } = req.params;
-    const { approvalStatus, accountStatus, badge } = req.body;
+    const { approvalStatus, accountStatus, badge, status } = req.body;
+    const resolvedApprovalStatus = approvalStatus || status || null;
     const adminId = req.user.id;
 
     await execute(
@@ -169,12 +192,12 @@ export async function verifyFarmer(req, res, next) {
            account_status = COALESCE(?, account_status),
            badge = COALESCE(?, badge)
        WHERE user_id = ?`,
-      [approvalStatus, accountStatus, badge, id]
+      [resolvedApprovalStatus, accountStatus || null, badge || null, id]
     );
 
     await execute(
       'INSERT INTO audit_logs (admin_id, admin_name, action, entity, ip_address) VALUES (?, ?, ?, ?, ?)',
-      [adminId, req.user.name, `Farmer verification updated (${approvalStatus || accountStatus})`, `farmer_profiles:${id}`, req.ip]
+      [adminId, req.user.name, `Farmer verification updated (${resolvedApprovalStatus || accountStatus || 'Updated'})`, `farmer_profiles:${id}`, req.ip]
     );
 
     res.json({ success: true, message: 'Farmer status updated successfully.' });
@@ -212,14 +235,18 @@ export async function getAdminCustomers(req, res, next) {
 export async function setCustomerStatus(req, res, next) {
   try {
     const { id } = req.params;
-    const { isActive } = req.body;
+    const { isActive, status } = req.body;
     const adminId = req.user.id;
 
-    await execute('UPDATE users SET is_active = ? WHERE id = ?', [isActive ? 1 : 0, id]);
+    const resolvedActive = isActive !== undefined 
+      ? (isActive ? 1 : 0) 
+      : (status === 'Active' || status === 'active' || status === true ? 1 : 0);
+
+    await execute('UPDATE users SET is_active = ? WHERE id = ?', [resolvedActive, id]);
 
     await execute(
       'INSERT INTO audit_logs (admin_id, admin_name, action, entity, ip_address) VALUES (?, ?, ?, ?, ?)',
-      [adminId, req.user.name, `Customer account ${isActive ? 'Activated' : 'Deactivated'}`, `users:${id}`, req.ip]
+      [adminId, req.user.name, `Customer account ${resolvedActive ? 'Activated' : 'Deactivated'}`, `users:${id}`, req.ip]
     );
 
     res.json({ success: true, message: 'Customer account status updated.' });
@@ -245,7 +272,7 @@ export async function getAdminDeliveryFleet(req, res, next) {
        ORDER BY u.created_at DESC`
     );
 
-    res.json({ success: true, fleet });
+    res.json({ success: true, fleet, riders: fleet, deliveryPartners: fleet });
   } catch (error) {
     next(error);
   }
@@ -308,10 +335,10 @@ export async function getAdminSettings(req, res, next) {
 
 export async function updateAdminSettings(req, res, next) {
   try {
-    const { settings } = req.body;
+    const settingsObj = req.body.settings || req.body || {};
     const adminId = req.user.id;
 
-    for (const [key, val] of Object.entries(settings)) {
+    for (const [key, val] of Object.entries(settingsObj)) {
       await execute(
         'INSERT INTO system_settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = ?',
         [key, JSON.stringify(val), JSON.stringify(val)]
@@ -360,20 +387,26 @@ export async function getKycQueue(req, res, next) {
 export async function decideKyc(req, res, next) {
   try {
     const { id } = req.params;
-    const { status, notes } = req.body;
+    const { status, decision, notes, remark, adminNotes } = req.body;
+    const resolvedStatus = status || decision;
+    const resolvedNotes = notes || remark || adminNotes || null;
     const adminId = req.user.id;
+
+    if (!resolvedStatus) {
+      return res.status(400).json({ success: false, message: 'Status or decision is required.' });
+    }
 
     await execute(
       'UPDATE kyc_documents SET status = ?, admin_notes = ? WHERE id = ?',
-      [status, notes || null, id]
+      [resolvedStatus, resolvedNotes, id]
     );
 
     await execute(
       'INSERT INTO audit_logs (admin_id, admin_name, action, entity, ip_address) VALUES (?, ?, ?, ?, ?)',
-      [adminId, req.user.name, `KYC Document marked as ${status}`, `kyc_documents:${id}`, req.ip]
+      [adminId, req.user.name, `KYC Document marked as ${resolvedStatus}`, `kyc_documents:${id}`, req.ip]
     );
 
-    res.json({ success: true, message: `Document has been ${status}.` });
+    res.json({ success: true, message: `Document has been ${resolvedStatus}.` });
   } catch (error) {
     next(error);
   }

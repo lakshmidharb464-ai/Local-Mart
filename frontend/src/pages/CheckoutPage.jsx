@@ -97,6 +97,8 @@ function DeliveryStep({ formData, updateFormData, onNext }) {
 
 /* ─── Step 2: Address ─────────────────────────────────────── */
 function AddressStep({ formData, updateFormData, onNext, onBack }) {
+  const [touched, setTouched] = React.useState({});
+
   const fields = [
     { id: 'name',        label: 'Full name',    type: 'text',  icon: User,   placeholder: 'Your name', required: true },
     { id: 'email',       label: 'Email address', type: 'email', icon: Mail,  placeholder: 'you@example.com', required: true,
@@ -113,8 +115,32 @@ function AddressStep({ formData, updateFormData, onNext, onBack }) {
   const isPhoneValid = digitsOnlyPhone.length >= 10 && digitsOnlyPhone.length <= 15;
   const isPincodeValid = formData.fulfillmentType === 'pickup' || /^\d{6}$/.test(formData.pincode?.trim() || '');
   const isNameValid = (formData.name?.trim().length || 0) >= 2;
-  const isAddressValid = formData.fulfillmentType === 'pickup' || (Boolean(formData.addressLine?.trim()) && Boolean(formData.city?.trim()) && isPincodeValid);
+  const isAddressLineValid = formData.fulfillmentType === 'pickup' || Boolean(formData.addressLine?.trim());
+  const isCityValid = formData.fulfillmentType === 'pickup' || Boolean(formData.city?.trim());
 
+  const getFieldError = (fieldId) => {
+    if (!touched[fieldId]) return null;
+    if (fieldId === 'name' && !isNameValid) return 'Name must be at least 2 characters.';
+    if (fieldId === 'email' && !isEmailValid) return 'Please enter a valid email address.';
+    if (fieldId === 'phone' && !isPhoneValid) return 'Please enter a valid 10-digit mobile number.';
+    if (fieldId === 'pincode' && !isPincodeValid) return 'Please enter a 6-digit postal code.';
+    if (fieldId === 'addressLine' && !isAddressLineValid) return 'Delivery address is required.';
+    if (fieldId === 'city' && !isCityValid) return 'City is required.';
+    return null;
+  };
+
+  const isFieldValid = (fieldId) => {
+    if (!formData[fieldId]) return false;
+    if (fieldId === 'name') return isNameValid;
+    if (fieldId === 'email') return isEmailValid;
+    if (fieldId === 'phone') return isPhoneValid;
+    if (fieldId === 'pincode') return isPincodeValid;
+    if (fieldId === 'addressLine') return isAddressLineValid;
+    if (fieldId === 'city') return isCityValid;
+    return true;
+  };
+
+  const isAddressValid = formData.fulfillmentType === 'pickup' || (isAddressLineValid && isCityValid && isPincodeValid);
   const isValid = isNameValid && isEmailValid && isPhoneValid && isAddressValid;
 
   return (
@@ -134,12 +160,18 @@ function AddressStep({ formData, updateFormData, onNext, onBack }) {
           .filter(f => formData.fulfillmentType === 'pickup' ? !['addressLine','city','pincode'].includes(f.id) : true)
           .map(field => {
             const Icon = field.icon;
+            const error = getFieldError(field.id);
+            const valid = isFieldValid(field.id);
+
             return (
               <div key={field.id} className={`flex flex-col gap-1.5 ${field.id === 'addressLine' ? 'sm:col-span-2' : ''}`}>
-                <label htmlFor={`checkout-${field.id}`} className="text-sm font-semibold text-farmText">
-                  {field.label}
-                  {field.required && <span className="text-red-500 ml-0.5" aria-hidden="true">*</span>}
-                </label>
+                <div className="flex items-center justify-between">
+                  <label htmlFor={`checkout-${field.id}`} className="text-sm font-semibold text-farmText">
+                    {field.label}
+                    {field.required && <span className="text-red-500 ml-0.5" aria-hidden="true">*</span>}
+                  </label>
+                  {valid && <span className="text-emerald-700 text-xs font-bold flex items-center gap-0.5">✓ Valid</span>}
+                </div>
                 {field.hint && <p className="text-xs text-farmMuted -mt-1">{field.hint}</p>}
                 <div className="relative">
                   <Icon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-farmMuted pointer-events-none" aria-hidden="true" />
@@ -147,12 +179,20 @@ function AddressStep({ formData, updateFormData, onNext, onBack }) {
                     id={`checkout-${field.id}`}
                     type={field.type}
                     value={formData[field.id] || ''}
+                    onBlur={() => setTouched(prev => ({ ...prev, [field.id]: true }))}
                     onChange={e => updateFormData({ [field.id]: e.target.value })}
                     placeholder={field.placeholder}
                     required={field.required}
-                    className="w-full pl-10 pr-4 py-3 text-sm bg-white border border-gray-200 rounded-xl text-farmText placeholder:text-farmMuted focus:outline-none focus:ring-2 focus:ring-farmGreen-500 focus:border-farmGreen-500 transition-colors"
+                    className={`w-full pl-10 pr-4 py-3 text-sm bg-white border rounded-xl text-farmText placeholder:text-farmMuted focus:outline-none focus:ring-2 transition-colors ${
+                      error
+                        ? 'border-red-400 focus:ring-red-300 bg-red-50/20'
+                        : valid
+                        ? 'border-emerald-400 focus:ring-emerald-300'
+                        : 'border-gray-200 focus:ring-emerald-500 focus:border-emerald-500'
+                    }`}
                   />
                 </div>
+                {error && <p className="text-xs text-red-600 font-medium animate-fadeIn">{error}</p>}
               </div>
             );
           })}
@@ -162,7 +202,7 @@ function AddressStep({ formData, updateFormData, onNext, onBack }) {
         <button
           type="button"
           onClick={onBack}
-          className="flex items-center gap-2 px-5 py-3 border border-gray-200 bg-white text-farmText font-semibold rounded-xl hover:border-gray-300 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-farmGreen-500"
+          className="flex items-center gap-2 px-5 py-3 border border-gray-200 bg-white text-farmText font-semibold rounded-xl hover:border-gray-300 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-farmGreen-500 cursor-pointer"
         >
           <ArrowLeft className="w-4 h-4" aria-hidden="true" /> Back
         </button>
@@ -170,9 +210,9 @@ function AddressStep({ formData, updateFormData, onNext, onBack }) {
           type="button"
           onClick={onNext}
           disabled={!isValid}
-          className="flex-1 flex items-center justify-center gap-2 py-3 px-6 bg-farmGreen-600 hover:bg-farmGreen-700 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 text-white font-bold rounded-xl transition-all duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-farmGreen-500"
+          className="flex-1 flex items-center justify-center gap-2 py-3 px-6 bg-farmGreen-600 hover:bg-farmGreen-700 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 text-white font-bold rounded-xl transition-all duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-farmGreen-500 cursor-pointer"
         >
-          Continue <ArrowRight className="w-4 h-4" aria-hidden="true" />
+          Continue to Payment <ArrowRight className="w-4 h-4" aria-hidden="true" />
         </button>
       </div>
     </div>
@@ -182,9 +222,9 @@ function AddressStep({ formData, updateFormData, onNext, onBack }) {
 /* ─── Step 3: Payment ─────────────────────────────────────── */
 function PaymentStep({ formData, updateFormData, onNext, onBack }) {
   const methods = [
-    { value: 'upi',  label: 'UPI', desc: 'Pay via Google Pay, PhonePe, Paytm', icon: Smartphone },
-    { value: 'card', label: 'Card', desc: 'Debit or credit card', icon: CreditCard },
-    { value: 'cod',  label: 'Cash on Delivery', desc: 'Pay when you receive', icon: Banknote },
+    { value: 'upi',  label: 'UPI (Instant Express)', desc: 'Pay via Google Pay, PhonePe, Paytm, BHIM', icon: Smartphone },
+    { value: 'card', label: 'Credit / Debit Card', desc: 'Visa, Mastercard, RuPay with 256-bit SSL', icon: CreditCard },
+    { value: 'cod',  label: 'Cash on Delivery', desc: 'Pay directly to your delivery hero upon arrival', icon: Banknote },
   ];
 
   return (
@@ -201,7 +241,7 @@ function PaymentStep({ formData, updateFormData, onNext, onBack }) {
               className={`
                 flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all duration-150
                 focus-within:ring-2 focus-within:ring-farmGreen-500 focus-within:ring-offset-1
-                ${isSelected ? 'border-farmGreen-500 bg-farmGreen-50' : 'border-gray-200 bg-white hover:border-gray-300'}
+                ${isSelected ? 'border-emerald-600 bg-emerald-50/70 shadow-xs' : 'border-gray-200 bg-white hover:border-gray-300'}
               `}
             >
               <input
@@ -212,30 +252,31 @@ function PaymentStep({ formData, updateFormData, onNext, onBack }) {
                 onChange={() => updateFormData({ paymentMethod: m.value })}
                 className="sr-only"
               />
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isSelected ? 'bg-farmGreen-600' : 'bg-gray-100'}`}>
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isSelected ? 'bg-emerald-700' : 'bg-gray-100'}`}>
                 <Icon className={`w-5 h-5 ${isSelected ? 'text-white' : 'text-farmMuted'}`} aria-hidden="true" />
               </div>
               <div className="flex-1">
-                <p className={`font-bold text-sm ${isSelected ? 'text-farmGreen-800' : 'text-farmText'}`}>{m.label}</p>
+                <p className={`font-bold text-sm ${isSelected ? 'text-emerald-900' : 'text-farmText'}`}>{m.label}</p>
                 <p className="text-xs text-farmMuted">{m.desc}</p>
               </div>
-              {isSelected && <Check className="w-5 h-5 text-farmGreen-600 shrink-0" aria-hidden="true" />}
+              {isSelected && <Check className="w-5 h-5 text-emerald-700 stroke-[3] shrink-0" aria-hidden="true" />}
             </label>
           );
         })}
       </fieldset>
 
-      <Alert variant="info">
-        Payment processing is handled securely. Your card details are never stored on our servers.
-      </Alert>
+      <div className="p-3.5 bg-emerald-50/60 rounded-xl border border-emerald-200 flex items-center gap-3 text-xs text-emerald-900">
+        <Shield className="w-5 h-5 text-emerald-700 shrink-0" />
+        <span><strong>100% Encrypted & Safe:</strong> End-to-end payment protection. Freshness guaranteed or instant refund.</span>
+      </div>
 
       <div className="flex gap-3 mt-2">
         <button type="button" onClick={onBack}
-          className="flex items-center gap-2 px-5 py-3 border border-gray-200 bg-white text-farmText font-semibold rounded-xl hover:border-gray-300 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-farmGreen-500">
+          className="flex items-center gap-2 px-5 py-3 border border-gray-200 bg-white text-farmText font-semibold rounded-xl hover:border-gray-300 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-farmGreen-500 cursor-pointer">
           <ArrowLeft className="w-4 h-4" aria-hidden="true" /> Back
         </button>
         <button type="button" onClick={onNext}
-          className="flex-1 flex items-center justify-center gap-2 py-3 px-6 bg-farmGreen-600 hover:bg-farmGreen-700 active:scale-95 text-white font-bold rounded-xl transition-all duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-farmGreen-500">
+          className="flex-1 flex items-center justify-center gap-2 py-3 px-6 bg-farmGreen-600 hover:bg-farmGreen-700 active:scale-95 text-white font-bold rounded-xl transition-all duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-farmGreen-500 cursor-pointer">
           Review Order <ArrowRight className="w-4 h-4" aria-hidden="true" />
         </button>
       </div>
