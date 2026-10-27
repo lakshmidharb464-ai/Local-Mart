@@ -130,32 +130,37 @@ export const CustomerOrders = ({ orders, setOrders }) => {
           label: 'Delivered',
           stepIdx: 3
         };
+      case 'Picked Up':
       case 'Out for Delivery':
         return {
           bg: 'bg-blue-50 text-blue-900 border-blue-300/80',
           badgeGradient: 'from-blue-600 to-cyan-600',
           dotBg: 'bg-blue-500',
           icon: Truck,
-          label: 'Out for Delivery',
+          label: status === 'Picked Up' ? 'Picked Up by Courier' : 'Out for Delivery',
           stepIdx: 2,
           isLive: true
         };
+      case 'Approved':
+      case 'Packed':
+      case 'Assigned':
       case 'Accepted':
         return {
           bg: 'bg-amber-50 text-amber-900 border-amber-300/80',
           badgeGradient: 'from-amber-500 to-orange-500',
           dotBg: 'bg-amber-500',
           icon: Sprout,
-          label: 'Accepted by Farm',
+          label: status === 'Packed' ? 'Harvested & Packed' : status === 'Assigned' ? 'Rider Assigned' : 'Farm Confirmed',
           stepIdx: 1
         };
+      case 'Failed':
       case 'Cancelled':
         return {
           bg: 'bg-rose-50 text-rose-900 border-rose-300/80',
           badgeGradient: 'from-rose-500 to-red-600',
           dotBg: 'bg-rose-500',
           icon: XCircle,
-          label: 'Cancelled',
+          label: status === 'Failed' ? 'Delivery Failed' : 'Cancelled',
           stepIdx: -1
         };
       case 'Pending':
@@ -175,9 +180,9 @@ export const CustomerOrders = ({ orders, setOrders }) => {
   const filteredOrders = useMemo(() => {
     return orders.filter(ord => {
       // Filter by status tab
-      if (activeFilter === 'active' && !['Pending', 'Accepted', 'Out for Delivery'].includes(ord.status)) return false;
+      if (activeFilter === 'active' && !['Pending', 'Approved', 'Packed', 'Assigned', 'Accepted', 'Picked Up', 'Out for Delivery'].includes(ord.status)) return false;
       if (activeFilter === 'delivered' && ord.status !== 'Delivered') return false;
-      if (activeFilter === 'cancelled' && ord.status !== 'Cancelled') return false;
+      if (activeFilter === 'cancelled' && !['Cancelled', 'Failed'].includes(ord.status)) return false;
 
       // Filter by search query
       if (searchQuery.trim()) {
@@ -191,9 +196,9 @@ export const CustomerOrders = ({ orders, setOrders }) => {
     });
   }, [orders, activeFilter, searchQuery]);
 
-  const activeCount = orders.filter(o => ['Pending', 'Accepted', 'Out for Delivery'].includes(o.status)).length;
+  const activeCount = orders.filter(o => ['Pending', 'Approved', 'Packed', 'Assigned', 'Accepted', 'Picked Up', 'Out for Delivery'].includes(o.status)).length;
   const deliveredCount = orders.filter(o => o.status === 'Delivered').length;
-  const cancelledCount = orders.filter(o => o.status === 'Cancelled').length;
+  const cancelledCount = orders.filter(o => ['Cancelled', 'Failed'].includes(o.status)).length;
 
   return (
     <div className="space-y-6 animate-fadeIn max-w-5xl font-display pb-20">

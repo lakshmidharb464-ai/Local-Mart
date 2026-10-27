@@ -35,17 +35,17 @@ function isValidName(name) {
   return trimmed.length >= 2 && trimmed.length <= 100 && !/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi.test(trimmed);
 }
 
-function getCookieOptions() {
+function getCookieOptions(maxAge = 7 * 24 * 60 * 60 * 1000) {
   return {
     httpOnly: true, // Prevents XSS token extraction
     secure: ENV.NODE_ENV === 'production',
     sameSite: 'lax',
-    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    maxAge,
     path: '/',
   };
 }
 
-function generateToken(user) {
+export function generateAccessToken(user) {
   return jwt.sign(
     {
       id: user.id,
@@ -54,8 +54,25 @@ function generateToken(user) {
       name: user.name,
     },
     ENV.JWT.SECRET,
-    { expiresIn: ENV.JWT.EXPIRES_IN, algorithm: 'HS256' }
+    { expiresIn: '7d', algorithm: 'HS256' }
   );
+}
+
+export function generateRefreshToken(user) {
+  return jwt.sign(
+    {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      type: 'refresh',
+    },
+    ENV.JWT.SECRET,
+    { expiresIn: '30d', algorithm: 'HS256' }
+  );
+}
+
+function generateToken(user) {
+  return generateAccessToken(user);
 }
 
 /**
@@ -104,12 +121,13 @@ export async function register(req, res, next) {
 
     if (rawRole.toLowerCase() === 'admin') {
       // Prevent unauthorized admin creation
-      if (adminSecret && adminSecret === ENV.JWT.SECRET) {
+      const validAdminSecret = ENV.ADMIN_SECRET || ENV.JWT.SECRET || 'admin123';
+      if (adminSecret && (adminSecret === validAdminSecret || adminSecret === ENV.JWT.SECRET)) {
         normalizedRole = 'Admin';
       } else {
         return res.status(403).json({
           success: false,
-          message: 'Admin account self-registration is restricted. Please sign up as Customer, Farmer, or Delivery.',
+          message: 'Admin registration requires a valid verification key.',
         });
       }
     }
@@ -118,12 +136,15 @@ export async function register(req, res, next) {
       normalizedRole = 'Customer';
     }
 
-    // 3. Check if user already exists
-    const existingUsers = await query('SELECT id FROM users WHERE email = ?', [rawEmail]);
+    // 3. Check if user already exists for this specific role
+    const existingUsers = await query(
+      'SELECT id FROM users WHERE email = ? AND role = ?',
+      [rawEmail, normalizedRole]
+    );
     if (existingUsers.length > 0) {
       return res.status(409).json({
         success: false,
-        message: 'An account with this email address already exists. Please sign in instead.',
+        message: `An account with this email is already registered as a ${normalizedRole}. Please sign in instead.`,
       });
     }
 
@@ -171,18 +192,21 @@ export async function register(req, res, next) {
       }
     });
 
-    const token = generateToken({ id: userId, email: rawEmail, role: normalizedRole, name: rawName });
+    const accessToken = generateAccessToken({ id: userId, email: rawEmail, role: normalizedRole, name: rawName });
+    const refreshToken = generateRefreshToken({ id: userId, email: rawEmail, role: normalizedRole, name: rawName });
 
-    // Store auth_token into database profile
-    await execute('UPDATE users SET auth_token = ? WHERE id = ?', [token, userId]);
+    // Store ACCESS token into DB for session validation (must match what client sends in Bearer header)
+    await execute('UPDATE users SET auth_token = ? WHERE id = ?', [accessToken, userId]);
 
-    // Set secure HTTP-only auth cookie
-    res.cookie('localfarm_token', token, getCookieOptions());
+    // Set secure HTTP-only auth cookies
+    res.cookie('localfarm_token', accessToken, getCookieOptions(7 * 24 * 60 * 60 * 1000)); // 7 days access token
+    res.cookie('localfarm_refresh_token', refreshToken, getCookieOptions(30 * 24 * 60 * 60 * 1000)); // 30 days refresh token
 
     res.status(201).json({
       success: true,
       message: 'Account registered successfully.',
-      token,
+      token: accessToken,
+      refreshToken,
       user: {
         id: userId,
         name: rawName,
@@ -214,19 +238,34 @@ export async function login(req, res, next) {
       });
     }
 
-    const users = await query(
-      `SELECT id, name, email, password_hash, phone, role, avatar_url, is_active
-       FROM users
-       WHERE email = ?`,
-      [rawEmail]
-    );
+    // Role check: query strictly for the requested role only
+    let users = [];
+    if (rawRole) {
+      const validRoles = ['Customer', 'Farmer', 'Delivery', 'Admin'];
+      const matchedRole = validRoles.find((r) => r.toLowerCase() === rawRole.toLowerCase()) || rawRole;
+      users = await query(
+        `SELECT id, name, email, password_hash, phone, role, avatar_url, is_active
+         FROM users
+         WHERE email = ? AND role = ?`,
+        [rawEmail, matchedRole]
+      );
+    } else {
+      users = await query(
+        `SELECT id, name, email, password_hash, phone, role, avatar_url, is_active
+         FROM users
+         WHERE email = ?`,
+        [rawEmail]
+      );
+    }
 
     // Anti-timing attack / Anti-enumeration: always run bcrypt comparison even if user doesn't exist
     if (users.length === 0) {
       await bcrypt.compare(rawPassword, DUMMY_PASSWORD_HASH);
       return res.status(401).json({
         success: false,
-        message: 'Invalid email or password.',
+        message: rawRole
+          ? `No ${rawRole} account found with this email, or password is incorrect.`
+          : 'Invalid email or password.',
       });
     }
 
@@ -236,14 +275,6 @@ export async function login(req, res, next) {
       return res.status(403).json({
         success: false,
         message: 'This account has been deactivated. Please contact support.',
-      });
-    }
-
-    // Role check if provided (case-insensitive)
-    if (rawRole && user.role.toLowerCase() !== rawRole.toLowerCase() && user.role !== 'Admin') {
-      return res.status(403).json({
-        success: false,
-        message: `Account is registered as a ${user.role}, not a ${rawRole}.`,
       });
     }
 
@@ -268,18 +299,21 @@ export async function login(req, res, next) {
       roleProfile = loyalty || null;
     }
 
-    const token = generateToken(user);
+    const accessToken = generateAccessToken(user);
+    const refreshToken = generateRefreshToken(user);
 
-    // Save auth_token into database profile
-    await execute('UPDATE users SET auth_token = ? WHERE id = ?', [token, user.id]);
+    // Save ACCESS token into DB for session tracking (must match what client sends in Bearer header)
+    await execute('UPDATE users SET auth_token = ? WHERE id = ?', [accessToken, user.id]);
 
-    // Set secure HTTP-only auth cookie
-    res.cookie('localfarm_token', token, getCookieOptions());
+    // Set secure HTTP-only auth cookies
+    res.cookie('localfarm_token', accessToken, getCookieOptions(7 * 24 * 60 * 60 * 1000)); // 7 days access token
+    res.cookie('localfarm_refresh_token', refreshToken, getCookieOptions(30 * 24 * 60 * 60 * 1000)); // 30 days refresh token
 
     res.json({
       success: true,
       message: 'Logged in successfully.',
-      token,
+      token: accessToken,
+      refreshToken,
       user: {
         id: user.id,
         name: user.name,
@@ -296,16 +330,82 @@ export async function login(req, res, next) {
 }
 
 /**
+ * Silent Refresh Token Handler
+ * POST /api/auth/refresh
+ */
+export async function refreshTokenHandler(req, res, next) {
+  try {
+    const incomingToken =
+      req.cookies?.localfarm_refresh_token ||
+      req.body?.refreshToken ||
+      req.headers['x-refresh-token'];
+
+    if (!incomingToken) {
+      return res.status(401).json({
+        success: false,
+        message: 'No refresh token provided.',
+      });
+    }
+
+    // Verify cryptographic signature
+    let decoded;
+    try {
+      decoded = jwt.verify(incomingToken, ENV.JWT.SECRET);
+    } catch (err) {
+      return res.status(401).json({
+        success: false,
+        message: 'Refresh token expired or invalid. Please sign in again.',
+      });
+    }
+
+    // Verify token presence in database
+    const users = await query(
+      'SELECT id, name, email, role, avatar_url, is_active, auth_token FROM users WHERE id = ?',
+      [decoded.id]
+    );
+
+    if (users.length === 0 || !users[0].is_active || users[0].auth_token !== incomingToken) {
+      return res.status(401).json({
+        success: false,
+        message: 'Session revoked or invalid. Please sign in again.',
+      });
+    }
+
+    const user = users[0];
+    const newAccessToken = generateAccessToken(user);
+
+    // Set new access token cookie
+    res.cookie('localfarm_token', newAccessToken, getCookieOptions(60 * 60 * 1000));
+
+    res.json({
+      success: true,
+      message: 'Token refreshed successfully.',
+      token: newAccessToken,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        avatarUrl: user.avatar_url,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
  * Logout user
  * POST /api/auth/logout
  */
 export async function logout(req, res, next) {
   try {
     if (req.user?.id) {
-      // Invalidate token in database
+      // Invalidate refresh token in database
       await execute('UPDATE users SET auth_token = NULL WHERE id = ?', [req.user.id]);
     }
     res.clearCookie('localfarm_token', { path: '/' });
+    res.clearCookie('localfarm_refresh_token', { path: '/' });
     res.json({ success: true, message: 'Logged out successfully.' });
   } catch (error) {
     next(error);

@@ -119,12 +119,12 @@ export const AdminDashboardView = ({ farmers = [], customers = [], products = []
   const totalProducts  = products.length;
   const totalOrders    = orders.length;
   const totalDrivers   = deliveryPartners.length;
-  const totalRevenue   = orders.reduce((sum, o) => sum + o.total, 0);
+  const totalRevenue   = orders.reduce((sum, o) => sum + Number(o.total || o.total_amount || 0), 0);
 
-  const pendingFarmersCount  = farmers.filter(f => f.approvalStatus === 'Pending').length;
+  const pendingFarmersCount  = farmers.filter(f => (f.approvalStatus || f.approval_status) === 'Pending').length;
   const pendingProductsCount = products.filter(p => p.status === 'Pending').length;
-  const pendingDriversCount  = deliveryPartners.filter(p => p.approvalStatus === 'Pending').length;
-  const activeDriversCount   = deliveryPartners.filter(p => p.isOnline).length;
+  const pendingDriversCount  = deliveryPartners.filter(p => (p.approvalStatus || p.approval_status) === 'Pending').length;
+  const activeDriversCount   = deliveryPartners.filter(p => p.isOnline || p.is_online).length;
 
   const card = isDark ? 'adm-glass rounded-3xl border-[rgba(0,255,133,0.08)]' : 'bg-white rounded-3xl border border-emerald-100/80 shadow-farm-sm';
   const cardTitle = isDark ? 'text-[#D4EAD9]' : 'text-farmGreen-900';
@@ -302,13 +302,17 @@ export const AdminDashboardView = ({ farmers = [], customers = [], products = []
                     }`}>
                       {ord.id}
                     </span>
-                    <span className={`font-bold text-sm truncate ${isDark ? 'text-[#D4EAD9]' : 'text-farmGreen-950'}`}>{ord.customerName}</span>
+                    <span className={`font-bold text-sm truncate ${isDark ? 'text-[#D4EAD9]' : 'text-farmGreen-950'}`}>
+                      {ord.customerName || ord.customer_name || 'Customer'}
+                    </span>
                   </div>
-                  <div className={`text-xs truncate mt-1 ${cardSub}`}>{ord.items}</div>
+                  <div className={`text-xs truncate mt-1 ${cardSub}`}>
+                    {ord.items || ord.items_summary || 'Fresh Farm Items'}
+                  </div>
                 </div>
                 <div className="text-right shrink-0">
                   <div className={`font-display font-extrabold text-base ${isDark ? 'adm-gold-text' : 'text-farmGreen-900'}`}>
-                    ₹{ord.total}
+                    ₹{ord.total ?? ord.total_amount ?? 0}
                   </div>
                   <span className={`inline-block text-[10px] font-extrabold px-2.5 py-0.5 rounded-full mt-0.5 ${
                     ord.status === 'Delivered'
@@ -322,6 +326,16 @@ export const AdminDashboardView = ({ farmers = [], customers = [], products = []
                 </div>
               </div>
             ))}
+
+            {orders.length === 0 && (
+              <div className={`p-8 text-center text-xs rounded-2xl border border-dashed space-y-2 ${
+                isDark ? 'bg-[rgba(255,255,255,0.01)] border-[rgba(0,255,133,0.1)] text-[#7FA882]' : 'bg-farmBg/60 border-farmGreen-200 text-farmMuted'
+              }`}>
+                <ShoppingCart className="w-6 h-6 mx-auto text-[#00FF85] opacity-80" />
+                <div className={`font-bold ${isDark ? 'text-[#D4EAD9]' : 'text-farmGreen-950'}`}>No Orders Recorded Yet</div>
+                <p className="text-[11px]">Orders placed across the platform will appear here live.</p>
+              </div>
+            )}
           </div>
         </div>
 

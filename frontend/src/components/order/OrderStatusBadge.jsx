@@ -1,25 +1,35 @@
 import React from 'react';
 
 const STATUS_CONFIG = {
-  Pending:          { label: 'Pending',          color: 'bg-amber-50 text-amber-950 border-amber-300 font-bold' },
-  Accepted:         { label: 'Accepted',          color: 'bg-blue-50 text-blue-950 border-blue-300 font-bold' },
-  Preparing:        { label: 'Preparing',         color: 'bg-indigo-50 text-indigo-950 border-indigo-300 font-bold' },
-  'Out for Delivery':{ label: 'Out for Delivery', color: 'bg-purple-50 text-purple-950 border-purple-300 font-bold' },
-  'Ready for Pickup':{ label: 'Ready for Pickup', color: 'bg-teal-50 text-teal-950 border-teal-300 font-bold' },
-  Delivered:        { label: 'Delivered',         color: 'bg-emerald-50 text-emerald-950 border-emerald-300 font-bold' },
-  Completed:        { label: 'Completed',         color: 'bg-emerald-50 text-emerald-950 border-emerald-300 font-bold' },
-  Cancelled:        { label: 'Cancelled',         color: 'bg-rose-50 text-rose-950 border-rose-300 font-bold' },
+  Pending:            { label: 'Pending',            color: 'bg-amber-50 text-amber-950 border-amber-300 font-bold' },
+  Approved:           { label: 'Approved',           color: 'bg-emerald-50 text-emerald-950 border-emerald-300 font-bold' },
+  Packed:             { label: 'Packed & Ready',     color: 'bg-indigo-50 text-indigo-950 border-indigo-300 font-bold' },
+  Assigned:           { label: 'Rider Assigned',     color: 'bg-cyan-50 text-cyan-950 border-cyan-300 font-bold' },
+  Accepted:           { label: 'Accepted',           color: 'bg-blue-50 text-blue-950 border-blue-300 font-bold' },
+  Preparing:          { label: 'Preparing',          color: 'bg-indigo-50 text-indigo-950 border-indigo-300 font-bold' },
+  'Picked Up':        { label: 'Picked Up',          color: 'bg-purple-50 text-purple-950 border-purple-300 font-bold' },
+  'Out for Delivery': { label: 'Out for Delivery',   color: 'bg-fuchsia-50 text-fuchsia-950 border-fuchsia-300 font-bold' },
+  'Ready for Pickup': { label: 'Ready for Pickup',   color: 'bg-teal-50 text-teal-950 border-teal-300 font-bold' },
+  Delivered:          { label: 'Delivered',          color: 'bg-emerald-50 text-emerald-950 border-emerald-300 font-bold' },
+  Completed:          { label: 'Completed',          color: 'bg-emerald-50 text-emerald-950 border-emerald-300 font-bold' },
+  Cancelled:          { label: 'Cancelled',          color: 'bg-rose-50 text-rose-950 border-rose-300 font-bold' },
+  Failed:             { label: 'Delivery Failed',    color: 'bg-red-50 text-red-950 border-red-300 font-bold' },
 };
 
 const STATUS_DOT = {
-  Pending:           'bg-amber-500',
-  Accepted:          'bg-blue-600',
-  Preparing:         'bg-indigo-600',
-  'Out for Delivery':'bg-purple-600',
-  'Ready for Pickup':'bg-teal-600',
-  Delivered:         'bg-emerald-600',
-  Completed:         'bg-emerald-600',
-  Cancelled:         'bg-rose-600',
+  Pending:            'bg-amber-500',
+  Approved:           'bg-emerald-500',
+  Packed:             'bg-indigo-600',
+  Assigned:           'bg-cyan-600',
+  Accepted:           'bg-blue-600',
+  Preparing:          'bg-indigo-600',
+  'Picked Up':        'bg-purple-600',
+  'Out for Delivery': 'bg-fuchsia-600',
+  'Ready for Pickup': 'bg-teal-600',
+  Delivered:          'bg-emerald-600',
+  Completed:          'bg-emerald-600',
+  Cancelled:          'bg-rose-600',
+  Failed:             'bg-red-600',
 };
 
 /**

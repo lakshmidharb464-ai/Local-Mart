@@ -6,6 +6,7 @@ import {
   updateOrderStatus,
   trackOrder,
   validateCoupon,
+  getActiveCoupons,
   streamOrderEvents,
   streamSingleOrderEvents,
 } from '../controllers/orderController.js';
@@ -24,7 +25,8 @@ router.get('/orders/my-orders', verifyToken, getMyOrders);
 router.patch('/orders/:id/status', verifyToken, updateOrderStatus);  // ← secured: was optionalAuth
 router.get('/orders/:id/track', optionalAuth, trackOrder);
 
-// Coupon validation
+// Coupon endpoints
+router.get('/coupons/active', optionalAuth, getActiveCoupons);
 router.post('/coupons/validate', optionalAuth, validateCoupon);
 
 export default router;

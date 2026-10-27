@@ -2,14 +2,28 @@ import { Router } from 'express';
 import {
   getPlatformMetrics,
   getAdminProducts,
+  createAdminProduct,
+  updateAdminProduct,
   moderateProduct,
+  deleteProduct,
   getAdminOrders,
+  updateOrderStatus,
   overrideDispatch,
   getAdminFarmers,
+  createAdminFarmer,
+  updateAdminFarmer,
   verifyFarmer,
+  deleteFarmer,
   getAdminCustomers,
+  createAdminCustomer,
+  updateAdminCustomer,
   setCustomerStatus,
+  deleteCustomer,
   getAdminDeliveryFleet,
+  createAdminDeliveryPartner,
+  updateAdminDeliveryPartner,
+  setDeliveryStatus,
+  deleteDeliveryPartner,
   getAdminReports,
   getAdminSettings,
   updateAdminSettings,
@@ -28,24 +42,38 @@ router.use(verifyToken, requireRole('Admin'));
 router.get('/metrics', getPlatformMetrics);
 router.get('/reports', getAdminReports);
 
-// Products Moderation
+// Products Catalog & Moderation
 router.get('/products', getAdminProducts);
+router.post('/products', createAdminProduct);
+router.put('/products/:id', updateAdminProduct);
 router.patch('/products/:id/moderate', moderateProduct);
+router.delete('/products/:id', deleteProduct);
 
 // Orders & Dispatch
 router.get('/orders', getAdminOrders);
+router.patch('/orders/:id/status', updateOrderStatus);
 router.patch('/orders/:id/dispatch', overrideDispatch);
 
-// Farmers
+// Farmers Management
 router.get('/farmers', getAdminFarmers);
+router.post('/farmers', createAdminFarmer);
+router.put('/farmers/:id', updateAdminFarmer);
 router.patch('/farmers/:id/verify', verifyFarmer);
+router.delete('/farmers/:id', deleteFarmer);
 
-// Customers
+// Customers Management
 router.get('/customers', getAdminCustomers);
+router.post('/customers', createAdminCustomer);
+router.put('/customers/:id', updateAdminCustomer);
 router.patch('/customers/:id/status', setCustomerStatus);
+router.delete('/customers/:id', deleteCustomer);
 
-// Delivery Fleet
+// Delivery Fleet Management
 router.get('/delivery-partners', getAdminDeliveryFleet);
+router.post('/delivery-partners', createAdminDeliveryPartner);
+router.put('/delivery-partners/:id', updateAdminDeliveryPartner);
+router.patch('/delivery-partners/:id/status', setDeliveryStatus);
+router.delete('/delivery-partners/:id', deleteDeliveryPartner);
 
 // Settings & KYC & Audit
 router.get('/settings', getAdminSettings);

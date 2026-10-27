@@ -51,6 +51,21 @@ export async function runMigrations() {
       }
     }
 
+    // 6. Ensure unique index on (email, role) instead of global email
+    try {
+      await connection.query(`ALTER TABLE users DROP INDEX email;`);
+      console.log('✅ Dropped legacy single-column email unique constraint.');
+    } catch (idxErr) {
+      // Ignore if index did not exist
+    }
+
+    try {
+      await connection.query(`ALTER TABLE users ADD UNIQUE KEY idx_user_email_role (email, role);`);
+      console.log('✅ Added role-scoped unique key (email, role) on users table.');
+    } catch (idxErr) {
+      // Ignore if already exists (Error code 1061: Duplicate key name)
+    }
+
     console.log('✅ Database schema migrated successfully! All tables are ready.');
     return { success: true };
   } catch (error) {

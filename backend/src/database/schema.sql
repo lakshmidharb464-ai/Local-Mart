@@ -9,7 +9,7 @@ USE localfarm_db;
 CREATE TABLE IF NOT EXISTS users (
     id VARCHAR(36) PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
-    email VARCHAR(150) NOT NULL UNIQUE,
+    email VARCHAR(150) NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
     phone VARCHAR(20),
     role ENUM('Customer', 'Farmer', 'Delivery', 'Admin') NOT NULL DEFAULT 'Customer',
@@ -19,7 +19,8 @@ CREATE TABLE IF NOT EXISTS users (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_user_role (role),
-    INDEX idx_user_email (email)
+    INDEX idx_user_email (email),
+    UNIQUE KEY idx_user_email_role (email, role)
 ) ENGINE=InnoDB;
 
 -- 2. Delivery Hubs Table (Distribution Centers)
@@ -146,7 +147,7 @@ CREATE TABLE IF NOT EXISTS products (
 CREATE TABLE IF NOT EXISTS product_images (
     id VARCHAR(36) PRIMARY KEY,
     product_id VARCHAR(36) NOT NULL,
-    image_url VARCHAR(500) NOT NULL,
+    image_url LONGTEXT NOT NULL,
     cloudinary_public_id VARCHAR(200),
     is_primary BOOLEAN DEFAULT FALSE,
     display_order INT DEFAULT 0,

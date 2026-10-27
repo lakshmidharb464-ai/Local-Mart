@@ -228,11 +228,45 @@ export const OrderStatusView = ({ orders = [], onUpdateStatus, showToast }) => {
   /* ── Order Detail Panel ── */
   const OrderDetailPanel = ({ order }) => {
     const meta = getMeta(order.id);
-    const items = order.items || [
-      { name: 'Fresh Tomatoes', qty: '2 kg',    unit: '🍅' },
-      { name: 'Spinach Leaves', qty: '500 g',   unit: '🥬' },
-      { name: 'Coconut Oil',    qty: '1 bottle', unit: '🥥' },
-    ];
+    
+    // Safely parse order items whether array, JSON string, or single string
+    let items = [];
+    if (Array.isArray(order.items)) {
+      items = order.items.map(item => {
+        if (typeof item === 'string') return { name: item, qty: '1 unit', unit: '📦' };
+        return {
+          name: item.name || item.product_name || 'Farm Produce',
+          qty: item.quantity || item.qty || '1 unit',
+          unit: item.unit || '📦'
+        };
+      });
+    } else if (typeof order.items === 'string') {
+      try {
+        const parsed = JSON.parse(order.items);
+        if (Array.isArray(parsed)) {
+          items = parsed.map(item => {
+            if (typeof item === 'string') return { name: item, qty: '1 unit', unit: '📦' };
+            return {
+              name: item.name || item.product_name || 'Farm Produce',
+              qty: item.quantity || item.qty || '1 unit',
+              unit: item.unit || '📦'
+            };
+          });
+        } else {
+          items = [{ name: order.items, qty: '1 package', unit: '📦' }];
+        }
+      } catch (e) {
+        items = [{ name: order.items, qty: '1 package', unit: '📦' }];
+      }
+    } else if (order.items) {
+      items = [{ name: String(order.items), qty: '1 package', unit: '📦' }];
+    } else {
+      items = [
+        { name: 'Fresh Tomatoes', qty: '2 kg', unit: '🍅' },
+        { name: 'Spinach Leaves', qty: '500 g', unit: '🥬' },
+        { name: 'Coconut Oil', qty: '1 bottle', unit: '🥥' },
+      ];
+    }
 
     return (
       <div className="space-y-5">
@@ -343,13 +377,13 @@ export const OrderStatusView = ({ orders = [], onUpdateStatus, showToast }) => {
             <div className="space-y-1.5">
               {items.map((item, i) => (
                 <div key={i} className="flex items-center justify-between text-[11px] font-bold text-gray-700">
-                  <span>{item.unit} {item.name}</span>
-                  <span className="font-black text-farmGreen-950">{item.qty}</span>
+                  <span>{item.unit || '📦'} {item.name}</span>
+                  <span className="font-black text-farmGreen-950">{item.qty || '1 unit'}</span>
                 </div>
               ))}
               <div className="pt-1.5 border-t border-gray-200 flex items-center justify-between text-xs">
                 <span className="font-black text-farmMuted">Payout</span>
-                <span className="font-black text-emerald-800 font-mono">₹{(order.fee || 45) + (order.tip || 15)}</span>
+                <span className="font-black text-emerald-800 font-mono">₹{Number(order.fee || order.delivery_fee || 45) + Number(order.tip || 15)}</span>
               </div>
             </div>
           </div>
@@ -385,10 +419,22 @@ export const OrderStatusView = ({ orders = [], onUpdateStatus, showToast }) => {
 
   /* ── Audit Log ── */
   const AuditLog = ({ order }) => {
-    const tl = order.timeline || [
-      { status: 'Assigned to Rider', note: 'EV Rider assigned to order', time: '10:15 AM' },
-      { status: 'Order Accepted',    note: 'Rider confirmed pickup route', time: '10:18 AM' },
-    ];
+    let tl = [];
+    if (Array.isArray(order.timeline)) {
+      tl = order.timeline;
+    } else if (typeof order.timeline === 'string') {
+      try {
+        const parsed = JSON.parse(order.timeline);
+        if (Array.isArray(parsed)) tl = parsed;
+      } catch (e) {}
+    }
+    if (tl.length === 0) {
+      tl = [
+        { status: 'Assigned to Rider', note: 'EV Rider assigned to order', time: '10:15 AM' },
+        { status: 'Order Accepted',    note: 'Rider confirmed pickup route', time: '10:18 AM' },
+      ];
+    }
+
     return (
       <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm space-y-4">
         <h3 className="font-black text-base text-farmGreen-950 flex items-center gap-2">
@@ -399,10 +445,10 @@ export const OrderStatusView = ({ orders = [], onUpdateStatus, showToast }) => {
             <div key={idx} className="relative flex items-start justify-between gap-4 text-xs">
               <span className="absolute -left-6 top-1 w-3 h-3 rounded-full bg-emerald-600 border-2 border-white ring-2 ring-emerald-200" />
               <div>
-                <div className="font-black text-farmGreen-950 text-sm">{item.status}</div>
-                <div className="text-farmMuted font-medium">{item.note}</div>
+                <div className="font-black text-farmGreen-950 text-sm">{item.status || item.title || 'Stage Update'}</div>
+                <div className="text-farmMuted font-medium">{item.note || item.description || ''}</div>
               </div>
-              <span className="text-[11px] font-mono text-farmMuted font-black bg-gray-50 px-2 py-0.5 rounded border border-gray-200 shrink-0">{item.time}</span>
+              <span className="text-[11px] font-mono text-farmMuted font-black bg-gray-50 px-2 py-0.5 rounded border border-gray-200 shrink-0">{item.time || item.timestamp || ''}</span>
             </div>
           ))}
         </div>

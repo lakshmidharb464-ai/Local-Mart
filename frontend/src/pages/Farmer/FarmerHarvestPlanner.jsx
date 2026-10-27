@@ -24,43 +24,6 @@ import {
 export const FarmerHarvestPlanner = () => {
   const { showToast } = useAuth();
 
-  // Default initial seasons
-  const defaultSeasons = [
-    {
-      id: 'h-1',
-      name: 'Alphonso Mangoes',
-      startDate: '2026-04-15',
-      endDate: '2026-06-25',
-      expectedVolume: 1500,
-      currentYield: 1120,
-      status: 'Active',
-      buyerNotified: true,
-      lastBroadcastMsg: 'Pesticide-free Alphonso mangoes ready!'
-    },
-    {
-      id: 'h-2',
-      name: 'Vine-Ripened Tomatoes',
-      startDate: '2026-08-01',
-      endDate: '2026-10-30',
-      expectedVolume: 800,
-      currentYield: 350,
-      status: 'Active',
-      buyerNotified: false,
-      lastBroadcastMsg: ''
-    },
-    {
-      id: 'h-3',
-      name: 'Hydroponic Salad Greens',
-      startDate: '2026-09-01',
-      endDate: '2026-12-15',
-      expectedVolume: 500,
-      currentYield: 0,
-      status: 'Scheduled',
-      buyerNotified: false,
-      lastBroadcastMsg: ''
-    }
-  ];
-
   // Data Normalization helper (supports both MySQL snake_case and UI camelCase)
   const normalizePlan = (item) => ({
     id: item?.id || `h-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
@@ -74,21 +37,21 @@ export const FarmerHarvestPlanner = () => {
     lastBroadcastMsg: item?.last_broadcast_msg || item?.lastBroadcastMsg || ''
   });
 
-  // Primary State with backend sync & localStorage fallback
+  // Primary State with backend sync
   const [seasons, setSeasons] = useState(() => {
     try {
       const saved = localStorage.getItem('localfarm_harvest_seasons');
-      const parsed = saved ? JSON.parse(saved) : defaultSeasons;
-      return Array.isArray(parsed) ? parsed.map(normalizePlan) : defaultSeasons.map(normalizePlan);
+      const parsed = saved ? JSON.parse(saved) : [];
+      return Array.isArray(parsed) ? parsed.map(normalizePlan) : [];
     } catch {
-      return defaultSeasons.map(normalizePlan);
+      return [];
     }
   });
 
   useEffect(() => {
     farmerService.getHarvestPlans()
       .then(plans => {
-        if (Array.isArray(plans) && plans.length > 0) {
+        if (Array.isArray(plans)) {
           setSeasons(plans.map(normalizePlan));
         }
       })
@@ -378,6 +341,11 @@ export const FarmerHarvestPlanner = () => {
                 </div>
               );
             })}
+            {seasons.length === 0 && (
+              <div className="py-8 text-center text-xs text-farmMuted font-bold">
+                No active seasonal crop tracks scheduled yet. Click "+" above to create your first season plan.
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -562,42 +530,64 @@ export const FarmerHarvestPlanner = () => {
 
       {/* Broadcast Modal Composer Popup */}
       {broadcastingId && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fadeIn">
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/75 backdrop-blur-md p-3 sm:p-6 flex min-h-screen items-center justify-center animate-fadeIn">
           <form 
             onSubmit={handleSendBroadcast}
-            className="bg-white rounded-[24px] p-6 max-w-md w-full border border-farmGreen-200/30 shadow-2xl space-y-4 animate-scaleIn text-xs font-semibold"
+            className="relative w-full max-w-lg max-h-[92vh] flex flex-col rounded-[28px] bg-white/95 backdrop-blur-2xl border border-white/60 shadow-[0_25px_70px_rgba(0,0,0,0.35)] overflow-hidden my-auto animate-scaleUp text-xs font-semibold"
           >
-            <div className="flex items-center gap-2 pb-3 border-b border-farmSage-100/40">
-              <MessageSquare className="w-5 h-5 text-farmGreen-700" />
-              <h3 className="font-extrabold text-base text-farmGreen-950">Compose Buyer Broadcast</h3>
-            </div>
-
-            <div>
-              <label className="font-bold text-farmGreen-950 mb-1.5 block">Alert Message Details</label>
-              <textarea
-                rows="4"
-                value={broadcastMsg}
-                onChange={(e) => setBroadcastMsg(e.target.value)}
-                placeholder="Compose announcement for crop harvest..."
-                className="w-full p-3 bg-white/40 backdrop-blur-sm/60 border border-farmSage-200/50 focus:bg-white focus:border-emerald-500 rounded-xl font-medium  resize-none leading-relaxed text-farmGreen-950"
-                required
-              />
-              <p className="text-[10px] text-farmMuted font-bold mt-1.5 italic">
-                * Alert notification will be immediately dispatched to 142 customer profiles currently subscribed to your harvest alerts.
-              </p>
-            </div>
-
-            <div className="flex justify-end gap-2.5 font-display pt-2">
+            {/* Pinned Glass Header */}
+            <div className="p-5 sm:p-6 pb-4 border-b border-farmSage-100/60 bg-white/85 backdrop-blur-xl flex justify-between items-center shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-50 border border-emerald-200/60 flex items-center justify-center text-emerald-700 shadow-sm shrink-0">
+                  <MessageSquare className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-base text-farmGreen-950">Compose Buyer Broadcast</h3>
+                  <p className="text-[11px] text-farmMuted font-medium">Notify subscribed community households instantly</p>
+                </div>
+              </div>
               <button
                 type="button"
                 onClick={() => setBroadcastingId(null)}
-                className="px-4 py-2.5 bg-white/50 hover:bg-farmSage-100/40 border border-farmSage-200/50 rounded-xl font-bold text-farmMuted cursor-pointer"
+                className="w-8 h-8 rounded-full bg-farmSage-100/60 hover:bg-farmSage-200/80 text-farmGreen-950 flex items-center justify-center transition-all cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Scrollable Body */}
+            <div className="p-5 sm:p-6 overflow-y-auto space-y-4 flex-1 scrollbar-thin">
+              <div>
+                <label className="font-bold text-farmGreen-950 mb-1.5 block">Alert Message Details</label>
+                <textarea
+                  rows="4"
+                  value={broadcastMsg}
+                  onChange={(e) => setBroadcastMsg(e.target.value)}
+                  placeholder="Compose announcement for crop harvest..."
+                  className="w-full p-3.5 bg-white/60 backdrop-blur-sm border border-farmSage-200/70 focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 rounded-2xl font-medium resize-none leading-relaxed text-farmGreen-950 outline-none transition-all"
+                  required
+                />
+                <div className="mt-2.5 p-3 rounded-xl bg-emerald-50/70 border border-emerald-200/50 flex items-start gap-2">
+                  <span className="text-emerald-700 font-bold">ℹ️</span>
+                  <p className="text-[11px] text-emerald-900 font-medium leading-snug">
+                    Alert notification will be immediately dispatched to 142 customer profiles currently subscribed to your harvest alerts.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Pinned Glass Footer */}
+            <div className="p-4 sm:p-5 border-t border-farmSage-100/60 bg-white/85 backdrop-blur-xl flex items-center justify-end gap-2.5 font-display shrink-0">
+              <button
+                type="button"
+                onClick={() => setBroadcastingId(null)}
+                className="px-4 py-2.5 bg-white/70 hover:bg-farmSage-100/70 border border-farmSage-200/60 rounded-xl font-bold text-farmMuted cursor-pointer transition-all"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="px-5 py-2.5 bg-farmGreen-700 hover:bg-farmGreen-600 text-white rounded-xl font-black flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95"
+                className="px-5 py-2.5 bg-emerald-700 hover:bg-emerald-600 text-white rounded-xl font-black flex items-center gap-1.5 cursor-pointer shadow-md hover:shadow-lg active:scale-95 transition-all"
               >
                 <Send className="w-3.5 h-3.5" />
                 <span>Send to 142 Buyers</span>

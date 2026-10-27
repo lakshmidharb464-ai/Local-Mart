@@ -155,6 +155,36 @@ export const farmerService = {
   },
 
   /**
+   * Get payout history
+   * GET /api/farmer/payouts
+   */
+  async getPayouts() {
+    const res = await apiClient('/farmer/payouts');
+    return res?.payouts || [];
+  },
+
+  /**
+   * Get KYC documents
+   * GET /api/farmer/kyc
+   */
+  async getKyc() {
+    const res = await apiClient('/farmer/kyc');
+    return res?.documents || [];
+  },
+
+  /**
+   * Submit KYC document
+   * POST /api/farmer/kyc
+   */
+  async submitKyc(docData) {
+    const res = await apiClient('/farmer/kyc', {
+      method: 'POST',
+      body: docData,
+    });
+    return res;
+  },
+
+  /**
    * Upload image/document to Cloudinary
    * POST /api/media/upload
    */

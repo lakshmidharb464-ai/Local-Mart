@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { User, Mail, Phone, Save, Camera, Sparkles } from 'lucide-react';
 
@@ -15,6 +15,18 @@ export const Profile = ({
   const [phone, setPhone] = useState(initialData.phone || '');
   const [altPhone, setAltPhone] = useState(initialData.altPhone || '');
   const [avatar, setAvatar] = useState(initialData.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80');
+
+  useEffect(() => {
+    if (initialData && Object.keys(initialData).length > 0) {
+      if (initialData.name !== undefined) setName(initialData.name || '');
+      if (initialData.email !== undefined) setEmail(initialData.email || '');
+      if (initialData.phone !== undefined) setPhone(initialData.phone || '');
+      if (initialData.altPhone !== undefined) setAltPhone(initialData.altPhone || '');
+      if (initialData.avatar !== undefined || initialData.avatar_url !== undefined) {
+        setAvatar(initialData.avatar || initialData.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80');
+      }
+    }
+  }, [initialData]);
 
   const nameLabel = t('fullName', 'Full Name');
   const emailLabel = t('email', 'Email Address');

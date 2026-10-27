@@ -585,14 +585,14 @@ export const FarmerOrders = ({ orders = [], setOrders }) => {
 
       {/* Manifest Modal */}
       {selectedOrder && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xl animate-fadeIn">
-          <div className="glass-surface rounded-3xl p-6 sm:p-7 max-w-lg w-full space-y-5 shadow-glass-lg border border-white/30 overflow-hidden relative animate-scaleIn">
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/75 backdrop-blur-md p-3 sm:p-6 flex min-h-screen items-center justify-center animate-fadeIn">
+          <div className="relative w-full max-w-lg max-h-[92vh] flex flex-col rounded-[28px] bg-white/95 backdrop-blur-2xl border border-white/60 shadow-[0_25px_70px_rgba(0,0,0,0.35)] overflow-hidden my-auto animate-scaleUp">
             
             {/* Modal Header */}
-            <div className="flex justify-between items-start pb-4 border-b border-gray-100">
+            <div className="p-5 sm:p-6 pb-4 border-b border-farmSage-100/60 bg-white/85 backdrop-blur-xl flex justify-between items-start shrink-0">
               <div className="flex items-center gap-3.5 min-w-0">
-                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-farmGold-500 to-farmGreen-800 text-white flex items-center justify-center shadow-gold-glow shrink-0">
-                  <Receipt className="w-6 h-6" />
+                <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-farmGold-500 to-farmGreen-800 text-white flex items-center justify-center shadow-md shrink-0">
+                  <Receipt className="w-5 h-5" />
                 </div>
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 mb-0.5">
@@ -610,110 +610,113 @@ export const FarmerOrders = ({ orders = [], setOrders }) => {
               </div>
               <button 
                 onClick={() => setSelectedOrder(null)} 
-                className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 hover:text-gray-900 flex items-center justify-center transition-colors cursor-pointer shrink-0"
+                className="w-8 h-8 rounded-full bg-farmSage-100/60 hover:bg-gray-200 text-gray-500 hover:text-gray-900 flex items-center justify-center transition-colors cursor-pointer shrink-0"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            {/* Customer Details Summary Card */}
-            <div className="p-4 bg-gradient-to-r from-gray-50 to-emerald-50/40 rounded-2xl border border-emerald-100 space-y-2 text-xs">
-              <div className="flex items-center justify-between">
-                <div>
-                  <span className="text-[10px] font-extrabold text-farmMuted uppercase block">Customer Details</span>
-                  <div className="font-black text-farmGreen-950 text-sm mt-0.5">{selectedOrder.customerName}</div>
-                  <div className="text-farmMuted text-[11px] font-bold">{selectedOrder.customerEmail}</div>
-                </div>
-                <span className="px-3 py-1 bg-emerald-100 text-emerald-900 border border-emerald-300 rounded-full font-black text-[10px]">
-                  ● {selectedOrder.status}
-                </span>
-              </div>
-              
-              <div className="pt-2 border-t border-emerald-100 flex items-center justify-between text-farmGreen-950 font-bold">
-                <div className="flex items-center gap-1.5 text-[11px]">
-                  <Navigation className="w-4 h-4 text-emerald-600 shrink-0" />
-                  <span>{selectedOrder.address || 'Kothrud Farm Route, Pune'}</span>
-                </div>
-                <span className="text-[10px] font-black text-emerald-800 bg-white px-2 py-0.5 rounded-md border border-emerald-200">
-                  Verified Route 📍
-                </span>
-              </div>
-            </div>
-
-            {/* Produce Packing Checklist Card */}
-            <div className="space-y-2 text-xs">
-              <div className="flex items-center justify-between">
-                <span className="font-black text-farmGreen-950 flex items-center gap-1.5">
-                  <Box className="w-4 h-4 text-emerald-600" />
-                  <span>Produce Items To Pack:</span>
-                </span>
-                <span className="text-[10px] text-emerald-800 font-black bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-300">
-                  ✓ Fresh Field Harvest
-                </span>
-              </div>
-              
-              <div className="p-3.5 bg-gradient-to-r from-emerald-50/70 to-teal-50/70 rounded-2xl border border-emerald-200 space-y-2.5">
-                <label className="flex items-start gap-2.5 cursor-pointer">
-                  <input type="checkbox" defaultChecked className="mt-0.5 accent-emerald-600 rounded cursor-pointer w-4 h-4" />
-                  <div className="min-w-0">
-                    <span className="font-extrabold text-farmGreen-950 text-xs block leading-snug">
-                      {selectedOrder.items}
-                    </span>
-                    <span className="text-[10px] text-emerald-700 font-bold mt-0.5 block">
-                      Inspected for Farm Fresh Quality & Cold-Crated
-                    </span>
+            {/* Scrollable Modal Body */}
+            <div className="p-5 sm:p-6 overflow-y-auto space-y-4 text-xs flex-1 scrollbar-thin">
+              {/* Customer Details Summary Card */}
+              <div className="p-4 bg-gradient-to-r from-gray-50 to-emerald-50/50 rounded-2xl border border-emerald-100/80 space-y-2 text-xs shadow-2xs">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-[10px] font-extrabold text-farmMuted uppercase block">Customer Details</span>
+                    <div className="font-black text-farmGreen-950 text-sm mt-0.5">{selectedOrder.customerName}</div>
+                    <div className="text-farmMuted text-[11px] font-bold">{selectedOrder.customerEmail}</div>
                   </div>
-                </label>
-              </div>
-            </div>
-
-            {/* Courier Rider Assignment Card */}
-            <div className="p-3.5 bg-gray-50 rounded-2xl border border-gray-200 flex items-center justify-between text-xs">
-              <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center shrink-0">
-                  <Truck className="w-4 h-4" />
+                  <span className="px-3 py-1 bg-emerald-100 text-emerald-900 border border-emerald-300 rounded-full font-black text-[10px]">
+                    ● {selectedOrder.status}
+                  </span>
                 </div>
+                
+                <div className="pt-2 border-t border-emerald-100 flex items-center justify-between text-farmGreen-950 font-bold">
+                  <div className="flex items-center gap-1.5 text-[11px]">
+                    <Navigation className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>{selectedOrder.address || 'Kothrud Farm Route, Pune'}</span>
+                  </div>
+                  <span className="text-[10px] font-black text-emerald-800 bg-white px-2 py-0.5 rounded-md border border-emerald-200">
+                    Verified Route 📍
+                  </span>
+                </div>
+              </div>
+
+              {/* Produce Packing Checklist Card */}
+              <div className="space-y-2 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="font-black text-farmGreen-950 flex items-center gap-1.5">
+                    <Box className="w-4 h-4 text-emerald-600" />
+                    <span>Produce Items To Pack:</span>
+                  </span>
+                  <span className="text-[10px] text-emerald-800 font-black bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-300">
+                    ✓ Fresh Field Harvest
+                  </span>
+                </div>
+                
+                <div className="p-3.5 bg-gradient-to-r from-emerald-50/80 to-teal-50/80 rounded-2xl border border-emerald-200 space-y-2.5 shadow-2xs">
+                  <label className="flex items-start gap-2.5 cursor-pointer">
+                    <input type="checkbox" defaultChecked className="mt-0.5 accent-emerald-600 rounded cursor-pointer w-4 h-4" />
+                    <div className="min-w-0">
+                      <span className="font-extrabold text-farmGreen-950 text-xs block leading-snug">
+                        {selectedOrder.items}
+                      </span>
+                      <span className="text-[10px] text-emerald-700 font-bold mt-0.5 block">
+                        Inspected for Farm Fresh Quality & Cold-Crated
+                      </span>
+                    </div>
+                  </label>
+                </div>
+              </div>
+
+              {/* Courier Rider Assignment Card */}
+              <div className="p-3.5 bg-gray-50/90 rounded-2xl border border-gray-200 flex items-center justify-between text-xs shadow-2xs">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center shrink-0">
+                    <Truck className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-farmMuted font-bold uppercase block">Courier Partner</span>
+                    <span className="font-extrabold text-farmGreen-950">Rohan Sharma (EV Scooter)</span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    if (showToast) showToast('Rider Alert Sent 📞', 'Dispatch partner notified to pick up crate.');
+                  }}
+                  className="px-3 py-1.5 bg-white hover:bg-emerald-50 border border-emerald-200 text-emerald-900 rounded-xl text-xs font-black cursor-pointer shadow-2xs flex items-center gap-1 active:scale-95 transition-all"
+                >
+                  <Phone className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Call Courier</span>
+                </button>
+              </div>
+
+              {/* Payment & Total */}
+              <div className="pt-2 border-t border-gray-100 flex items-center justify-between">
                 <div>
-                  <span className="text-[10px] text-farmMuted font-bold uppercase block">Courier Courier Rider</span>
-                  <span className="font-extrabold text-farmGreen-950">Rohan Sharma (EV Scooter)</span>
+                  <span className="text-farmMuted text-[10px] uppercase font-extrabold block">Payment Settlement</span>
+                  <span className="font-black text-xs text-emerald-800 flex items-center gap-1 mt-0.5">
+                    <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                    <span>{selectedOrder.paymentMethod || 'UPI Paid (Direct to Farmer Bank)'}</span>
+                  </span>
                 </div>
-              </div>
-              <button
-                onClick={() => {
-                  if (showToast) showToast('Rider Alert Sent 📞', 'Dispatch partner notified to pick up crate.');
-                }}
-                className="px-3 py-1.5 bg-white hover:bg-emerald-50 border border-emerald-200 text-emerald-900 rounded-xl text-xs font-black cursor-pointer shadow-2xs flex items-center gap-1 active:scale-95 transition-all"
-              >
-                <Phone className="w-3.5 h-3.5 text-emerald-600" />
-                <span>Call Courier</span>
-              </button>
-            </div>
-
-            {/* Payment & Total */}
-            <div className="pt-2 border-t border-gray-100 flex items-center justify-between">
-              <div>
-                <span className="text-farmMuted text-[10px] uppercase font-extrabold block">Payment Settlement</span>
-                <span className="font-black text-xs text-emerald-800 flex items-center gap-1 mt-0.5">
-                  <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                  <span>{selectedOrder.paymentMethod || 'UPI Paid (Direct to Farmer Bank)'}</span>
-                </span>
-              </div>
-              <div className="text-right">
-                <span className="text-farmMuted text-[10px] uppercase font-extrabold block">Order Total</span>
-                <div className="font-black text-2xl text-farmGreen-950 font-mono">
-                  ₹{selectedOrder.total}
+                <div className="text-right">
+                  <span className="text-farmMuted text-[10px] uppercase font-extrabold block">Order Total</span>
+                  <div className="font-black text-2xl text-farmGreen-950 font-mono">
+                    ₹{selectedOrder.total}
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Interactive Actions */}
-            <div className="grid grid-cols-2 gap-2.5 pt-1">
+            {/* Sticky Glass Footer Actions */}
+            <div className="p-4 sm:p-5 border-t border-farmSage-100/60 bg-white/85 backdrop-blur-xl grid grid-cols-2 gap-2.5 shrink-0">
               <button
                 onClick={() => {
                   showToast('Printing Slip 🖨️', `Printing packing manifest for ${selectedOrder.id}...`);
                   window.print();
                 }}
-                className="py-3 rounded-2xl border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-950 font-black text-xs cursor-pointer transition-all active:scale-95 flex items-center justify-center gap-1.5"
+                className="py-2.5 rounded-2xl border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-950 font-black text-xs cursor-pointer transition-all active:scale-95 flex items-center justify-center gap-1.5"
               >
                 <Printer className="w-4 h-4 text-emerald-700" />
                 <span>Print Packing Slip</span>
@@ -721,7 +724,7 @@ export const FarmerOrders = ({ orders = [], setOrders }) => {
               
               <button
                 onClick={() => setSelectedOrder(null)}
-                className="py-3 bg-gradient-to-r from-farmGreen-800 to-farmGreen-950 hover:from-farmGreen-700 hover:to-farmGreen-900 text-white font-black text-xs rounded-2xl shadow-md transition-all active:scale-95 cursor-pointer"
+                className="py-2.5 bg-gradient-to-r from-farmGreen-800 to-farmGreen-950 hover:from-farmGreen-700 hover:to-farmGreen-900 text-white font-black text-xs rounded-2xl shadow-md transition-all active:scale-95 cursor-pointer"
               >
                 Close Manifest
               </button>

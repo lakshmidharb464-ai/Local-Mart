@@ -290,7 +290,7 @@ export const Navbar = ({ activeView, setActiveView }) => {
                       {/* Menu Actions */}
                       <div className="space-y-1">
                         <NavLink
-                          to="/dashboard"
+                          to={currentRoleStyle.path || '/dashboard'}
                           onClick={() => {
                             if (setActiveView) setActiveView('dashboard');
                             setUserMenuOpen(false);

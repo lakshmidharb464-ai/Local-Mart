@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { adminService } from '../../services/adminService';
 import { 
   Search, 
   User, 
@@ -19,10 +20,11 @@ import {
   CheckCircle2,
   TrendingUp,
   Sparkles,
-  RotateCcw
+  RotateCcw,
+  Trash2
 } from 'lucide-react';
 
-export const CustomerManagement = ({ customers, setCustomers, isDark = false }) => {
+export const CustomerManagement = ({ customers, setCustomers, isDark = false, refreshData }) => {
   const { showToast } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
@@ -45,21 +47,28 @@ export const CustomerManagement = ({ customers, setCustomers, isDark = false }) 
     name: '',
     email: '',
     phone: '',
+    password: 'password123',
     address: 'Kothrud, Pune 411038',
     status: 'Active'
   });
 
   const filteredCustomers = useMemo(() => {
     return customers.filter(c => {
+      const name = c.name || '';
+      const email = c.email || '';
+      const address = c.address || '';
+      const phone = c.phone || '';
+      const status = c.status || (c.is_active === 0 ? 'Inactive' : 'Active');
+
       const matchesSearch = 
-        c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        c.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        c.address.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        c.phone.includes(searchQuery);
+        name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        address.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        phone.includes(searchQuery);
 
       if (statusFilter === 'All') return matchesSearch;
-      if (statusFilter === 'Active') return matchesSearch && c.status === 'Active';
-      if (statusFilter === 'Inactive') return matchesSearch && c.status === 'Inactive';
+      if (statusFilter === 'Active') return matchesSearch && status === 'Active';
+      if (statusFilter === 'Inactive') return matchesSearch && status === 'Inactive';
       return matchesSearch;
     });
   }, [customers, searchQuery, statusFilter]);
@@ -67,47 +76,75 @@ export const CustomerManagement = ({ customers, setCustomers, isDark = false }) 
   const { totalCustomers, activeCustomers, totalSpendSum, totalOrdersSum } = useMemo(() => {
     return {
       totalCustomers: customers.length,
-      activeCustomers: customers.filter(c => c.status === 'Active').length,
-      totalSpendSum: customers.reduce((sum, c) => sum + (c.totalSpent || 0), 0),
-      totalOrdersSum: customers.reduce((sum, c) => sum + (c.ordersCount || 0), 0),
+      activeCustomers: customers.filter(c => (c.status || (c.is_active === 0 ? 'Inactive' : 'Active')) === 'Active').length,
+      totalSpendSum: customers.reduce((sum, c) => sum + (c.totalSpent || c.total_spent || 0), 0),
+      totalOrdersSum: customers.reduce((sum, c) => sum + (c.ordersCount || c.order_count || 0), 0),
     };
   }, [customers]);
 
-  const handleToggleStatus = (id, currentStatus, name) => {
-    const newStatus = currentStatus === 'Active' ? 'Inactive' : 'Active';
-    setCustomers(customers.map(c => c.id === id ? { ...c, status: newStatus } : c));
-    showToast('Customer Status Updated', `${name} is now ${newStatus}.`);
+  const handleToggleStatus = async (id, currentStatus, name) => {
+    const rawStatus = currentStatus || 'Active';
+    const newStatus = (rawStatus === 'Active' || rawStatus === 'active') ? 'Inactive' : 'Active';
+    try {
+      await adminService.setCustomerStatus(id, newStatus);
+      setCustomers(customers.map(c => c.id === id ? { ...c, status: newStatus, is_active: newStatus === 'Active' ? 1 : 0 } : c));
+      showToast(
+        newStatus === 'Active' ? 'Customer Activated' : 'Customer Deactivated',
+        `${name} is now ${newStatus}. ${newStatus === 'Inactive' ? 'Login disabled for this customer.' : 'Login enabled.'}`
+      );
+    } catch (e) {
+      showToast('Error', 'Failed to update customer status.', 'error');
+    }
   };
 
-  const handleAddCustomer = (e) => {
+  const handleDeleteCustomer = async (id, name) => {
+    if (!window.confirm(`Are you sure you want to permanently remove customer "${name}"? This action cannot be undone.`)) {
+      return;
+    }
+    try {
+      await adminService.deleteCustomer(id);
+      setCustomers(customers.filter(c => c.id !== id));
+      showToast('Customer Removed', `${name} has been removed from the platform.`);
+    } catch (e) {
+      showToast('Error', 'Failed to remove customer.', 'error');
+    }
+  };
+
+  const handleAddCustomer = async (e) => {
     e.preventDefault();
     if (!newCustomer.name || !newCustomer.email || !newCustomer.phone) {
       showToast('Validation Error', 'Please complete name, email, and phone number.', 'error');
       return;
     }
 
-    const created = {
-      id: `c${customers.length + 1}`,
-      name: newCustomer.name,
-      email: newCustomer.email,
-      phone: newCustomer.phone,
-      address: newCustomer.address,
-      ordersCount: 0,
-      totalSpent: 0,
-      status: newCustomer.status,
-      joinedDate: 'Today'
-    };
+    try {
+      const res = await adminService.createCustomer(newCustomer);
+      const created = res.customer || {
+        id: `c${customers.length + 1}`,
+        name: newCustomer.name,
+        email: newCustomer.email,
+        phone: newCustomer.phone,
+        address: newCustomer.address,
+        ordersCount: 0,
+        totalSpent: 0,
+        status: newCustomer.status,
+        joinedDate: 'Today'
+      };
 
-    setCustomers([created, ...customers]);
-    setShowAddModal(false);
-    setNewCustomer({
-      name: '',
-      email: '',
-      phone: '',
-      address: 'Kothrud, Pune 411038',
-      status: 'Active'
-    });
-    showToast('Customer Account Created', `${created.name} registered successfully!`);
+      setCustomers([created, ...customers]);
+      setShowAddModal(false);
+      setNewCustomer({
+        name: '',
+        email: '',
+        phone: '',
+        address: 'Kothrud, Pune 411038',
+        status: 'Active'
+      });
+      showToast('Customer Account Created', `${created.name} registered successfully!`);
+      if (refreshData) refreshData();
+    } catch (err) {
+      showToast('Registration Error', err.message || 'Failed to create customer account.', 'error');
+    }
   };
 
   return (
@@ -376,10 +413,10 @@ export const CustomerManagement = ({ customers, setCustomers, isDark = false }) 
                     {cust.address}
                   </td>
                   <td className={`p-4 font-extrabold text-sm ${isDark ? 'text-[#D4EAD9]' : 'text-farmGreen-950'}`}>
-                    {cust.ordersCount} Orders
+                    {cust.ordersCount || cust.order_count || 0} Orders
                   </td>
                   <td className={`p-4 font-extrabold text-sm ${isDark ? 'adm-gold-text' : 'text-emerald-800'}`}>
-                    ₹{cust.totalSpent.toLocaleString()}
+                    ₹{Number(cust.totalSpent || cust.total_spent || 0).toLocaleString()}
                   </td>
 
                   {/* Status Toggle */}
@@ -401,7 +438,7 @@ export const CustomerManagement = ({ customers, setCustomers, isDark = false }) 
                     </button>
                   </td>
 
-                  <td className="p-4 pr-6 text-right">
+                  <td className="p-4 pr-6 text-right space-x-1.5">
                     <button
                       onClick={() => setSelectedCustomer(cust)}
                       className={`px-3.5 py-1.5 rounded-xl text-[11px] font-extrabold inline-flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs ${
@@ -412,6 +449,18 @@ export const CustomerManagement = ({ customers, setCustomers, isDark = false }) 
                     >
                       <Eye className="w-3.5 h-3.5" />
                       <span>View Profile</span>
+                    </button>
+
+                    <button
+                      onClick={() => handleDeleteCustomer(cust.id, cust.name)}
+                      className={`p-2 rounded-xl transition-all cursor-pointer ${
+                        isDark 
+                          ? 'text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20' 
+                          : 'text-rose-600 bg-rose-50 hover:bg-rose-100'
+                      }`}
+                      title="Permanently Remove Customer"
+                    >
+                      <Trash2 className="w-4 h-4" />
                     </button>
                   </td>
                 </tr>
@@ -552,7 +601,7 @@ export const CustomerManagement = ({ customers, setCustomers, isDark = false }) 
                     <span>Total Orders</span>
                   </div>
                   <div className={`font-extrabold text-3xl ${isDark ? 'text-[#D4EAD9]' : 'text-emerald-950'}`}>
-                    {selectedCustomer.ordersCount}
+                    {selectedCustomer.ordersCount || selectedCustomer.order_count || 0}
                   </div>
                 </div>
 
@@ -568,7 +617,7 @@ export const CustomerManagement = ({ customers, setCustomers, isDark = false }) 
                     <span>Total Spend</span>
                   </div>
                   <div className={`font-extrabold text-3xl ${isDark ? 'adm-gold-text' : 'text-farmGreen-950'}`}>
-                    ₹{selectedCustomer.totalSpent.toLocaleString()}
+                    ₹{Number(selectedCustomer.totalSpent || selectedCustomer.total_spent || 0).toLocaleString()}
                   </div>
                 </div>
               </div>
@@ -683,6 +732,23 @@ export const CustomerManagement = ({ customers, setCustomers, isDark = false }) 
                       : 'bg-farmBg border border-gray-200 focus:border-farmGreen-600'
                   }`}
                   required
+                />
+              </div>
+
+              <div>
+                <label className={`font-extrabold mb-1 block ${isDark ? 'text-[#D4EAD9]' : 'text-farmGreen-950'}`}>
+                  Account Password (Default: password123)
+                </label>
+                <input
+                  type="password"
+                  placeholder="Min 6 characters (e.g. password123)"
+                  value={newCustomer.password}
+                  onChange={(e) => setNewCustomer({ ...newCustomer, password: e.target.value })}
+                  className={`w-full px-4 py-2.5 rounded-2xl outline-none transition-all ${
+                    isDark 
+                      ? 'bg-[rgba(255,255,255,0.03)] border border-[rgba(0,255,133,0.15)] text-[#D4EAD9] placeholder-[#7FA882]/40 focus:border-[#00FF85]' 
+                      : 'bg-farmBg border border-gray-200 focus:border-farmGreen-600'
+                  }`}
                 />
               </div>
 

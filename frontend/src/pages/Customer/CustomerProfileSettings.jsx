@@ -308,7 +308,7 @@ export const CustomerProfileSettings = ({ initialSubTab = 'profile' }) => {
     <div className="max-w-3xl mx-auto space-y-6 animate-fadeIn font-display pb-16">
       
       {/* Ultra-Premium Glassmorphism Hero Header Card */}
-      <div className="bg-gradient-to-br from-[#0A2312] via-[#183D22] to-[#257036] text-white p-6 sm:p-8 rounded-[32px] relative shadow-2xl border border-farmGreen-600/30 transition-all duration-500 overflow-hidden group">
+      <div className="bg-gradient-to-br from-[#0A2312] via-[#183D22] to-[#257036] text-white p-6 sm:p-8 rounded-[32px] relative shadow-2xl border border-farmGreen-600/30 transition-all duration-500 group">
         {/* Multi-layer glowing ambient shapes */}
         <div className="absolute inset-0 rounded-[32px] overflow-hidden pointer-events-none">
           <div className="absolute -right-12 -top-12 w-64 h-64 bg-farmGreen-400/15 rounded-full blur-3xl group-hover:bg-farmGreen-400/25 transition-all duration-700" />
@@ -357,7 +357,7 @@ export const CustomerProfileSettings = ({ initialSubTab = 'profile' }) => {
               
               {/* Member Rank Component */}
               <div className="pt-1">
-                <MemberRank orderCount={user?.orderCount || 35} compact={true} tooltipPosition="bottom" tooltipAlign="left" />
+                <MemberRank orderCount={Number(user?.profile?.order_count ?? user?.orderCount ?? user?.order_count ?? 0)} compact={true} tooltipPosition="bottom" tooltipAlign="left" />
               </div>
             </div>
           </div>

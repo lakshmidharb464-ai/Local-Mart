@@ -89,10 +89,15 @@ export const DeliveryDashboard = () => {
   // ── Status update — calls real backend then refreshes ─────────
   const handleUpdateStatus = useCallback(async (orderId, newStatus, reason = null) => {
     try {
-      await deliveryService.updateOrderStatus(orderId, newStatus, reason || '');
+      if (newStatus === 'Accepted') {
+        await deliveryService.acceptOrder(orderId);
+      } else {
+        await deliveryService.updateOrderStatus(orderId, newStatus, reason || '');
+      }
+      
       // Optimistic UI update
       setOrders(prev => prev.map(o => {
-        if (o.id !== orderId) return o;
+        if (o.id !== orderId && o.orderId !== orderId) return o;
         const timeNow = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         return {
           ...o,
@@ -106,14 +111,16 @@ export const DeliveryDashboard = () => {
           ]
         };
       }));
-      if (showToast) showToast(`Order ${orderId} Updated`, `Marked as ${newStatus}${reason ? `: ${reason}` : ''}`);
+      if (showToast) showToast(`Order Updated 🎉`, `Marked as ${newStatus}${reason ? `: ${reason}` : ''}`);
+      // Refresh real database metrics
+      loadDeliveryData();
     } catch (err) {
       console.error('[DeliveryDashboard] Status update failed:', err);
       if (showToast) showToast('Update Failed', err.message || 'Could not update order status.', 'error');
     }
-  }, [showToast]);
+  }, [showToast, loadDeliveryData]);
 
-  const pendingCount = orders.filter(o => ['Assigned', 'Accepted', 'Picked Up', 'Out for Delivery'].includes(o.status)).length;
+  const pendingCount = orders.filter(o => ['Pending', 'Assigned', 'Accepted', 'Picked Up', 'Out for Delivery'].includes(o.status)).length;
 
   const renderActiveView = () => {
     if (isLoading) return <ViewLoader />;

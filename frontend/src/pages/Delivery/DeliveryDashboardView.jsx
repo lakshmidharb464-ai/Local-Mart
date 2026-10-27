@@ -59,9 +59,8 @@ export const DeliveryDashboardView = ({
   setActiveTab, 
   setSelectedOrder 
 }) => {
-  const todaysDeliveries = orders.filter(o => o.assignedTime?.includes('Today') || o.id);
-  const pendingDeliveries = orders.filter(o => ['Assigned', 'Accepted', 'Picked Up', 'Out for Delivery'].includes(o.status));
   const completedDeliveries = orders.filter(o => o.status === 'Delivered');
+  const pendingDeliveries = orders.filter(o => ['Pending', 'Approved', 'Packed', 'Assigned', 'Accepted', 'Picked Up', 'Out for Delivery'].includes(o.status));
   const activeOrder = orders.find(o => o.status === 'Out for Delivery') || orders.find(o => o.status === 'Picked Up') || orders.find(o => o.status === 'Accepted');
 
   const handleAction = (order, targetStatus) => {
@@ -72,7 +71,7 @@ export const DeliveryDashboardView = ({
     } catch {
       // Ignore vibration errors
     }
-    if (onUpdateStatus) onUpdateStatus(order.id, targetStatus);
+    if (onUpdateStatus) onUpdateStatus(order.orderId || order.id, targetStatus);
   };
 
   return (
@@ -91,19 +90,19 @@ export const DeliveryDashboardView = ({
               <span>{profile.isOnline !== false ? 'Active Online Duty • Ready for Dispatch' : 'Offline Mode'}</span>
             </div>
             <h1 className="font-black text-2xl sm:text-3xl text-white tracking-tight">
-              Welcome back, {profile.name || 'Rohan Sharma'}! ⚡
+              Welcome back, {profile.name || 'Delivery Partner'}! ⚡
             </h1>
             <div className="flex flex-wrap items-center gap-3 text-xs text-emerald-100/90 font-semibold pt-1">
               <span className="flex items-center gap-1 bg-white/10 px-2.5 py-1 rounded-xl backdrop-blur-sm border border-white/10">
                 <Truck className="w-3.5 h-3.5 text-emerald-400" />
-                {profile.vehicleType || 'EV Scooter (Zero Emission)'}
+                {profile.vehicleType || profile.vehicle_type || 'EV Scooter (Eco)'}
               </span>
               <span className="flex items-center gap-1 bg-white/10 px-2.5 py-1 rounded-xl backdrop-blur-sm border border-white/10 tabular-nums">
                 <BatteryCharging className="w-3.5 h-3.5 text-emerald-400" />
-                Battery: <strong className="text-emerald-300">88% (Est. 65 km)</strong>
+                Vehicle: <strong className="text-emerald-300">{profile.vehicleNumber || profile.vehicle_number || 'EV-Active'}</strong>
               </span>
               <span className="flex items-center gap-1 bg-white/10 px-2.5 py-1 rounded-xl backdrop-blur-sm border border-white/10 tabular-nums">
-                ⭐ Rating: <strong className="text-amber-300">{profile.rating || '4.9'} / 5.0</strong>
+                ⭐ Rating: <strong className="text-amber-300">{Number(profile?.rating || 5.0).toFixed(1)} / 5.0</strong>
               </span>
             </div>
           </div>
@@ -112,11 +111,11 @@ export const DeliveryDashboardView = ({
           <div className="bg-white/[0.08] backdrop-blur-md p-5 rounded-3xl border border-white/15 text-right min-w-[220px] shrink-0 shadow-lg space-y-1">
             <div className="text-[10px] font-black text-emerald-300 uppercase tracking-widest">Today's Total Payout</div>
             <div className="font-black text-3xl text-white font-mono tabular-nums">
-              ₹{(earnings.todayTotal || 345).toLocaleString()}
+              ₹{Number(earnings.todayTotal || 0).toLocaleString()}
             </div>
             <div className="text-[11px] text-amber-300 font-extrabold flex items-center justify-end gap-1 tabular-nums">
               <TrendingUp className="w-3.5 h-3.5" />
-              <span>{todaysDeliveries.length} Trips completed today</span>
+              <span>{completedDeliveries.length} Trips completed today</span>
             </div>
           </div>
         </div>
@@ -128,18 +127,18 @@ export const DeliveryDashboardView = ({
         {/* Stat 1 */}
         <div className="glass-surface p-5 rounded-3xl border border-farmGreen-200/40 shadow-glass flex items-center justify-between hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
           <div className="space-y-1">
-            <div className="text-[10px] font-black uppercase tracking-wider text-farmMuted">Assigned Tasks</div>
-            <div className="font-black text-2xl text-farmGreen-950">{todaysDeliveries.length}</div>
+            <div className="text-[10px] font-black uppercase tracking-wider text-farmMuted">Assigned & Available</div>
+            <div className="font-black text-2xl text-farmGreen-950">{orders.length}</div>
             <div className="text-[11px] text-emerald-700 font-extrabold flex items-center gap-1">
               <CheckCircle2 className="w-3.5 h-3.5" />
-              <span>Active for today</span>
+              <span>Live Tasks</span>
             </div>
           </div>
           <div className="flex flex-col items-end gap-2">
             <div className="w-11 h-11 rounded-2xl bg-emerald-100/80 text-emerald-800 flex items-center justify-center font-black shadow-xs">
               <Truck className="w-5 h-5" />
             </div>
-            <Sparkline data={[4, 6, 5, 8, 7, 9, todaysDeliveries.length]} color="#10B981" gradientId="spk-assigned" />
+            <Sparkline data={[orders.length > 0 ? orders.length : 1, orders.length]} color="#10B981" gradientId="spk-assigned" />
           </div>
         </div>
 
@@ -157,7 +156,7 @@ export const DeliveryDashboardView = ({
             <div className="w-11 h-11 rounded-2xl bg-amber-100/80 text-amber-800 flex items-center justify-center font-black shadow-xs">
               <Clock className="w-5 h-5" />
             </div>
-            <Sparkline data={[2, 4, 3, 5, 3, 4, pendingDeliveries.length]} color="#F59E0B" gradientId="spk-pending" />
+            <Sparkline data={[1, pendingDeliveries.length > 0 ? pendingDeliveries.length : 1]} color="#F59E0B" gradientId="spk-pending" />
           </div>
         </div>
 
@@ -168,22 +167,22 @@ export const DeliveryDashboardView = ({
             <div className="font-black text-2xl text-blue-700">{completedDeliveries.length}</div>
             <div className="text-[11px] text-blue-700 font-extrabold flex items-center gap-1">
               <Check className="w-3.5 h-3.5" />
-              <span>100% On-time</span>
+              <span>Completed trips</span>
             </div>
           </div>
           <div className="flex flex-col items-end gap-2">
             <div className="w-11 h-11 rounded-2xl bg-blue-100/80 text-blue-800 flex items-center justify-center font-black shadow-xs">
               <CheckCircle2 className="w-5 h-5 text-blue-600" />
             </div>
-            <Sparkline data={[1, 3, 5, 4, 6, 8, completedDeliveries.length]} color="#3B82F6" gradientId="spk-delivered" />
+            <Sparkline data={[1, completedDeliveries.length > 0 ? completedDeliveries.length : 1]} color="#3B82F6" gradientId="spk-delivered" />
           </div>
         </div>
 
         {/* Stat 4 */}
         <div className="glass-surface p-5 rounded-3xl border border-emerald-200/60 shadow-glass flex items-center justify-between hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
           <div className="space-y-1">
-            <div className="text-[10px] font-black uppercase tracking-wider text-farmMuted">Total Payout + Tips</div>
-            <div className="font-black text-2xl text-emerald-900 font-mono">₹{earnings.todayTotal || 345}</div>
+            <div className="text-[10px] font-black uppercase tracking-wider text-farmMuted">Today's Payout</div>
+            <div className="font-black text-2xl text-emerald-900 font-mono">₹{Number(earnings.todayTotal || 0).toLocaleString()}</div>
             <div className="text-[11px] text-emerald-700 font-extrabold flex items-center gap-1">
               <IndianRupee className="w-3.5 h-3.5" />
               <span>Base fare + tips</span>
@@ -193,7 +192,7 @@ export const DeliveryDashboardView = ({
             <div className="w-11 h-11 rounded-2xl bg-emerald-100/80 text-emerald-800 flex items-center justify-center font-black shadow-xs">
               <IndianRupee className="w-5 h-5" />
             </div>
-            <Sparkline data={[120, 180, 240, 210, 290, 310, earnings.todayTotal || 345]} color="#059669" gradientId="spk-earnings" />
+            <Sparkline data={[1, Number(earnings.todayTotal || 0) > 0 ? Number(earnings.todayTotal || 0) : 1]} color="#059669" gradientId="spk-earnings" />
           </div>
         </div>
 
@@ -373,15 +372,16 @@ export const DeliveryDashboardView = ({
 
                 <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end border-t sm:border-t-0 pt-2 sm:pt-0 border-farmSage-100/40">
                   <span className="font-black text-sm text-emerald-800 font-mono">
-                    +₹{(del.fee || 45) + (del.tip || 15)}
+                    +₹{(del.fee || 30) + (del.tip || 0)}
                   </span>
                   
-                  {del.status === 'Assigned' && (
+                  {(del.status === 'Assigned' || del.status === 'Pending' || del.status === 'Approved' || del.status === 'Packed' || del.isAvailableToAccept) && (
                     <button
                       onClick={() => handleAction(del, 'Accepted')}
-                      className="px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white rounded-xl text-xs font-black cursor-pointer shadow-xs active:scale-95 transition-all"
+                      className="px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white rounded-xl text-xs font-black cursor-pointer shadow-xs active:scale-95 transition-all flex items-center gap-1.5"
                     >
-                      Accept Task
+                      <Zap className="w-3.5 h-3.5 text-amber-300" />
+                      <span>Accept Task</span>
                     </button>
                   )}
                   {del.status === 'Accepted' && (

@@ -94,6 +94,21 @@ export const deliveryService = {
     });
     return res;
   },
+
+  /** GET /api/delivery/kyc */
+  async getKyc() {
+    const res = await apiClient('/delivery/kyc');
+    return res?.documents || [];
+  },
+
+  /** POST /api/delivery/kyc */
+  async submitKyc(docData) {
+    const res = await apiClient('/delivery/kyc', {
+      method: 'POST',
+      body: docData,
+    });
+    return res;
+  },
 };
 
 export default deliveryService;

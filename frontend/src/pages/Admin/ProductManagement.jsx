@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { adminService } from '../../services/adminService';
 import { 
   Search, 
   Plus, 
@@ -30,7 +31,7 @@ import {
   RotateCcw
 } from 'lucide-react';
 
-export const ProductManagement = ({ products = [], setProducts, categories = [], setCategories, isDark = false }) => {
+export const ProductManagement = ({ products = [], setProducts, categories = [], setCategories, isDark = false, refreshData }) => {
   const { showToast } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCatFilter, setSelectedCatFilter] = useState('all');
@@ -78,13 +79,17 @@ export const ProductManagement = ({ products = [], setProducts, categories = [],
 
   const filteredProducts = useMemo(() => {
     return products.filter(p => {
+      const pName = p.name || '';
+      const pFarmer = p.farmerName || p.farmer_name || '';
+      const pCat = p.category || p.category_name || '';
+
       const matchesSearch = 
-        p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.farmerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.category.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesCat = selectedCatFilter === 'all' || p.category === selectedCatFilter;
+        pName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        pFarmer.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        pCat.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesCat = selectedCatFilter === 'all' || pCat.toLowerCase() === selectedCatFilter.toLowerCase();
       const matchesRegion = filterRegion === 'all' ? true :
-        filterRegion === 'chittoor' ? (p.district?.includes('Chittoor') || p.farmerName?.includes('Chittoor') || p.id?.startsWith('prod_ctr')) : true;
+        filterRegion === 'chittoor' ? (p.district?.includes('Chittoor') || pFarmer.includes('Chittoor') || String(p.id).startsWith('prod_ctr')) : true;
       return matchesSearch && matchesCat && matchesRegion;
     });
   }, [products, searchQuery, selectedCatFilter, filterRegion]);
@@ -98,64 +103,105 @@ export const ProductManagement = ({ products = [], setProducts, categories = [],
     };
   }, [products, categories]);
 
-  const handleApproveProduct = (id, name) => {
-    setProducts(products.map(p => p.id === id ? { ...p, status: 'Approved' } : p));
-    if (showToast) showToast('Listing Approved ✓', `${name} is live on marketplace.`);
+  const handleApproveProduct = async (id, name) => {
+    try {
+      await adminService.moderateProduct(id, 'Approved');
+      setProducts(products.map(p => p.id === id ? { ...p, status: 'Approved' } : p));
+      if (showToast) showToast('Listing Approved ✓', `${name} is live on marketplace.`);
+      if (refreshData) refreshData();
+    } catch (e) {
+      if (showToast) showToast('Error', e.message || 'Failed to approve listing.', 'error');
+    }
   };
 
-  const handleRejectProduct = (id, name) => {
-    setProducts(products.map(p => p.id === id ? { ...p, status: 'Rejected' } : p));
-    if (showToast) showToast('Listing Rejected ✕', `${name} set to rejected.`, 'error');
+  const handleRejectProduct = async (id, name) => {
+    try {
+      await adminService.moderateProduct(id, 'Rejected');
+      setProducts(products.map(p => p.id === id ? { ...p, status: 'Rejected' } : p));
+      if (showToast) showToast('Listing Rejected ✕', `${name} set to rejected.`, 'error');
+      if (refreshData) refreshData();
+    } catch (e) {
+      if (showToast) showToast('Error', e.message || 'Failed to reject listing.', 'error');
+    }
   };
 
-  const handleDeleteProduct = (id, name) => {
-    setProducts(products.filter(p => p.id !== id));
-    if (showToast) showToast('Produce Deleted 🗑️', `${name} removed from catalog.`);
+  const handleDeleteProduct = async (id, name) => {
+    if (!window.confirm(`Are you sure you want to remove product "${name}" from catalog?`)) {
+      return;
+    }
+    try {
+      await adminService.deleteProduct(id);
+      setProducts(products.filter(p => p.id !== id));
+      if (showToast) showToast('Produce Deleted 🗑️', `${name} removed from catalog.`);
+      if (refreshData) refreshData();
+    } catch (e) {
+      if (showToast) showToast('Error', e.message || 'Failed to delete produce.', 'error');
+    }
   };
 
-  const handleSaveEdit = (e) => {
+  const handleSaveEdit = async (e) => {
     e.preventDefault();
     if (!editingProduct) return;
-    setProducts(products.map(p => p.id === editingProduct.id ? editingProduct : p));
-    setEditingProduct(null);
-    if (showToast) showToast('Listing Updated 📝', 'Product details saved successfully.');
+    try {
+      await adminService.updateProduct(editingProduct.id, {
+        name: editingProduct.name,
+        price: editingProduct.price,
+        stock: editingProduct.stock,
+        unit: editingProduct.unit,
+        status: editingProduct.status,
+        category: editingProduct.category,
+        image: editingProduct.image,
+      });
+      setProducts(products.map(p => p.id === editingProduct.id ? editingProduct : p));
+      setEditingProduct(null);
+      if (showToast) showToast('Listing Updated 📝', 'Product details saved successfully.');
+      if (refreshData) refreshData();
+    } catch (err) {
+      if (showToast) showToast('Update Error', err.message || 'Failed to save changes.', 'error');
+    }
   };
 
-  const handleAddProduct = (e) => {
+  const handleAddProduct = async (e) => {
     e.preventDefault();
     if (!newProduct.name) {
       if (showToast) showToast('Validation Error', 'Please enter produce name.', 'error');
       return;
     }
 
-    const created = {
-      id: `prod_${Date.now()}`,
-      name: newProduct.name,
-      farmerName: newProduct.farmerName || 'Rajesh Kumar',
-      category: newProduct.category || 'vegetables',
-      price: Number(newProduct.price) || 60,
-      unit: newProduct.unit || '1 kg',
-      stock: Number(newProduct.stock) || 100,
-      image: newProduct.image || produceImagePresets[0].url,
-      status: newProduct.status || 'Approved',
-      district: newProduct.district || 'Chittoor AP',
-      rating: 5.0
-    };
+    try {
+      const res = await adminService.createProduct(newProduct);
+      const created = res.product || {
+        id: `prod_${Date.now()}`,
+        name: newProduct.name,
+        farmerName: newProduct.farmerName || 'Rajesh Kumar',
+        category: newProduct.category || 'vegetables',
+        price: Number(newProduct.price) || 60,
+        unit: newProduct.unit || '1 kg',
+        stock: Number(newProduct.stock) || 100,
+        image: newProduct.image || produceImagePresets[0].url,
+        status: newProduct.status || 'Approved',
+        district: newProduct.district || 'Chittoor AP',
+        rating: 5.0
+      };
 
-    setProducts([created, ...products]);
-    setShowAddProductModal(false);
-    setNewProduct({
-      name: '',
-      farmerName: 'Rajesh Kumar (Chittoor AP)',
-      category: 'vegetables',
-      price: 60,
-      unit: '1 kg',
-      stock: 100,
-      image: produceImagePresets[0].url,
-      status: 'Approved',
-      district: 'Chittoor AP'
-    });
-    if (showToast) showToast('Produce Onboarded 🎉', `${created.name} listed successfully!`);
+      setProducts([created, ...products]);
+      setShowAddProductModal(false);
+      setNewProduct({
+        name: '',
+        farmerName: 'Rajesh Kumar (Chittoor AP)',
+        category: 'vegetables',
+        price: 60,
+        unit: '1 kg',
+        stock: 100,
+        image: produceImagePresets[0].url,
+        status: 'Approved',
+        district: 'Chittoor AP'
+      });
+      if (showToast) showToast('Produce Onboarded 🎉', `${created.name} listed successfully!`);
+      if (refreshData) refreshData();
+    } catch (err) {
+      if (showToast) showToast('Creation Error', err.message || 'Failed to create product listing.', 'error');
+    }
   };
 
   const handleAddCategory = (e) => {

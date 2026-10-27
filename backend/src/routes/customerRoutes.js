@@ -5,6 +5,9 @@ import {
   toggleWishlist,
   getAddresses,
   addAddress,
+  updateAddress,
+  deleteAddress,
+  setDefaultAddress,
   getSubscriptions,
   createSubscription,
   updateSubscription,
@@ -22,6 +25,9 @@ router.post('/customers/wishlist', verifyToken, toggleWishlist);
 // Addresses
 router.get('/customers/addresses', verifyToken, getAddresses);
 router.post('/customers/addresses', verifyToken, addAddress);
+router.put('/customers/addresses/:id', verifyToken, updateAddress);
+router.delete('/customers/addresses/:id', verifyToken, deleteAddress);
+router.patch('/customers/addresses/:id/default', verifyToken, setDefaultAddress);
 
 // Subscriptions
 router.get('/subscriptions', verifyToken, getSubscriptions);

@@ -84,6 +84,40 @@ export const CustomerSubscriptions = ({ showToast }) => {
   const [vacationStart, setVacationStart] = useState('2026-09-20');
   const [vacationEnd, setVacationEnd] = useState('2026-09-28');
 
+  // Veggie Basket Customizer State
+  const [customizeModalSub, setCustomizeModalSub] = useState(null);
+  const [customBasketList, setCustomBasketList] = useState([
+    { id: 'b1', name: 'Organic Spinach (Palak)', weight: '500g', priceDelta: 0, swapped: false },
+    { id: 'b2', name: 'Country Vine Tomatoes', weight: '1 kg', priceDelta: 0, swapped: false },
+    { id: 'b3', name: 'Baby Potatoes (Hill Farm)', weight: '1 kg', priceDelta: 0, swapped: false },
+    { id: 'b4', name: 'Tender Lady Finger (Okra)', weight: '500g', priceDelta: 0, swapped: false },
+    { id: 'b5', name: 'Fresh Coriander & Mint Bunch', weight: '200g', priceDelta: 0, swapped: false }
+  ]);
+
+  const swapOptions = [
+    { name: 'Hydroponic Baby Kale (250g)', priceDelta: +25 },
+    { name: 'Sweet Red Bell Peppers (500g)', priceDelta: +30 },
+    { name: 'Crisp English Cucumber (500g)', priceDelta: +10 },
+    { name: 'Farm Fresh Broccoli Crown (400g)', priceDelta: +40 },
+    { name: 'Button Mushrooms (200g Pack)', priceDelta: +35 }
+  ];
+
+  const handleSwapItem = (itemId, newOption) => {
+    setCustomBasketList(prev => prev.map(item => {
+      if (item.id === itemId) {
+        return {
+          ...item,
+          name: newOption.name,
+          weight: 'Swapped',
+          priceDelta: newOption.priceDelta,
+          swapped: true
+        };
+      }
+      return item;
+    }));
+    if (showToast) showToast('Item Swapped! 🔄', `Substituted for ${newOption.name}`);
+  };
+
   // Form State
   const [showAddForm, setShowAddForm] = useState(false);
   const [customItem, setCustomItem] = useState('Organic A2 Gir Cow Milk');
@@ -643,7 +677,17 @@ export const CustomerSubscriptions = ({ showToast }) => {
                       <Bell className={`w-4 h-4 ${sub.whatsappNotify ? 'animate-wiggle' : ''}`} />
                     </button>
 
-                    {/* 5. Cancel Subscription Button */}
+                    {/* 5. Swap Items / Customize Basket Button */}
+                    <button
+                      type="button"
+                      onClick={() => setCustomizeModalSub(sub)}
+                      title="Customize Basket / Swap Fresh Items 🧺"
+                      className="w-9 h-9 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200/90 flex items-center justify-center transition-all duration-300 hover:scale-110 active:scale-90 shadow-2xs cursor-pointer group"
+                    >
+                      <RefreshCw className="w-4 h-4 group-hover:rotate-180 transition-transform" />
+                    </button>
+
+                    {/* 6. Cancel Subscription Button */}
                     <button
                       type="button"
                       onClick={() => handleCancelSub(sub.id)}
@@ -765,6 +809,88 @@ export const CustomerSubscriptions = ({ showToast }) => {
                   className="flex-1 py-2.5 bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-black rounded-xl cursor-pointer shadow-md transition-all active:scale-95"
                 >
                   Confirm Vacation Pause
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Veggie Basket Customizer / Swap Items Modal */}
+      {customizeModalSub && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-fadeIn">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden border border-emerald-100 font-display animate-scaleUp max-h-[90vh] flex flex-col">
+            <div className="bg-gradient-to-r from-emerald-950 via-emerald-900 to-farmGreen-950 text-white p-5 flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-400/20 text-amber-300 flex items-center justify-center border border-amber-400/30">
+                  <Package className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="font-extrabold text-base text-white">Customize Weekly Harvest Basket</h4>
+                  <p className="text-xs text-emerald-300 font-medium">{customizeModalSub.name} ({customizeModalSub.farmer})</p>
+                </div>
+              </div>
+              <button onClick={() => setCustomizeModalSub(null)} className="p-2 rounded-xl bg-white/10 hover:bg-white/20 transition-all cursor-pointer">
+                <X className="w-4 h-4 text-white" />
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto space-y-4">
+              <div className="p-3 bg-emerald-50 rounded-2xl border border-emerald-200/80 text-xs font-bold text-emerald-900 flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-amber-500 shrink-0" />
+                <span>Swap out any vegetable in this week's scheduled basket before dispatch.</span>
+              </div>
+
+              <div className="space-y-3">
+                <span className="text-[11px] font-black uppercase text-farmGreen-950 tracking-wider block">Current Basket Items:</span>
+                {customBasketList.map((item) => (
+                  <div key={item.id} className="p-3.5 bg-gray-50/80 rounded-2xl border border-gray-200 flex items-center justify-between gap-3 text-xs">
+                    <div>
+                      <div className="font-black text-farmGreen-950">{item.name}</div>
+                      <div className="text-[10px] text-gray-500 font-bold">{item.weight} {item.swapped && <span className="text-emerald-700 font-black">• Custom Swapped</span>}</div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <select
+                        onChange={(e) => {
+                          const opt = swapOptions.find(o => o.name === e.target.value);
+                          if (opt) handleSwapItem(item.id, opt);
+                        }}
+                        defaultValue=""
+                        className="text-[11px] font-black px-2.5 py-1.5 bg-white border border-emerald-300 text-emerald-900 rounded-xl outline-none cursor-pointer"
+                      >
+                        <option value="" disabled>🔄 Swap Item</option>
+                        {swapOptions.map((opt, i) => (
+                          <option key={i} value={opt.name}>
+                            {opt.name} (+₹{opt.priceDelta})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="p-4 border-t border-gray-100 bg-gray-50 flex items-center justify-between shrink-0">
+              <span className="text-xs font-black text-farmGreen-950">Basket Total: ₹{customizeModalSub.price + customBasketList.reduce((sum, i) => sum + i.priceDelta, 0)}</span>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setCustomizeModalSub(null)}
+                  className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 text-xs font-black rounded-xl cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCustomizeModalSub(null);
+                    if (showToast) showToast('Basket Saved! 🥗', 'Your customized harvest box is locked in for the next delivery.');
+                  }}
+                  className="px-4 py-2 bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-black rounded-xl cursor-pointer shadow-md transition-all active:scale-95"
+                >
+                  Save Custom Basket
                 </button>
               </div>
             </div>

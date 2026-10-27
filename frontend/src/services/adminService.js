@@ -18,11 +18,47 @@ export const adminService = {
     return res?.farmers || [];
   },
 
+  /** POST /api/admin/farmers */
+  async createFarmer(farmerData) {
+    const res = await apiClient('/admin/farmers', {
+      method: 'POST',
+      body: farmerData,
+    });
+    return res;
+  },
+
+  /** PUT /api/admin/farmers/:id */
+  async updateFarmer(id, farmerData) {
+    const res = await apiClient(`/admin/farmers/${id}`, {
+      method: 'PUT',
+      body: farmerData,
+    });
+    return res;
+  },
+
   /** PATCH /api/admin/farmers/:id/verify */
-  async verifyFarmer(id, status) {
+  async verifyFarmer(id, status, payload = {}) {
+    const body = typeof status === 'object' ? status : { status, ...payload };
     const res = await apiClient(`/admin/farmers/${id}/verify`, {
       method: 'PATCH',
-      body: { status },
+      body,
+    });
+    return res;
+  },
+
+  /** PATCH /api/admin/farmers/:id/verify (Set Active/Inactive) */
+  async setFarmerStatus(id, accountStatus) {
+    const res = await apiClient(`/admin/farmers/${id}/verify`, {
+      method: 'PATCH',
+      body: { accountStatus, isActive: accountStatus === 'Active' },
+    });
+    return res;
+  },
+
+  /** DELETE /api/admin/farmers/:id */
+  async deleteFarmer(id) {
+    const res = await apiClient(`/admin/farmers/${id}`, {
+      method: 'DELETE',
     });
     return res;
   },
@@ -31,6 +67,24 @@ export const adminService = {
   async getProducts() {
     const res = await apiClient('/admin/products');
     return res?.products || [];
+  },
+
+  /** POST /api/admin/products */
+  async createProduct(productData) {
+    const res = await apiClient('/admin/products', {
+      method: 'POST',
+      body: productData,
+    });
+    return res;
+  },
+
+  /** PUT /api/admin/products/:id */
+  async updateProduct(id, productData) {
+    const res = await apiClient(`/admin/products/${id}`, {
+      method: 'PUT',
+      body: productData,
+    });
+    return res;
   },
 
   /** PATCH /api/admin/products/:id/moderate */
@@ -42,10 +96,27 @@ export const adminService = {
     return res;
   },
 
+  /** DELETE /api/admin/products/:id */
+  async deleteProduct(id) {
+    const res = await apiClient(`/admin/products/${id}`, {
+      method: 'DELETE',
+    });
+    return res;
+  },
+
   /** GET /api/admin/orders */
   async getOrders() {
     const res = await apiClient('/admin/orders');
     return res?.orders || [];
+  },
+
+  /** PATCH /api/admin/orders/:id/status */
+  async updateOrderStatus(id, status) {
+    const res = await apiClient(`/admin/orders/${id}/status`, {
+      method: 'PATCH',
+      body: { status },
+    });
+    return res;
   },
 
   /** PATCH /api/admin/orders/:id/dispatch */
@@ -63,11 +134,37 @@ export const adminService = {
     return res?.customers || [];
   },
 
+  /** POST /api/admin/customers */
+  async createCustomer(customerData) {
+    const res = await apiClient('/admin/customers', {
+      method: 'POST',
+      body: customerData,
+    });
+    return res;
+  },
+
+  /** PUT /api/admin/customers/:id */
+  async updateCustomer(id, customerData) {
+    const res = await apiClient(`/admin/customers/${id}`, {
+      method: 'PUT',
+      body: customerData,
+    });
+    return res;
+  },
+
   /** PATCH /api/admin/customers/:id/status */
   async setCustomerStatus(id, status) {
     const res = await apiClient(`/admin/customers/${id}/status`, {
       method: 'PATCH',
-      body: { status },
+      body: { status, isActive: status === 'Active' || status === true },
+    });
+    return res;
+  },
+
+  /** DELETE /api/admin/customers/:id */
+  async deleteCustomer(id) {
+    const res = await apiClient(`/admin/customers/${id}`, {
+      method: 'DELETE',
     });
     return res;
   },
@@ -76,6 +173,41 @@ export const adminService = {
   async getDeliveryFleet() {
     const res = await apiClient('/admin/delivery-partners');
     return res?.riders || res?.deliveryPartners || [];
+  },
+
+  /** POST /api/admin/delivery-partners */
+  async createDeliveryPartner(partnerData) {
+    const res = await apiClient('/admin/delivery-partners', {
+      method: 'POST',
+      body: partnerData,
+    });
+    return res;
+  },
+
+  /** PUT /api/admin/delivery-partners/:id */
+  async updateDeliveryPartner(id, partnerData) {
+    const res = await apiClient(`/admin/delivery-partners/${id}`, {
+      method: 'PUT',
+      body: partnerData,
+    });
+    return res;
+  },
+
+  /** PATCH /api/admin/delivery-partners/:id/status */
+  async setDeliveryPartnerStatus(id, status) {
+    const res = await apiClient(`/admin/delivery-partners/${id}/status`, {
+      method: 'PATCH',
+      body: { status, approvalStatus: status, isActive: status === 'Approved' || status === 'Active' },
+    });
+    return res;
+  },
+
+  /** DELETE /api/admin/delivery-partners/:id */
+  async deleteDeliveryPartner(id) {
+    const res = await apiClient(`/admin/delivery-partners/${id}`, {
+      method: 'DELETE',
+    });
+    return res;
   },
 
   /** GET /api/admin/reports */

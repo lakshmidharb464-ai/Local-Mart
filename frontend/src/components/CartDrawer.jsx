@@ -17,7 +17,7 @@ export const CartDrawer = () => {
     addToCart, updateQuantity, removeFromCart,
     subtotal, deliveryFee, total
   } = useCart();
-  const { currencySymbol = '₹' } = useAuth();
+  const { currencySymbol = '₹', isAuthenticated, openAuthModal, showToast } = useAuth();
 
   const [removingId, setRemovingId] = useState(null);
   const [recentlyRemoved, setRecentlyRemoved] = useState(null);
@@ -45,6 +45,13 @@ export const CartDrawer = () => {
 
   const handleProceedToCheckout = () => {
     setIsCartOpen(false);
+    if (!isAuthenticated) {
+      if (showToast) {
+        showToast('Sign In Required 🛒', 'Please sign in or register to complete your order checkout.', 'info');
+      }
+      openAuthModal('signin', 'Customer');
+      return;
+    }
     navigate('/checkout');
   };
 

@@ -47,14 +47,14 @@ export const MyDeliveries = ({ orders = [], onUpdateStatus, setSelectedOrder, se
   const filteredOrders = orders.filter((del) => {
     const matchesSearch = 
       del.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      del.orderId.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (del.orderId && del.orderId.toLowerCase().includes(searchQuery.toLowerCase())) ||
       del.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       del.customerAddress.toLowerCase().includes(searchQuery.toLowerCase()) ||
       del.farmName.toLowerCase().includes(searchQuery.toLowerCase());
 
     const matchesStatus = 
       filterStatus === 'all' ? true :
-      filterStatus === 'active' ? ['Assigned', 'Accepted', 'Picked Up', 'Out for Delivery'].includes(del.status) :
+      filterStatus === 'active' ? ['Pending', 'Approved', 'Packed', 'Assigned', 'Accepted', 'Picked Up', 'Out for Delivery'].includes(del.status) :
       del.status.toLowerCase() === filterStatus.toLowerCase();
 
     const matchesPriority = 
@@ -97,6 +97,7 @@ export const MyDeliveries = ({ orders = [], onUpdateStatus, setSelectedOrder, se
         return 'bg-gradient-to-r from-emerald-700 to-teal-800 text-white font-black shadow-2xs';
       case 'Failed':
         return 'bg-gradient-to-r from-rose-600 to-red-700 text-white font-black shadow-2xs';
+      case 'Pending':
       case 'Assigned':
       default:
         return 'bg-gradient-to-r from-indigo-600 to-purple-700 text-white font-black shadow-2xs';
@@ -114,18 +115,18 @@ export const MyDeliveries = ({ orders = [], onUpdateStatus, setSelectedOrder, se
 
   const handleOpenOtpModal = (order) => {
     setOtpOrder(order);
-    setOtpInput('');
+    setOtpInput(order.otpCode || '');
     setOtpError('');
   };
 
   const handleConfirmOtpDelivery = (e) => {
     e.preventDefault();
-    if (otpInput.length !== 4) {
-      setOtpError('Please enter valid 4-digit OTP provided by customer (Demo OTP: 4920).');
+    if (!otpInput || otpInput.trim().length !== 4) {
+      setOtpError('Please enter valid 4-digit OTP provided by customer.');
       return;
     }
     if (otpOrder) {
-      onUpdateStatus(otpOrder.id, 'Delivered');
+      onUpdateStatus(otpOrder.orderId || otpOrder.id, 'Delivered');
       if (showToast) showToast('Delivery Success! 🎉', `Order ${otpOrder.id} verified with OTP PIN & marked as delivered.`);
       setOtpOrder(null);
     }
@@ -138,7 +139,9 @@ export const MyDeliveries = ({ orders = [], onUpdateStatus, setSelectedOrder, se
     o.id?.startsWith('DEL-CTR')
   ).length;
 
-  const totalEarningsToday = orders.reduce((sum, o) => sum + (o.fee || 45) + (o.tip || 15), 0);
+  const totalEarningsToday = orders
+    .filter(o => o.status === 'Delivered')
+    .reduce((sum, o) => sum + (o.fee || 30) + (o.tip || 0), 0);
 
   return (
     <div className="space-y-6 pb-12 font-display animate-fadeIn">
@@ -476,12 +479,13 @@ export const MyDeliveries = ({ orders = [], onUpdateStatus, setSelectedOrder, se
                         <span>Live GPS Map</span>
                       </button>
 
-                      {del.status === 'Assigned' && (
+                      {(del.status === 'Assigned' || del.status === 'Pending' || del.status === 'Approved' || del.status === 'Packed' || del.isAvailableToAccept) && (
                         <button
-                          onClick={() => onUpdateStatus(del.id, 'Accepted')}
-                          className="px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white rounded-2xl text-xs font-black cursor-pointer shadow-sm active:scale-95 transition-all"
+                          onClick={() => onUpdateStatus(del.orderId || del.id, 'Accepted')}
+                          className="px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white rounded-2xl text-xs font-black cursor-pointer shadow-sm active:scale-95 transition-all flex items-center gap-1.5"
                         >
-                          Accept Task
+                          <Zap className="w-3.5 h-3.5 text-amber-300" />
+                          <span>Accept Task</span>
                         </button>
                       )}
 
@@ -554,9 +558,17 @@ export const MyDeliveries = ({ orders = [], onUpdateStatus, setSelectedOrder, se
                       </span>
                     </td>
                     <td className="p-4 font-black text-sm text-emerald-800 font-mono">
-                      ₹{(del.fee || 45) + (del.tip || 15)}
+                      ₹{(del.fee || 30) + (del.tip || 0)}
                     </td>
-                    <td className="p-4 text-right">
+                    <td className="p-4 text-right space-x-2">
+                      {(del.status === 'Assigned' || del.status === 'Pending' || del.status === 'Approved' || del.status === 'Packed' || del.isAvailableToAccept) && (
+                        <button
+                          onClick={() => onUpdateStatus(del.orderId || del.id, 'Accepted')}
+                          className="px-3 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white rounded-xl text-xs font-black cursor-pointer shadow-xs"
+                        >
+                          Accept
+                        </button>
+                      )}
                       <button
                         onClick={() => { if (setSelectedOrder) setSelectedOrder(del); if (setActiveTab) setActiveTab('tracking'); }}
                         className="px-3.5 py-1.5 bg-emerald-800 hover:bg-emerald-900 text-white rounded-xl text-xs font-black cursor-pointer shadow-xs"

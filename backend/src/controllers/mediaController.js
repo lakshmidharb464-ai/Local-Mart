@@ -31,7 +31,7 @@ export async function uploadMedia(req, res, next) {
       });
     }
 
-    const uploadPromises = files.map((file) => uploadToCloudinary(file.buffer, folder));
+    const uploadPromises = files.map((file) => uploadToCloudinary(file.buffer, folder, file.mimetype));
     const results = await Promise.all(uploadPromises);
 
     if (files.length === 1) {

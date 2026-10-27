@@ -26,12 +26,20 @@ class RealtimeEventHub {
     res.flushHeaders?.();
 
     // Initial greeting event
-    res.write(`event: connected\ndata: ${JSON.stringify({ clientId, timestamp: new Date().toISOString() })}\n\n`);
+    try {
+      res.write(`event: connected\ndata: ${JSON.stringify({ clientId, timestamp: new Date().toISOString() })}\n\n`);
+    } catch (err) {
+      return clientId;
+    }
 
     // Periodic keep-alive ping to prevent connection timeout through proxies
     const keepAliveTimer = setInterval(() => {
       try {
-        res.write(': keepalive\n\n');
+        if (!res.writableEnded && !res.destroyed) {
+          res.write(': keepalive\n\n');
+        } else {
+          this.unregisterClient(clientId);
+        }
       } catch (err) {
         this.unregisterClient(clientId);
       }
@@ -45,10 +53,11 @@ class RealtimeEventHub {
       keepAliveTimer,
     });
 
-    // Cleanup on disconnect
-    res.on('close', () => {
-      this.unregisterClient(clientId);
-    });
+    // Cleanup on disconnect or socket error
+    const cleanup = () => this.unregisterClient(clientId);
+    res.on('close', cleanup);
+    res.on('finish', cleanup);
+    res.on('error', cleanup);
 
     return clientId;
   }
@@ -60,6 +69,11 @@ class RealtimeEventHub {
     const client = this.clients.get(clientId);
     if (client) {
       clearInterval(client.keepAliveTimer);
+      try {
+        if (!client.res.writableEnded && !client.res.destroyed) {
+          client.res.end();
+        }
+      } catch (e) {}
       this.clients.delete(clientId);
     }
   }
@@ -75,8 +89,12 @@ class RealtimeEventHub {
     
     for (const [clientId, client] of this.clients.entries()) {
       try {
-        if (!filterFn || filterFn(client)) {
-          client.res.write(message);
+        if (!client.res.writableEnded && !client.res.destroyed) {
+          if (!filterFn || filterFn(client)) {
+            client.res.write(message);
+          }
+        } else {
+          this.unregisterClient(clientId);
         }
       } catch (err) {
         this.unregisterClient(clientId);

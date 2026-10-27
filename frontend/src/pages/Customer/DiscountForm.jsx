@@ -13,11 +13,11 @@
 
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
-import { COUPONS as DEFAULT_COUPONS } from './checkoutConstants';
 import {
   Tag, X, Check, ChevronLeft, ArrowRight,
   Loader2, AlertCircle, Gift, Sparkles,
 } from 'lucide-react';
+import { customerService } from '../../services/customerService';
 
 const SectionCard = ({ children, className = '' }) => (
   <div className={`bg-white rounded-[24px] border border-emerald-100/80 shadow-farm-md p-5 sm:p-6 font-display ${className}`}>
@@ -42,7 +42,7 @@ export const DiscountForm = ({
   onBack,
   onValuesChange,
   defaultValues = {},
-  availableCoupons = DEFAULT_COUPONS,
+  availableCoupons = [],
   submitLabel = 'Review & Confirm Order',
   isLoading = false,
 }) => {
@@ -68,14 +68,48 @@ export const DiscountForm = ({
   const couponCode = watch('couponCode');
   const busy = isLoading || isSubmitting;
 
-  const applyCoupon = (codeToTry) => {
+  const [isValidating, setIsValidating] = useState(false);
+
+  const applyCoupon = async (codeToTry) => {
     const target = (codeToTry || couponCode || '').trim().toUpperCase();
-    const found  = availableCoupons.find((c) => c.code === target);
-    if (found) {
-      setAppliedCoupon(found);
-      setCouponError('');
-    } else {
-      setCouponError(`Invalid coupon. Try: ${availableCoupons.map((c) => c.code).join(', ')}.`);
+    if (!target) return;
+    setIsValidating(true);
+    setCouponError('');
+    try {
+      // Try backend validation first (returns real DB coupon data)
+      const res = await customerService.validateCoupon(target);
+      if (res?.success && res?.coupon) {
+        const c = res.coupon;
+        setAppliedCoupon({
+          code: c.code,
+          pct: c.discountType === 'percentage' ? Number(c.discountValue) : 0,
+          flat: c.discountType === 'flat' ? Number(c.discountValue) : 0,
+          label: c.discountType === 'percentage' ? `${c.discountValue}% OFF` : `₹${c.discountValue} OFF`,
+          desc: c.description || '',
+          discountAmount: c.discountAmount || 0,
+        });
+        setCouponError('');
+      } else {
+        // Fallback: check local available coupons (from DB-fetched list passed as prop)
+        const found = availableCoupons.find((c) => c.code === target);
+        if (found) {
+          setAppliedCoupon(found);
+          setCouponError('');
+        } else {
+          setCouponError(res?.message || 'Invalid or expired coupon code.');
+        }
+      }
+    } catch (err) {
+      // Network issue: still try local list
+      const found = availableCoupons.find((c) => c.code === target);
+      if (found) {
+        setAppliedCoupon(found);
+        setCouponError('');
+      } else {
+        setCouponError('Could not validate coupon. Please try again.');
+      }
+    } finally {
+      setIsValidating(false);
     }
   };
 
@@ -107,9 +141,10 @@ export const DiscountForm = ({
           <button
             type="button"
             onClick={() => applyCoupon()}
-            className="px-5 py-2.5 bg-emerald-800 hover:bg-emerald-900 text-white rounded-2xl text-xs font-black shadow-xs cursor-pointer transition-all active:scale-95"
+            disabled={isValidating}
+            className="px-5 py-2.5 bg-emerald-800 hover:bg-emerald-900 disabled:opacity-60 text-white rounded-2xl text-xs font-black shadow-xs cursor-pointer transition-all active:scale-95 flex items-center gap-1.5"
           >
-            Apply
+            {isValidating ? <><Loader2 className="w-3.5 h-3.5 animate-spin" />Checking...</> : 'Apply'}
           </button>
         </div>
 

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { adminService } from '../../services/adminService';
 import { 
   Search, 
   Truck, 
@@ -13,25 +14,26 @@ import {
   ShoppingBag, 
   CreditCard, 
   Plus, 
-  UserPlus,
-  Users,
-  ShieldCheck,
-  CheckCircle2,
-  TrendingUp,
-  Sparkles,
-  Award,
-  Navigation,
-  CheckCircle,
-  Clock,
-  Edit3,
-  Save,
-  Check,
-  Smartphone,
-  FileText,
-  RotateCcw
+  UserPlus, 
+  Users, 
+  ShieldCheck, 
+  CheckCircle2, 
+  TrendingUp, 
+  Sparkles, 
+  Award, 
+  Navigation, 
+  CheckCircle, 
+  Clock, 
+  Edit3, 
+  Save, 
+  Check, 
+  Smartphone, 
+  FileText, 
+  RotateCcw,
+  Trash2
 } from 'lucide-react';
 
-export const DeliveryManagement = ({ deliveryPartners, setDeliveryPartners, isDark = false }) => {
+export const DeliveryManagement = ({ deliveryPartners, setDeliveryPartners, isDark = false, refreshData }) => {
   const { showToast } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
@@ -56,6 +58,7 @@ export const DeliveryManagement = ({ deliveryPartners, setDeliveryPartners, isDa
     name: '',
     phone: '',
     email: '',
+    password: 'password123',
     vehicleType: 'EV Scooter (Ather 450X)',
     vehicleNumber: 'MH-12-EV-9821',
     hubLocation: 'Chittoor District AP Hub',
@@ -70,18 +73,26 @@ export const DeliveryManagement = ({ deliveryPartners, setDeliveryPartners, isDa
 
   const filteredPartners = useMemo(() => {
     return deliveryPartners.filter(p => {
+      const name = p.name || '';
+      const email = p.email || '';
+      const phone = p.phone || '';
+      const veh = p.vehicleNumber || p.vehicle_number || '';
+      const hub = p.hubLocation || p.zone || '';
+      const appStatus = p.approvalStatus || p.approval_status || 'Approved';
+      const accStatus = p.accountStatus || (p.is_active === 0 ? 'Inactive' : 'Active');
+
       const matchesSearch = 
-        p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (p.email && p.email.toLowerCase().includes(searchQuery.toLowerCase())) ||
-        (p.phone && p.phone.includes(searchQuery)) ||
-        (p.vehicleNumber && p.vehicleNumber.toLowerCase().includes(searchQuery.toLowerCase())) ||
-        (p.hubLocation && p.hubLocation.toLowerCase().includes(searchQuery.toLowerCase()));
+        name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        phone.includes(searchQuery) ||
+        veh.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        hub.toLowerCase().includes(searchQuery.toLowerCase());
 
       if (statusFilter === 'All') return matchesSearch;
-      if (statusFilter === 'Online') return matchesSearch && p.isOnline;
-      if (statusFilter === 'Pending') return matchesSearch && p.approvalStatus === 'Pending';
-      if (statusFilter === 'Approved') return matchesSearch && p.approvalStatus === 'Approved';
-      if (statusFilter === 'Inactive') return matchesSearch && p.accountStatus === 'Inactive';
+      if (statusFilter === 'Online') return matchesSearch && (p.isOnline || p.is_online);
+      if (statusFilter === 'Pending') return matchesSearch && appStatus === 'Pending';
+      if (statusFilter === 'Approved') return matchesSearch && appStatus === 'Approved';
+      if (statusFilter === 'Inactive') return matchesSearch && (accStatus === 'Inactive' || appStatus === 'Inactive');
       return matchesSearch;
     });
   }, [deliveryPartners, searchQuery, statusFilter]);
@@ -89,72 +100,132 @@ export const DeliveryManagement = ({ deliveryPartners, setDeliveryPartners, isDa
   const { totalDrivers, onlineDrivers, pendingApprovals, approvedCount } = useMemo(() => {
     return {
       totalDrivers: deliveryPartners.length,
-      onlineDrivers: deliveryPartners.filter(p => p.isOnline).length,
-      pendingApprovals: deliveryPartners.filter(p => p.approvalStatus === 'Pending').length,
-      approvedCount: deliveryPartners.filter(p => p.approvalStatus === 'Approved').length,
+      onlineDrivers: deliveryPartners.filter(p => p.isOnline || p.is_online).length,
+      pendingApprovals: deliveryPartners.filter(p => (p.approvalStatus || p.approval_status) === 'Pending').length,
+      approvedCount: deliveryPartners.filter(p => (p.approvalStatus || p.approval_status) === 'Approved').length,
     };
   }, [deliveryPartners]);
 
   const handleToggleOnline = (id, currentVal, name) => {
-    setDeliveryPartners(deliveryPartners.map(p => p.id === id ? { ...p, isOnline: !currentVal } : p));
+    setDeliveryPartners(deliveryPartners.map(p => p.id === id ? { ...p, isOnline: !currentVal, is_online: !currentVal } : p));
     showToast('Duty Status Updated', `${name} is now ${!currentVal ? 'Online (On Duty)' : 'Offline (Off Duty)'}.`);
   };
 
-  const handleToggleAccountStatus = (id, currentStatus, name) => {
-    const newStatus = currentStatus === 'Active' ? 'Inactive' : 'Active';
-    setDeliveryPartners(deliveryPartners.map(p => p.id === id ? { ...p, accountStatus: newStatus } : p));
-    showToast('Account Status Updated', `${name} is now ${newStatus}.`);
+  const handleToggleAccountStatus = async (id, currentStatus, name) => {
+    const rawStatus = currentStatus || 'Active';
+    const newStatus = (rawStatus === 'Active' || rawStatus === 'Approved') ? 'Inactive' : 'Active';
+    try {
+      await adminService.setDeliveryPartnerStatus(id, newStatus === 'Active' ? 'Approved' : 'Inactive');
+      setDeliveryPartners(deliveryPartners.map(p => p.id === id ? { 
+        ...p, 
+        accountStatus: newStatus, 
+        approvalStatus: newStatus === 'Active' ? 'Approved' : 'Inactive',
+        approval_status: newStatus === 'Active' ? 'Approved' : 'Inactive',
+        is_active: newStatus === 'Active' ? 1 : 0 
+      } : p));
+      showToast(
+        newStatus === 'Active' ? 'Driver Activated' : 'Driver Deactivated',
+        `${name} is now ${newStatus}. ${newStatus === 'Inactive' ? 'Login disabled for this rider.' : 'Login enabled.'}`
+      );
+    } catch (e) {
+      showToast('Error', 'Failed to update rider status.', 'error');
+    }
   };
 
-  const handleApprove = (id, name) => {
-    setDeliveryPartners(deliveryPartners.map(p => p.id === id ? { ...p, approvalStatus: 'Approved' } : p));
-    showToast('Driver Approved', `${name} is now verified and active.`);
+  const handleApprove = async (id, name) => {
+    try {
+      await adminService.setDeliveryPartnerStatus(id, 'Approved');
+      setDeliveryPartners(deliveryPartners.map(p => p.id === id ? { ...p, approvalStatus: 'Approved', approval_status: 'Approved', accountStatus: 'Active', is_active: 1 } : p));
+      showToast('Driver Approved', `${name} is now verified and active.`);
+    } catch (e) {
+      showToast('Error', 'Failed to approve driver.', 'error');
+    }
   };
 
-  const handleReject = (id, name) => {
-    setDeliveryPartners(deliveryPartners.map(p => p.id === id ? { ...p, approvalStatus: 'Rejected' } : p));
-    showToast('Driver Rejected', `${name}'s application was declined.`, 'error');
+  const handleReject = async (id, name) => {
+    try {
+      await adminService.setDeliveryPartnerStatus(id, 'Rejected');
+      setDeliveryPartners(deliveryPartners.map(p => p.id === id ? { ...p, approvalStatus: 'Rejected', approval_status: 'Rejected', accountStatus: 'Inactive', is_active: 0 } : p));
+      showToast('Driver Rejected', `${name}'s application was declined.`, 'error');
+    } catch (e) {
+      showToast('Error', 'Failed to reject driver.', 'error');
+    }
   };
 
-  const handleAddPartner = (e) => {
+  const handleDeletePartner = async (id, name) => {
+    if (!window.confirm(`Are you sure you want to permanently remove delivery partner "${name}"? This action cannot be undone.`)) {
+      return;
+    }
+    try {
+      await adminService.deleteDeliveryPartner(id);
+      setDeliveryPartners(deliveryPartners.filter(p => p.id !== id));
+      showToast('Driver Removed', `${name} has been removed from the platform.`);
+    } catch (e) {
+      showToast('Error', 'Failed to remove driver.', 'error');
+    }
+  };
+
+  const handleAddPartner = async (e) => {
     e.preventDefault();
-    if (!newPartner.name || !newPartner.phone) {
-      showToast('Validation Error', 'Please complete the driver name and phone number.', 'error');
+    if (!newPartner.name || !newPartner.phone || !newPartner.email) {
+      showToast('Validation Error', 'Please complete the driver name, phone number, and email address.', 'error');
       return;
     }
 
-    const created = {
-      id: `DEL-00${deliveryPartners.length + 1}`,
-      ...newPartner,
-      totalDeliveries: 0,
-      joinedDate: 'Today'
-    };
+    try {
+      const res = await adminService.createDeliveryPartner(newPartner);
+      const created = res.rider || res.partner || {
+        id: `DEL-00${deliveryPartners.length + 1}`,
+        ...newPartner,
+        totalDeliveries: 0,
+        joinedDate: 'Today'
+      };
 
-    setDeliveryPartners([created, ...deliveryPartners]);
-    setShowAddModal(false);
-    setNewPartner({
-      name: '',
-      phone: '',
-      email: '',
-      vehicleType: 'EV Scooter (Ather 450X)',
-      vehicleNumber: 'MH-12-EV-9821',
-      hubLocation: 'Chittoor District AP Hub',
-      licenseNumber: 'DL-MH12-20230098',
-      isOnline: true,
-      accountStatus: 'Active',
-      approvalStatus: 'Approved',
-      rating: 5.0,
-      totalDeliveries: 0,
-      avatar: 'https://images.unsplash.com/photo-1568602471122-7832951cc4c5?auto=format&fit=crop&w=200&q=80'
-    });
-    showToast('Delivery Partner Registered', `${created.name} onboarded successfully!`);
+      setDeliveryPartners([created, ...deliveryPartners]);
+      setShowAddModal(false);
+      setNewPartner({
+        name: '',
+        phone: '',
+        email: '',
+        vehicleType: 'EV Scooter (Ather 450X)',
+        vehicleNumber: 'MH-12-EV-9821',
+        hubLocation: 'Chittoor District AP Hub',
+        licenseNumber: 'DL-MH12-20230098',
+        isOnline: true,
+        accountStatus: 'Active',
+        approvalStatus: 'Approved',
+        rating: 5.0,
+        totalDeliveries: 0,
+        avatar: 'https://images.unsplash.com/photo-1568602471122-7832951cc4c5?auto=format&fit=crop&w=200&q=80'
+      });
+      showToast('Delivery Partner Registered', `${created.name} onboarded successfully!`);
+      if (refreshData) refreshData();
+    } catch (err) {
+      showToast('Registration Error', err.message || 'Failed to register delivery partner.', 'error');
+    }
   };
 
-  const handleSaveEdit = (e) => {
+  const handleSaveEdit = async (e) => {
     e.preventDefault();
-    setDeliveryPartners(deliveryPartners.map(p => p.id === editingPartner.id ? editingPartner : p));
-    setEditingPartner(null);
-    showToast('Profile Updated', 'Driver details saved successfully.');
+    if (!editingPartner) return;
+
+    try {
+      await adminService.updateDeliveryPartner(editingPartner.id, {
+        name: editingPartner.name,
+        email: editingPartner.email,
+        phone: editingPartner.phone,
+        vehicleType: editingPartner.vehicleType || editingPartner.vehicle_type,
+        vehicleNumber: editingPartner.vehicleNumber || editingPartner.vehicle_number,
+        licenseNumber: editingPartner.licenseNumber || editingPartner.license_number,
+        approvalStatus: editingPartner.approvalStatus || editingPartner.approval_status,
+      });
+      setDeliveryPartners(deliveryPartners.map(p => p.id === editingPartner.id ? editingPartner : p));
+      setEditingPartner(null);
+      showToast('Profile Updated', 'Driver details saved successfully.');
+      if (refreshData) refreshData();
+    } catch (err) {
+      showToast('Update Error', err.message || 'Failed to update rider profile.', 'error');
+    }
   };
 
   return (
@@ -575,6 +646,18 @@ export const DeliveryManagement = ({ deliveryPartners, setDeliveryPartners, isDa
                     >
                       <Edit3 className="w-4 h-4" />
                     </button>
+
+                    <button
+                      onClick={() => handleDeletePartner(partner.id, partner.name)}
+                      className={`p-2 rounded-xl transition-all cursor-pointer ${
+                        isDark 
+                          ? 'text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20' 
+                          : 'text-rose-600 bg-rose-50 hover:bg-rose-100'
+                      }`}
+                      title="Permanently Remove Rider"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </td>
 
                 </tr>
@@ -827,6 +910,22 @@ export const DeliveryManagement = ({ deliveryPartners, setDeliveryPartners, isDa
                 />
               </div>
 
+              <div className="sm:col-span-2">
+                <label className={`font-extrabold mb-1 block ${isDark ? 'text-[#D4EAD9]' : 'text-farmGreen-950'}`}>Email Address *</label>
+                <input
+                  type="email"
+                  placeholder="ramesh.rider@localfarm.in"
+                  value={newPartner.email}
+                  onChange={(e) => setNewPartner({ ...newPartner, email: e.target.value })}
+                  className={`w-full px-4 py-2.5 rounded-2xl outline-none transition-all ${
+                    isDark 
+                      ? 'bg-[rgba(255,255,255,0.03)] border border-[rgba(0,255,133,0.15)] text-[#D4EAD9] placeholder-[#7FA882]/40 focus:border-[#00FF85]' 
+                      : 'bg-farmBg border border-gray-200 focus:border-farmGreen-600'
+                  }`}
+                  required
+                />
+              </div>
+
               <div>
                 <label className={`font-extrabold mb-1 block ${isDark ? 'text-[#D4EAD9]' : 'text-farmGreen-950'}`}>Vehicle Type</label>
                 <select
@@ -853,6 +952,21 @@ export const DeliveryManagement = ({ deliveryPartners, setDeliveryPartners, isDa
                   value={newPartner.vehicleNumber}
                   onChange={(e) => setNewPartner({ ...newPartner, vehicleNumber: e.target.value })}
                   className={`w-full px-4 py-2.5 rounded-2xl outline-none font-mono uppercase transition-all ${
+                    isDark 
+                      ? 'bg-[rgba(255,255,255,0.03)] border border-[rgba(0,255,133,0.15)] text-[#D4EAD9] placeholder-[#7FA882]/40 focus:border-[#00FF85]' 
+                      : 'bg-farmBg border border-gray-200 focus:border-farmGreen-600'
+                  }`}
+                />
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className={`font-extrabold mb-1 block ${isDark ? 'text-[#D4EAD9]' : 'text-farmGreen-950'}`}>Account Password (Default: password123)</label>
+                <input
+                  type="password"
+                  placeholder="Min 6 characters (e.g. password123)"
+                  value={newPartner.password}
+                  onChange={(e) => setNewPartner({ ...newPartner, password: e.target.value })}
+                  className={`w-full px-4 py-2.5 rounded-2xl outline-none transition-all ${
                     isDark 
                       ? 'bg-[rgba(255,255,255,0.03)] border border-[rgba(0,255,133,0.15)] text-[#D4EAD9] placeholder-[#7FA882]/40 focus:border-[#00FF85]' 
                       : 'bg-farmBg border border-gray-200 focus:border-farmGreen-600'
@@ -961,6 +1075,21 @@ export const DeliveryManagement = ({ deliveryPartners, setDeliveryPartners, isDa
                   value={editingPartner.phone}
                   onChange={(e) => setEditingPartner({ ...editingPartner, phone: e.target.value })}
                   className={`w-full px-4 py-2.5 rounded-2xl outline-none font-mono transition-all ${
+                    isDark 
+                      ? 'bg-[rgba(255,255,255,0.03)] border border-[rgba(0,255,133,0.15)] text-[#D4EAD9] focus:border-[#00FF85]' 
+                      : 'bg-farmBg border border-gray-200 focus:border-farmGreen-600'
+                  }`}
+                  required
+                />
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className={`font-extrabold mb-1 block ${isDark ? 'text-[#D4EAD9]' : 'text-farmGreen-950'}`}>Email Address</label>
+                <input
+                  type="email"
+                  value={editingPartner.email || ''}
+                  onChange={(e) => setEditingPartner({ ...editingPartner, email: e.target.value })}
+                  className={`w-full px-4 py-2.5 rounded-2xl outline-none transition-all ${
                     isDark 
                       ? 'bg-[rgba(255,255,255,0.03)] border border-[rgba(0,255,133,0.15)] text-[#D4EAD9] focus:border-[#00FF85]' 
                       : 'bg-farmBg border border-gray-200 focus:border-farmGreen-600'

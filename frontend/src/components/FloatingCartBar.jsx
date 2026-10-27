@@ -1,7 +1,39 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
-import { ShoppingBag, ArrowRight, Sparkles, Zap, Leaf, ChevronDown, ChevronUp } from 'lucide-react';
+import { ShoppingBag, ShoppingBasket, ArrowRight, Sparkles, Zap, Leaf, ChevronDown, ChevronUp } from 'lucide-react';
+
+/**
+ * Unified Basket Icon & Counter Badge Component
+ * Rendered with the exact same visual identity in both Minimized & Expanded states.
+ */
+const BasketIconBox = ({ totalItemsCount, bump, onClick, size = 'md' }) => {
+  const isSm = size === 'sm';
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`relative flex items-center justify-center shrink-0 rounded-2xl bg-gradient-to-br from-emerald-600 via-emerald-500 to-farmGreen-700 border border-emerald-400/50 shadow-lg cursor-pointer transition-all duration-300 hover:scale-105 active:scale-95 group focus:outline-none ${
+        isSm ? 'w-11 h-11' : 'w-12 h-12'
+      }`}
+      title="Click to open cart drawer"
+      aria-label={`Open harvest basket with ${totalItemsCount} items`}
+    >
+      {/* Original Basket / Shopping Bag Icon */}
+      <ShoppingBag className={`text-white transition-transform duration-300 group-hover:-rotate-6 ${isSm ? 'w-5 h-5' : 'w-6 h-6 stroke-[2.2]'}`} />
+
+      {/* Floating Amber Counter Badge */}
+      <span
+        className={`absolute -top-1.5 -right-1.5 min-w-[20px] h-[20px] px-1 rounded-full bg-amber-400 text-farmGreen-950 font-mono text-[10px] font-black flex items-center justify-center border-2 border-[#071a0b] shadow-md transition-all duration-300 ${
+          bump ? 'scale-125 ring-2 ring-amber-300' : 'scale-100'
+        }`}
+      >
+        {totalItemsCount}
+      </span>
+    </button>
+  );
+};
 
 export const FloatingCartBar = ({ activeTab, setActiveTab }) => {
   const navigate = useNavigate();
@@ -44,7 +76,7 @@ export const FloatingCartBar = ({ activeTab, setActiveTab }) => {
   };
 
   const handleToggleDrawer = (e) => {
-    e.stopPropagation();
+    e?.stopPropagation?.();
     if (setIsCartOpen) {
       setIsCartOpen(true);
     }
@@ -60,35 +92,25 @@ export const FloatingCartBar = ({ activeTab, setActiveTab }) => {
           aria-label="Floating Basket Summary"
         >
           <div
-            className="flex items-center gap-0 rounded-full shadow-2xl overflow-hidden transition-all duration-300 hover:scale-105 bg-gradient-to-br from-[#071a0b] to-[#183D22] border border-emerald-500/40"
+            className="flex items-center gap-1.5 p-1.5 pr-2 rounded-full shadow-2xl transition-all duration-300 hover:scale-105 bg-gradient-to-br from-[#071a0b]/95 via-[#103817]/95 to-[#071a0b]/95 backdrop-blur-xl border border-emerald-500/40"
           >
-            {/* Cart icon + badge — click opens drawer */}
-            <button
+            {/* Unified Basket Icon */}
+            <BasketIconBox
+              totalItemsCount={totalItemsCount}
+              bump={bump}
               onClick={handleToggleDrawer}
-              className="relative flex items-center justify-center w-11 h-11 shrink-0 transition-all active:scale-90 cursor-pointer bg-gradient-to-r from-emerald-600 to-farmGreen-600"
-              title="Open cart drawer"
-              aria-label={`Open harvest basket with ${totalItemsCount} items`}
-            >
-              <ShoppingBag className="w-5 h-5 text-white" />
-              {/* Count badge */}
-              <span
-                className={`absolute -top-0.5 -right-0.5 min-w-[17px] h-[17px] rounded-full text-farmGreen-950 bg-amber-400 text-[9px] font-black flex items-center justify-center border border-[#0A2312] transition-transform duration-300 ${
-                  bump ? 'scale-125' : 'scale-100'
-                }`}
-              >
-                {totalItemsCount}
-              </span>
-            </button>
+              size="sm"
+            />
 
             {/* Price — click goes to cart page */}
             <button
               onClick={handleOpenCart}
-              className="flex flex-col items-start px-3 py-1 cursor-pointer focus:outline-none"
+              className="flex flex-col items-start px-2 py-0.5 cursor-pointer focus:outline-none"
             >
-              <span className="text-[9px] font-bold uppercase tracking-widest text-emerald-300">
+              <span className="text-[9px] font-bold uppercase tracking-widest text-emerald-300 leading-none">
                 Basket
               </span>
-              <span className="text-sm font-black text-white leading-tight">
+              <span className="text-sm font-black text-white leading-tight font-display mt-0.5">
                 ₹{totalPrice.toLocaleString()}
               </span>
             </button>
@@ -96,8 +118,8 @@ export const FloatingCartBar = ({ activeTab, setActiveTab }) => {
             {/* Expand chevron */}
             <button
               onClick={() => setIsMinimized(false)}
-              className="flex items-center justify-center w-8 h-11 cursor-pointer transition-all hover:bg-white/10 text-emerald-300"
-              title="Expand cart bar"
+              className="flex items-center justify-center w-7 h-7 rounded-full cursor-pointer transition-all hover:bg-white/10 text-emerald-300 focus:outline-none"
+              title="Expand basket details"
               aria-label="Expand basket details"
             >
               <ChevronUp className="w-4 h-4" />
@@ -148,30 +170,15 @@ export const FloatingCartBar = ({ activeTab, setActiveTab }) => {
               <ChevronDown className="w-3 h-3" />
             </button>
 
-            {/* Left Section: Icon Box + Price info */}
+            {/* Left Section: Unified Basket Icon + Price info */}
             <div className="flex items-center gap-3.5 flex-1 min-w-0">
-
-              {/* Green Icon Box with Orange Badge (Clicking opens Quick Drawer!) */}
-              <div 
+              {/* Unified Basket Icon */}
+              <BasketIconBox
+                totalItemsCount={totalItemsCount}
+                bump={bump}
                 onClick={handleToggleDrawer}
-                className="relative shrink-0 group/bag cursor-pointer"
-                title="Click to open Quick Cart Drawer"
-                role="button"
-                tabIndex={0}
-                aria-label="Open Cart Drawer"
-              >
-                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-600 to-farmGreen-700 flex items-center justify-center shadow-lg border border-emerald-400/40 group-hover/bag:scale-105 active:scale-95 transition-all duration-300">
-                  <ShoppingBag className="w-6 h-6 text-white stroke-[2.2]" />
-                </div>
-
-                <span
-                  className={`absolute -top-1.5 -right-1.5 min-w-[22px] h-[22px] rounded-full bg-amber-400 text-farmGreen-950 text-[11px] font-black flex items-center justify-center border-2 border-[#071a0b] shadow-md transition-all duration-300 ${
-                    bump ? 'scale-125' : ''
-                  }`}
-                >
-                  {totalItemsCount}
-                </span>
-              </div>
+                size="md"
+              />
 
               {/* Price & Details */}
               <div className="min-w-0 space-y-0.5">
@@ -193,7 +200,7 @@ export const FloatingCartBar = ({ activeTab, setActiveTab }) => {
                   )}
                 </div>
 
-                <div className="font-black text-2xl text-white leading-none tracking-tight">
+                <div className="font-black text-2xl text-white leading-none tracking-tight font-display">
                   ₹{totalPrice.toLocaleString()}
                 </div>
 
@@ -213,7 +220,6 @@ export const FloatingCartBar = ({ activeTab, setActiveTab }) => {
                   )}
                 </div>
               </div>
-
             </div>
 
             {/* Right Action Button */}
@@ -225,9 +231,7 @@ export const FloatingCartBar = ({ activeTab, setActiveTab }) => {
               <span className="whitespace-nowrap font-black">View & Checkout</span>
               <ArrowRight className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" />
             </button>
-
           </div>
-
         </div>
       )}
     </>
@@ -235,4 +239,3 @@ export const FloatingCartBar = ({ activeTab, setActiveTab }) => {
 };
 
 export default FloatingCartBar;
-

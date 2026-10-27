@@ -1,19 +1,20 @@
+
 import React, { useState } from 'react';
 import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
-import { 
-  X, 
-  Star, 
-  Heart, 
-  ShoppingCart, 
-  MapPin, 
-  Sprout, 
-  ShieldCheck, 
-  CheckCircle2, 
-  Clock, 
-  Truck, 
-  Plus, 
-  Minus, 
+import {
+  X,
+  Star,
+  Heart,
+  ShoppingCart,
+  MapPin,
+  Sprout,
+  ShieldCheck,
+  CheckCircle2,
+  Clock,
+  Truck,
+  Plus,
+  Minus,
   Award,
   Zap,
   Info
@@ -39,13 +40,8 @@ export const ProduceDetailModal = ({ product, onClose, toggleWishlist, isWishlis
   const itemTotal = Math.round(unitDiscountedPrice * selectedPack.multiplier * quantity);
 
   const handleAddToCart = () => {
-    // Add item with specified pack size & quantity to cart
-    for (let i = 0; i < quantity * selectedPack.multiplier; i++) {
-      addToCart(product);
-    }
-    if (showToast) {
-      showToast('Added to Basket! 🧺', `${quantity} × ${selectedPack.label} of ${product.name} added to cart.`);
-    }
+    const totalQty = quantity * (selectedPack.multiplier || 1);
+    addToCart(product, totalQty);
   };
 
   const handleInstantBuyNow = () => {
@@ -60,7 +56,7 @@ export const ProduceDetailModal = ({ product, onClose, toggleWishlist, isWishlis
         className="bg-white rounded-3xl max-w-2xl w-full overflow-hidden relative max-h-[90vh] flex flex-col"
         style={{ boxShadow: '0 40px 100px rgba(0,0,0,0.55), 0 0 0 1.5px rgba(34,197,94,0.18)' }}
       >
-        
+
         {/* Close Button */}
         <button
           onClick={onClose}
@@ -72,10 +68,10 @@ export const ProduceDetailModal = ({ product, onClose, toggleWishlist, isWishlis
         </button>
 
         <div className="overflow-y-auto p-6 sm:p-8 space-y-6">
-          
+
           {/* Top Grid: Image + Farm Provenance Card */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            
+
             {/* Left Image Preview */}
             <div className="relative h-64 md:h-full rounded-3xl overflow-hidden bg-farmBg border border-emerald-100">
               <img
@@ -86,9 +82,8 @@ export const ProduceDetailModal = ({ product, onClose, toggleWishlist, isWishlis
               />
               <button
                 onClick={() => toggleWishlist(product)}
-                className={`absolute top-3 left-3 p-2.5 rounded-full backdrop-blur-md transition-all cursor-pointer ${
-                  isWishlisted ? 'bg-rose-500 text-white shadow-md' : 'bg-white/80 text-gray-700 hover:bg-white'
-                }`}
+                className={`absolute top-3 left-3 p-2.5 rounded-full backdrop-blur-md transition-all cursor-pointer ${isWishlisted ? 'bg-rose-500 text-white shadow-md' : 'bg-white/80 text-gray-700 hover:bg-white'
+                  }`}
               >
                 <Heart className="w-4 h-4 fill-current" />
               </button>

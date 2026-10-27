@@ -26,7 +26,10 @@ export function getPool() {
  */
 export async function query(sql, params = []) {
   const connectionPool = getPool();
-  const [results] = await connectionPool.query(sql, params);
+  const sanitizedParams = Array.isArray(params)
+    ? params.map((p) => (p === undefined ? null : p))
+    : (params === undefined ? [null] : [params]);
+  const [results] = await connectionPool.query(sql, sanitizedParams);
   return results;
 }
 
@@ -35,7 +38,10 @@ export async function query(sql, params = []) {
  */
 export async function execute(sql, params = []) {
   const connectionPool = getPool();
-  const [result] = await connectionPool.execute(sql, params);
+  const sanitizedParams = Array.isArray(params)
+    ? params.map((p) => (p === undefined ? null : p))
+    : (params === undefined ? [null] : [params]);
+  const [result] = await connectionPool.execute(sql, sanitizedParams);
   return result;
 }
 

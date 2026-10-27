@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { adminService } from '../../services/adminService';
 import { 
   Search, 
   CheckCircle, 
@@ -25,10 +26,11 @@ import {
   TrendingUp,
   Eye,
   Sparkles,
-  RotateCcw
+  RotateCcw,
+  Trash2
 } from 'lucide-react';
 
-export const FarmerManagement = ({ farmers, setFarmers, isDark = false }) => {
+export const FarmerManagement = ({ farmers, setFarmers, isDark = false, refreshData }) => {
   const { showToast } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
@@ -53,6 +55,7 @@ export const FarmerManagement = ({ farmers, setFarmers, isDark = false }) => {
     name: '',
     email: '',
     phone: '',
+    password: 'password123',
     location: 'Pune Rural Hub',
     experience: '5 Years Organic Farming',
     specialty: 'Organic Vegetables & Fruits',
@@ -63,16 +66,23 @@ export const FarmerManagement = ({ farmers, setFarmers, isDark = false }) => {
 
   const filteredFarmers = useMemo(() => {
     return farmers.filter(f => {
+      const name = f.name || '';
+      const location = f.location || f.location_address || '';
+      const specialty = f.specialty || '';
+      const phone = f.phone || '';
+      const appStatus = f.approvalStatus || f.approval_status || 'Approved';
+      const accStatus = f.accountStatus || f.account_status || (f.is_active === 0 ? 'Inactive' : 'Active');
+
       const matchesSearch = 
-        f.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        f.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        f.specialty.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        f.phone.includes(searchQuery);
+        name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        location.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        specialty.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        phone.includes(searchQuery);
 
       if (statusFilter === 'All') return matchesSearch;
-      if (statusFilter === 'Approved') return matchesSearch && f.approvalStatus === 'Approved';
-      if (statusFilter === 'Pending') return matchesSearch && f.approvalStatus === 'Pending';
-      if (statusFilter === 'Inactive') return matchesSearch && f.accountStatus === 'Inactive';
+      if (statusFilter === 'Approved') return matchesSearch && appStatus === 'Approved';
+      if (statusFilter === 'Pending') return matchesSearch && appStatus === 'Pending';
+      if (statusFilter === 'Inactive') return matchesSearch && accStatus === 'Inactive';
       return matchesSearch;
     });
   }, [farmers, searchQuery, statusFilter]);
@@ -80,75 +90,130 @@ export const FarmerManagement = ({ farmers, setFarmers, isDark = false }) => {
   const { totalFarmers, approvedFarmers, pendingFarmers, totalEarningsSum } = useMemo(() => {
     return {
       totalFarmers: farmers.length,
-      approvedFarmers: farmers.filter(f => f.approvalStatus === 'Approved').length,
-      pendingFarmers: farmers.filter(f => f.approvalStatus === 'Pending').length,
-      totalEarningsSum: farmers.reduce((sum, f) => sum + (f.totalEarnings || 0), 0),
+      approvedFarmers: farmers.filter(f => (f.approvalStatus || f.approval_status) === 'Approved').length,
+      pendingFarmers: farmers.filter(f => (f.approvalStatus || f.approval_status) === 'Pending').length,
+      totalEarningsSum: farmers.reduce((sum, f) => sum + (f.totalEarnings || f.total_earnings || 0), 0),
     };
   }, [farmers]);
 
-  const handleApprove = (id, name) => {
-    setFarmers(farmers.map(f => f.id === id ? { ...f, approvalStatus: 'Approved' } : f));
-    showToast('Farmer Approved', `${name} account has been approved.`);
+  const handleApprove = async (id, name) => {
+    try {
+      await adminService.verifyFarmer(id, 'Approved');
+      setFarmers(farmers.map(f => f.id === id ? { ...f, approvalStatus: 'Approved', approval_status: 'Approved' } : f));
+      showToast('Farmer Approved', `${name} account has been approved.`);
+    } catch (e) {
+      showToast('Error', 'Failed to approve farmer.', 'error');
+    }
   };
 
-  const handleReject = (id, name) => {
-    setFarmers(farmers.map(f => f.id === id ? { ...f, approvalStatus: 'Rejected' } : f));
-    showToast('Farmer Rejected', `${name} application set to rejected.`, 'error');
+  const handleReject = async (id, name) => {
+    try {
+      await adminService.verifyFarmer(id, 'Rejected');
+      setFarmers(farmers.map(f => f.id === id ? { ...f, approvalStatus: 'Rejected', approval_status: 'Rejected' } : f));
+      showToast('Farmer Rejected', `${name} application set to rejected.`, 'error');
+    } catch (e) {
+      showToast('Error', 'Failed to reject farmer.', 'error');
+    }
   };
 
-  const handleToggleActive = (id, currentStatus, name) => {
-    const newStatus = currentStatus === 'Active' ? 'Inactive' : 'Active';
-    setFarmers(farmers.map(f => f.id === id ? { ...f, accountStatus: newStatus } : f));
-    showToast('Status Updated', `${name} account is now ${newStatus}.`);
+  const handleToggleActive = async (id, currentStatus, name) => {
+    const rawStatus = currentStatus || 'Active';
+    const newStatus = (rawStatus === 'Active' || rawStatus === 'active') ? 'Inactive' : 'Active';
+    try {
+      await adminService.setFarmerStatus(id, newStatus);
+      setFarmers(farmers.map(f => f.id === id ? { ...f, accountStatus: newStatus, account_status: newStatus, is_active: newStatus === 'Active' ? 1 : 0 } : f));
+      showToast(
+        newStatus === 'Active' ? 'Farmer Activated' : 'Farmer Deactivated',
+        `${name} is now ${newStatus}. ${newStatus === 'Inactive' ? 'Login disabled for this account.' : 'Login enabled.'}`
+      );
+    } catch (e) {
+      showToast('Error', 'Failed to update farmer status.', 'error');
+    }
   };
 
-  const handleSaveEdit = (e) => {
+  const handleDeleteFarmer = async (id, name) => {
+    if (!window.confirm(`Are you sure you want to permanently remove farmer "${name}"? This will delete their products and profile.`)) {
+      return;
+    }
+    try {
+      await adminService.deleteFarmer(id);
+      setFarmers(farmers.filter(f => f.id !== id));
+      showToast('Farmer Removed', `${name} has been removed from the platform.`);
+    } catch (e) {
+      showToast('Error', 'Failed to remove farmer.', 'error');
+    }
+  };
+
+  const handleSaveEdit = async (e) => {
     e.preventDefault();
     if (!editingFarmer) return;
 
-    setFarmers(farmers.map(f => f.id === editingFarmer.id ? editingFarmer : f));
-    setEditingFarmer(null);
-    showToast('Farmer Details Updated', 'Changes saved successfully.');
+    try {
+      await adminService.updateFarmer(editingFarmer.id, {
+        name: editingFarmer.name,
+        email: editingFarmer.email,
+        phone: editingFarmer.phone,
+        farmName: editingFarmer.farmName || editingFarmer.farm_name,
+        location: editingFarmer.location || editingFarmer.location_address,
+        experience: editingFarmer.experience || editingFarmer.experience_years,
+        specialty: editingFarmer.specialty,
+        badge: editingFarmer.badge,
+        approvalStatus: editingFarmer.approvalStatus || editingFarmer.approval_status,
+        accountStatus: editingFarmer.accountStatus || editingFarmer.account_status,
+      });
+      setFarmers(farmers.map(f => f.id === editingFarmer.id ? editingFarmer : f));
+      setEditingFarmer(null);
+      showToast('Farmer Details Updated', 'Changes saved successfully.');
+      if (refreshData) refreshData();
+    } catch (err) {
+      showToast('Update Error', err.message || 'Failed to update farmer profile.', 'error');
+    }
   };
 
-  const handleAddFarmer = (e) => {
+  const handleAddFarmer = async (e) => {
     e.preventDefault();
     if (!newFarmer.name || !newFarmer.phone) {
       showToast('Validation Error', 'Please enter farmer name and phone number.', 'error');
       return;
     }
 
-    const created = {
-      id: `f${farmers.length + 1}`,
-      name: newFarmer.name,
-      email: newFarmer.email || `${newFarmer.name.toLowerCase().replace(/\s+/g, '.')}@localfarm.in`,
-      phone: newFarmer.phone,
-      location: newFarmer.location,
-      experience: newFarmer.experience,
-      specialty: newFarmer.specialty,
-      rating: 5.0,
-      image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80',
-      productsCount: 0,
-      totalEarnings: 0,
-      approvalStatus: newFarmer.approvalStatus,
-      accountStatus: newFarmer.accountStatus,
-      badge: newFarmer.badge
-    };
+    try {
+      const res = await adminService.createFarmer(newFarmer);
+      const created = res.farmer || {
+        id: `f${farmers.length + 1}`,
+        name: newFarmer.name,
+        email: newFarmer.email || `${newFarmer.name.toLowerCase().replace(/\s+/g, '.')}@localfarm.in`,
+        phone: newFarmer.phone,
+        location: newFarmer.location,
+        experience: newFarmer.experience,
+        specialty: newFarmer.specialty,
+        rating: 5.0,
+        image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80',
+        productsCount: 0,
+        totalEarnings: 0,
+        approvalStatus: newFarmer.approvalStatus,
+        accountStatus: newFarmer.accountStatus,
+        badge: newFarmer.badge
+      };
 
-    setFarmers([created, ...farmers]);
-    setShowAddModal(false);
-    setNewFarmer({
-      name: '',
-      email: '',
-      phone: '',
-      location: 'Pune Rural Hub',
-      experience: '5 Years Organic Farming',
-      specialty: 'Organic Vegetables & Fruits',
-      approvalStatus: 'Approved',
-      accountStatus: 'Active',
-      badge: 'Certified Producer'
-    });
-    showToast('Farmer Profile Created', `${created.name} onboarded successfully!`);
+      setFarmers([created, ...farmers]);
+      setShowAddModal(false);
+      setNewFarmer({
+        name: '',
+        email: '',
+        phone: '',
+        location: 'Pune Rural Hub',
+        experience: '5 Years Organic Farming',
+        specialty: 'Organic Vegetables & Fruits',
+        approvalStatus: 'Approved',
+        accountStatus: 'Active',
+        badge: 'Certified Producer'
+      });
+      showToast('Farmer Profile Created', `${created.name} onboarded successfully!`);
+      if (refreshData) refreshData();
+    } catch (err) {
+      showToast('Creation Error', err.message || 'Failed to onboard farmer.', 'error');
+    }
   };
 
   const cardBase   = isDark ? 'adm-glass rounded-3xl p-6 sm:p-7' : 'bg-white rounded-3xl border border-emerald-100/80 shadow-farm-sm p-6 sm:p-7';
@@ -328,21 +393,22 @@ export const FarmerManagement = ({ farmers, setFarmers, isDark = false }) => {
                   {/* Account Status */}
                   <td className="p-4">
                     <button
-                      onClick={() => handleToggleActive(farmer.id, farmer.accountStatus, farmer.name)}
+                      onClick={() => handleToggleActive(farmer.id, farmer.accountStatus || farmer.account_status || (farmer.is_active === 0 ? 'Inactive' : 'Active'), farmer.name)}
                       className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-2xl text-[11px] font-extrabold transition-all duration-200 cursor-pointer active:scale-95 ${
-                        farmer.accountStatus === 'Active'
+                        (farmer.accountStatus || farmer.account_status || (farmer.is_active === 0 ? 'Inactive' : 'Active')) === 'Active'
                           ? isDark ? 'adm-badge-neon hover:bg-[rgba(0,255,133,0.2)]' : 'bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100'
                           : isDark ? 'adm-badge-red hover:bg-[rgba(255,71,87,0.2)]'   : 'bg-red-50 text-red-700 border border-red-200 hover:bg-red-100'
                       }`}
+                      title="Click to toggle Active / Inactive status"
                     >
                       <Power className="w-3.5 h-3.5" />
-                      <span>{farmer.accountStatus}</span>
+                      <span>{farmer.accountStatus || farmer.account_status || (farmer.is_active === 0 ? 'Inactive' : 'Active')}</span>
                     </button>
                   </td>
 
                   {/* Total Sales */}
                   <td className={`p-4 font-extrabold text-sm ${isDark ? 'adm-gold-text' : 'text-emerald-800'}`}>
-                    ₹{farmer.totalEarnings?.toLocaleString() || 0}
+                    ₹{Number(farmer.totalEarnings || farmer.total_earnings || 0).toLocaleString()}
                   </td>
 
                   {/* Actions */}
@@ -376,6 +442,13 @@ export const FarmerManagement = ({ farmers, setFarmers, isDark = false }) => {
                       title="Edit Farmer Details"
                     >
                       <Edit3 className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteFarmer(farmer.id, farmer.name)}
+                      className={`p-2 rounded-xl transition-all cursor-pointer ${isDark ? 'text-rose-400 bg-rose-500/10 hover:bg-rose-500/20' : 'text-rose-600 bg-rose-50 hover:bg-rose-100'}`}
+                      title="Permanently Remove Farmer"
+                    >
+                      <Trash2 className="w-4 h-4" />
                     </button>
                   </td>
                 </tr>
@@ -496,7 +569,7 @@ export const FarmerManagement = ({ farmers, setFarmers, isDark = false }) => {
 
                 <div className="p-4 bg-gradient-to-br from-purple-50 to-purple-100/40 rounded-2xl border border-purple-200 shadow-2xs space-y-1">
                   <div className="text-[11px] font-extrabold text-purple-800 uppercase tracking-wider">Total Farm Payout</div>
-                  <div className="font-extrabold text-3xl text-purple-950">₹{viewingFarmer.totalEarnings?.toLocaleString() || 0}</div>
+                  <div className="font-extrabold text-3xl text-purple-950">₹{Number(viewingFarmer.totalEarnings || viewingFarmer.total_earnings || 0).toLocaleString()}</div>
                 </div>
               </div>
 
@@ -642,6 +715,17 @@ export const FarmerManagement = ({ farmers, setFarmers, isDark = false }) => {
                   placeholder="e.g. 10 Years Hydroponic Farming"
                   value={newFarmer.experience}
                   onChange={(e) => setNewFarmer({ ...newFarmer, experience: e.target.value })}
+                  className="w-full px-4 py-2.5 bg-farmBg border border-gray-200 focus:border-farmGreen-600 rounded-2xl outline-none"
+                />
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="font-extrabold text-farmGreen-950 mb-1 block">Account Password (Default: password123)</label>
+                <input
+                  type="password"
+                  placeholder="Min 6 characters (e.g. password123)"
+                  value={newFarmer.password}
+                  onChange={(e) => setNewFarmer({ ...newFarmer, password: e.target.value })}
                   className="w-full px-4 py-2.5 bg-farmBg border border-gray-200 focus:border-farmGreen-600 rounded-2xl outline-none"
                 />
               </div>

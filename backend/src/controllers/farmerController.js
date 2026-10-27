@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import { query, execute, withTransaction } from '../config/db.js';
+import { deleteFromCloudinary } from '../config/cloudinary.js';
 
 /**
  * Farmer Dashboard Overview KPIs
@@ -121,6 +122,17 @@ export async function getMyProducts(req, res, next) {
   }
 }
 
+function resolveCategoryId(cat) {
+  if (!cat) return 'Organic Veggies';
+  const c = String(cat).toLowerCase();
+  if (c.includes('veg') || c.includes('vegetable')) return 'Organic Veggies';
+  if (c.includes('fruit') || c.includes('season') || c.includes('apple') || c.includes('mango')) return 'Seasonal Picks';
+  if (c.includes('milk') || c.includes('dairy') || c.includes('egg')) return 'Dairy & Eggs';
+  if (c.includes('bulk') || c.includes('box')) return 'Bulk Farm Boxes';
+  if (c.includes('groc') || c.includes('oil') || c.includes('grain') || c.includes('pulse') || c.includes('honey')) return 'Grocery & Oils';
+  return cat;
+}
+
 /**
  * Create new product listing
  * POST /api/farmer/products
@@ -130,7 +142,8 @@ export async function createProduct(req, res, next) {
     const farmerId = req.user.id;
     const {
       name,
-      categoryId = 'Organic Veggies',
+      categoryId,
+      category,
       price,
       unit = 'kg',
       stock = 0,
@@ -139,13 +152,15 @@ export async function createProduct(req, res, next) {
       harvestDate,
       description,
       imageUrl,
+      image,
       images = [],
     } = req.body;
 
-    if (!name || !price) {
+    if (!name || price === undefined || price === null || price === '') {
       return res.status(400).json({ success: false, message: 'Crop name and price are required.' });
     }
 
+    const targetCategoryId = resolveCategoryId(categoryId || category);
     const productId = uuidv4();
 
     await withTransaction(async (conn) => {
@@ -153,23 +168,24 @@ export async function createProduct(req, res, next) {
         `INSERT INTO products (
           id, farmer_id, category_id, name, description, price, unit, stock,
           is_organic, harvest_tag, harvest_date, status
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending')`,
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Approved')`,
         [
           productId,
           farmerId,
-          categoryId,
+          targetCategoryId,
           name,
-          description || '',
+          description || 'Fresh farm harvest directly from verified local fields.',
           Number(price),
           unit,
           Number(stock),
           isOrganic ? 1 : 0,
-          harvestTag,
+          harvestTag || 'Harvested Today 5:30 AM',
           harvestDate || 'Today Morning',
         ]
       );
 
-      const allImages = images.length > 0 ? images : [imageUrl || 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=600&q=80'];
+      const chosenImage = imageUrl || image || (images.length > 0 ? images[0] : 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=600&q=80');
+      const allImages = images.length > 0 ? images : [chosenImage];
 
       for (let i = 0; i < allImages.length; i++) {
         await conn.execute(
@@ -198,7 +214,25 @@ export async function updateProduct(req, res, next) {
   try {
     const { id } = req.params;
     const farmerId = req.user.id;
-    const { name, categoryId, price, unit, stock, isOrganic, harvestTag, harvestDate, description, flashDiscount } = req.body;
+    const { 
+      name, 
+      categoryId, 
+      category, 
+      price, 
+      unit, 
+      stock, 
+      isOrganic, 
+      harvestTag, 
+      harvestDate, 
+      description, 
+      flashDiscount,
+      status,
+      imageUrl,
+      image,
+      images,
+    } = req.body;
+
+    const targetCategoryId = (categoryId || category) ? resolveCategoryId(categoryId || category) : null;
 
     const result = await execute(
       `UPDATE products
@@ -211,19 +245,21 @@ export async function updateProduct(req, res, next) {
            harvest_tag = COALESCE(?, harvest_tag),
            harvest_date = COALESCE(?, harvest_date),
            description = COALESCE(?, description),
-           flash_discount = COALESCE(?, flash_discount)
+           flash_discount = COALESCE(?, flash_discount),
+           status = COALESCE(?, status)
        WHERE id = ? AND farmer_id = ?`,
       [
-        name,
-        categoryId,
-        price !== undefined ? Number(price) : null,
-        unit,
-        stock !== undefined ? Number(stock) : null,
-        isOrganic !== undefined ? (isOrganic ? 1 : 0) : null,
-        harvestTag,
-        harvestDate,
-        description,
-        flashDiscount !== undefined ? Number(flashDiscount) : null,
+        name ?? null,
+        targetCategoryId ?? null,
+        price !== undefined && price !== null ? Number(price) : null,
+        unit ?? null,
+        stock !== undefined && stock !== null ? Number(stock) : null,
+        isOrganic !== undefined && isOrganic !== null ? (isOrganic ? 1 : 0) : null,
+        harvestTag ?? null,
+        harvestDate ?? null,
+        description ?? null,
+        flashDiscount !== undefined && flashDiscount !== null ? Number(flashDiscount) : null,
+        status ?? null,
         id,
         farmerId,
       ]
@@ -231,6 +267,20 @@ export async function updateProduct(req, res, next) {
 
     if (result.affectedRows === 0) {
       return res.status(404).json({ success: false, message: 'Product not found or unauthorized.' });
+    }
+
+    // Update image if provided
+    const newImage = imageUrl || image || (Array.isArray(images) && images.length > 0 ? images[0] : null);
+    if (newImage) {
+      const [existing] = await query('SELECT id FROM product_images WHERE product_id = ? AND is_primary = 1 LIMIT 1', [id]);
+      if (existing) {
+        await execute('UPDATE product_images SET image_url = ? WHERE id = ?', [newImage, existing.id]);
+      } else {
+        await execute(
+          'INSERT INTO product_images (id, product_id, image_url, is_primary, display_order) VALUES (?, ?, ?, 1, 0)',
+          [uuidv4(), id, newImage]
+        );
+      }
     }
 
     res.json({ success: true, message: 'Product updated successfully.' });
@@ -248,12 +298,31 @@ export async function deleteProduct(req, res, next) {
     const { id } = req.params;
     const farmerId = req.user.id;
 
+    // 1. Fetch associated Cloudinary images to clean up
+    const images = await query(
+      'SELECT cloudinary_public_id, image_url FROM product_images WHERE product_id = ?',
+      [id]
+    );
+
+    // 2. Delete product record from database (cascades to product_images)
     const result = await execute('DELETE FROM products WHERE id = ? AND farmer_id = ?', [id, farmerId]);
     if (result.affectedRows === 0) {
       return res.status(404).json({ success: false, message: 'Product not found or unauthorized.' });
     }
 
-    res.json({ success: true, message: 'Product deleted.' });
+    // 3. Asynchronously purge assets from Cloudinary
+    if (images && images.length > 0) {
+      Promise.all(
+        images.map((img) => {
+          if (img.cloudinary_public_id) {
+            return deleteFromCloudinary(img.cloudinary_public_id);
+          }
+          return Promise.resolve();
+        })
+      ).catch((err) => console.warn('Cloudinary asset cleanup notice:', err.message));
+    }
+
+    res.json({ success: true, message: 'Product and associated media deleted successfully.' });
   } catch (error) {
     next(error);
   }
@@ -465,14 +534,37 @@ export async function requestPayout(req, res, next) {
 }
 
 /**
+ * Get Farmer Payouts History
+ * GET /api/farmer/payouts
+ */
+export async function getFarmerPayouts(req, res, next) {
+  try {
+    const farmerId = req.user.id;
+    const payouts = await query(
+      'SELECT * FROM farmer_payouts WHERE farmer_id = ? ORDER BY created_at DESC',
+      [farmerId]
+    );
+    res.json({ success: true, payouts });
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
  * Get Farmer Profile
  * GET /api/farmer/profile
  */
 export async function getFarmerProfile(req, res, next) {
   try {
     const farmerId = req.user.id;
-    const [profile] = await query('SELECT * FROM farmer_profiles WHERE user_id = ?', [farmerId]);
-    res.json({ success: true, profile });
+    const [profile] = await query(
+      `SELECT u.name, u.email, u.phone, u.avatar_url, fp.*
+       FROM users u
+       LEFT JOIN farmer_profiles fp ON u.id = fp.user_id
+       WHERE u.id = ?`,
+      [farmerId]
+    );
+    res.json({ success: true, profile: profile || null });
   } catch (error) {
     next(error);
   }
@@ -485,31 +577,52 @@ export async function getFarmerProfile(req, res, next) {
 export async function updateFarmerProfile(req, res, next) {
   try {
     const farmerId = req.user.id;
-    const { farmName, locationAddress, district, state, experienceYears, specialty, organicCertified, certificateUrl } = req.body;
+    const { name, email, phone, avatar, avatar_url, farmName, locationAddress, district, state, experienceYears, specialty, organicCertified, certificateUrl } = req.body;
 
-    await execute(
-      `UPDATE farmer_profiles
-       SET farm_name = COALESCE(?, farm_name),
-           location_address = COALESCE(?, location_address),
-           district = COALESCE(?, district),
-           state = COALESCE(?, state),
-           experience_years = COALESCE(?, experience_years),
-           specialty = COALESCE(?, specialty),
-           organic_certified = COALESCE(?, organic_certified),
-           certificate_url = COALESCE(?, certificate_url)
-       WHERE user_id = ?`,
-      [
-        farmName,
-        locationAddress,
-        district,
-        state,
-        experienceYears !== undefined ? Number(experienceYears) : null,
-        specialty,
-        organicCertified !== undefined ? (organicCertified ? 1 : 0) : null,
-        certificateUrl,
-        farmerId,
-      ]
-    );
+    if (name || email || phone || avatar || avatar_url) {
+      await execute(
+        `UPDATE users
+         SET name = COALESCE(?, name),
+             email = COALESCE(?, email),
+             phone = COALESCE(?, phone),
+             avatar_url = COALESCE(?, avatar_url)
+         WHERE id = ?`,
+        [name || null, email || null, phone || null, avatar || avatar_url || null, farmerId]
+      );
+    }
+
+    const [existing] = await query('SELECT user_id FROM farmer_profiles WHERE user_id = ?', [farmerId]);
+    if (!existing) {
+      await execute(
+        `INSERT INTO farmer_profiles (user_id, farm_name, location_address, district, state, experience_years, specialty, organic_certified, certificate_url)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [farmerId, farmName || 'My Farm', locationAddress || 'Local Farm Area', district || 'Pune', state || 'Maharashtra', experienceYears || 5, specialty || 'Organic Produce', organicCertified ? 1 : 0, certificateUrl || null]
+      );
+    } else {
+      await execute(
+        `UPDATE farmer_profiles
+         SET farm_name = COALESCE(?, farm_name),
+             location_address = COALESCE(?, location_address),
+             district = COALESCE(?, district),
+             state = COALESCE(?, state),
+             experience_years = COALESCE(?, experience_years),
+             specialty = COALESCE(?, specialty),
+             organic_certified = COALESCE(?, organic_certified),
+             certificate_url = COALESCE(?, certificate_url)
+         WHERE user_id = ?`,
+        [
+          farmName || null,
+          locationAddress || null,
+          district || null,
+          state || null,
+          experienceYears !== undefined ? Number(experienceYears) : null,
+          specialty || null,
+          organicCertified !== undefined ? (organicCertified ? 1 : 0) : null,
+          certificateUrl || null,
+          farmerId,
+        ]
+      );
+    }
 
     res.json({ success: true, message: 'Farmer profile updated.' });
   } catch (error) {

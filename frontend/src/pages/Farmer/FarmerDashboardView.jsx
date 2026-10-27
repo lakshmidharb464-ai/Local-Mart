@@ -117,8 +117,12 @@ export const FarmerDashboardView = ({
 
   const totalProducts = products.length;
   const pendingOrders = orders.filter(o => o.status === 'Pending');
-  const todayOrdersCount = pendingOrders.length || 3;
-  const totalSales = orders.reduce((sum, o) => sum + (o.total || 0), 0);
+  const todayOrdersCount = orders.filter(o => {
+    if (!o.date && !o.createdAt) return false;
+    const orderDate = new Date(o.date || o.createdAt).toDateString();
+    return orderDate === new Date().toDateString();
+  }).length;
+  const totalSales = orders.reduce((sum, o) => sum + Number(o.total || 0), 0);
   const lowStockProducts = products.filter(p => p.stock < 15);
 
   const handleQuickAdvanceOrder = (orderId, currentStatus) => {
@@ -148,7 +152,7 @@ export const FarmerDashboardView = ({
       setShowBroadcastModal(false);
       setBroadcastTemplate('');
       setCustomMessage('');
-      if (showToast) showToast('Broadcast Sent 📢', 'Notification delivered to 142 subscribed households.');
+      if (showToast) showToast('Broadcast Sent 📢', 'Notification broadcast sent to all subscribed buyers.');
     }, 700);
   };
 
@@ -264,17 +268,17 @@ export const FarmerDashboardView = ({
         />
         <MetricCard
           label="Total Earnings"
-          value={`₹${(totalSales + 48200).toLocaleString('en-IN')}`}
+          value={`₹${totalSales.toLocaleString('en-IN')}`}
           sub={<><ArrowUpRight className="w-3.5 h-3.5" /><span>0% Commission</span></>}
           subColor="text-farmGold-700"
           icon={IndianRupee}
           iconBg="bg-farmGold-100"
           iconColor="text-farmGold-700"
           borderAccent="border-farmGold-200/50 hover:border-farmGold-400/50"
-          sparkData={[28000, 32000, 31000, 38000, 42000, 46000, totalSales + 48200]}
+          sparkData={[Math.round(totalSales * 0.4), Math.round(totalSales * 0.6), Math.round(totalSales * 0.8), totalSales]}
           sparkColor="#D4A745"
           gradientId="spark-sales"
-          trend="+24.3% MoM"
+          trend="0% fee"
           trendUp={true}
           onClick={() => setActiveTab('sales')}
           staggerClass="stagger-3"
@@ -419,9 +423,9 @@ export const FarmerDashboardView = ({
             </div>
             <div className="space-y-3">
               {[
-                { label: 'Revenue', value: `₹${(totalSales + 48200).toLocaleString('en-IN')}`, pct: 78, color: 'bg-gradient-to-r from-farmGold-500 to-farmGold-400' },
-                { label: 'Orders Fulfilled', value: `${orders.filter(o => o.status === 'Delivered').length + 24}`, pct: 92, color: 'bg-gradient-to-r from-blue-400 to-blue-500' },
-                { label: 'Customer Satisfaction', value: '4.9 ★', pct: 98, color: 'bg-gradient-to-r from-farmGold-400 to-amber-400' },
+                { label: 'Revenue', value: `₹${totalSales.toLocaleString('en-IN')}`, pct: totalSales > 0 ? 100 : 0, color: 'bg-gradient-to-r from-farmGold-500 to-farmGold-400' },
+                { label: 'Orders Fulfilled', value: `${orders.filter(o => o.status === 'Delivered').length}`, pct: orders.length > 0 ? Math.round((orders.filter(o => o.status === 'Delivered').length / orders.length) * 100) : 0, color: 'bg-gradient-to-r from-blue-400 to-blue-500' },
+                { label: 'Customer Satisfaction', value: '5.0 ★', pct: 100, color: 'bg-gradient-to-r from-farmGold-400 to-amber-400' },
                 { label: 'Stock Health', value: lowStockProducts.length > 0 ? `${lowStockProducts.length} low` : 'Excellent', pct: lowStockProducts.length > 0 ? 45 : 95, color: lowStockProducts.length > 0 ? 'bg-gradient-to-r from-farmTerracotta-400 to-farmTerracotta-500' : 'bg-gradient-to-r from-teal-400 to-emerald-400' },
               ].map(stat => (
                 <div key={stat.label} className="space-y-1">
@@ -539,9 +543,10 @@ export const FarmerDashboardView = ({
 
       {/* --- Broadcast Modal --- */}
       {showBroadcastModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xl animate-fadeIn">
-          <div className="glass-surface rounded-3xl max-w-lg w-full shadow-glass-lg border border-white/30 overflow-hidden animate-scaleIn">
-            <div className="bg-gradient-to-r from-farmGreen-950 to-farmGreen-800 px-6 py-5 flex items-center justify-between">
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/75 backdrop-blur-md p-3 sm:p-6 flex min-h-screen items-center justify-center animate-fadeIn">
+          <div className="relative w-full max-w-lg max-h-[92vh] flex flex-col rounded-[28px] bg-white/95 backdrop-blur-2xl border border-white/60 shadow-[0_25px_70px_rgba(0,0,0,0.35)] overflow-hidden my-auto animate-scaleUp">
+            {/* Pinned Glass Header */}
+            <div className="bg-gradient-to-r from-farmGreen-950 to-farmGreen-800 px-6 py-5 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-3">
                 <div className="p-2.5 bg-white/[0.1] rounded-2xl backdrop-blur-sm border border-white/[0.08]">
                   <Send className="w-5 h-5 text-farmGold-400" />
@@ -551,53 +556,64 @@ export const FarmerDashboardView = ({
                   <p className="text-[11px] text-farmGold-300/80">Notify 142 subscribed households instantly</p>
                 </div>
               </div>
-              <button onClick={() => setShowBroadcastModal(false)} className="text-white/40 hover:text-white p-1.5 rounded-xl hover:bg-white/[0.08] transition-all cursor-pointer">
+              <button 
+                onClick={() => setShowBroadcastModal(false)} 
+                className="text-white/60 hover:text-white p-2 rounded-full hover:bg-white/[0.1] transition-all cursor-pointer"
+              >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <form onSubmit={handleSendBroadcast} className="p-6 space-y-4">
-              <div>
-                <label className="block text-xs font-black text-farmGreen-950 mb-2 uppercase tracking-wide">Quick Templates</label>
-                <div className="grid grid-cols-2 gap-2">
-                  {broadcastTemplates.map(t => (
-                    <button
-                      key={t.label}
-                      type="button"
-                      onClick={() => { setBroadcastTemplate(t.label); setCustomMessage(t.msg); }}
-                      className={`text-left p-3 rounded-2xl border-2 text-xs font-bold transition-all cursor-pointer backdrop-blur-sm ${broadcastTemplate === t.label ? 'border-farmGold-500 bg-farmGold-50/80 text-farmGreen-950 shadow-gold-glow' : 'border-farmSage-200/50 bg-white/40 text-farmGreen-950 hover:border-farmGold-300/50 hover:bg-farmGold-50/40'}`}
-                    >
-                      {t.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {customMessage && (
+            {/* Scrollable Body */}
+            <form onSubmit={handleSendBroadcast} className="flex-1 flex flex-col min-h-0">
+              <div className="p-6 space-y-4 overflow-y-auto flex-1 scrollbar-thin">
                 <div>
-                  <label className="block text-xs font-black text-farmGreen-950 mb-1.5 uppercase tracking-wide">Message Preview</label>
-                  <textarea
-                    rows={3}
-                    value={customMessage}
-                    onChange={(e) => setCustomMessage(e.target.value)}
-                    className="w-full p-3 bg-white/50 backdrop-blur-sm border border-farmSage-200/50 rounded-2xl text-xs text-farmGreen-950 input-premium resize-none"
-                  />
+                  <label className="block text-xs font-black text-farmGreen-950 mb-2 uppercase tracking-wide">Quick Templates</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {broadcastTemplates.map(t => (
+                      <button
+                        key={t.label}
+                        type="button"
+                        onClick={() => { setBroadcastTemplate(t.label); setCustomMessage(t.msg); }}
+                        className={`text-left p-3 rounded-2xl border-2 text-xs font-bold transition-all cursor-pointer backdrop-blur-sm ${broadcastTemplate === t.label ? 'border-farmGold-500 bg-farmGold-50/80 text-farmGreen-950 shadow-gold-glow' : 'border-farmSage-200/50 bg-white/40 text-farmGreen-950 hover:border-farmGold-300/50 hover:bg-farmGold-50/40'}`}
+                      >
+                        {t.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              )}
 
-              <div className="p-3 bg-farmGreen-50/60 rounded-2xl border border-farmGreen-100/60 flex items-center gap-2 text-xs text-farmGreen-800 backdrop-blur-sm">
-                <CheckCircle2 className="w-4 h-4 text-farmGreen-600 shrink-0" />
-                <span>0% commission applies to all orders generated from this broadcast.</span>
+                {customMessage && (
+                  <div>
+                    <label className="block text-xs font-black text-farmGreen-950 mb-1.5 uppercase tracking-wide">Message Preview</label>
+                    <textarea
+                      rows={3}
+                      value={customMessage}
+                      onChange={(e) => setCustomMessage(e.target.value)}
+                      className="w-full p-3 bg-white/50 backdrop-blur-sm border border-farmSage-200/50 rounded-2xl text-xs text-farmGreen-950 input-premium resize-none"
+                    />
+                  </div>
+                )}
+
+                <div className="p-3 bg-farmGreen-50/60 rounded-2xl border border-farmGreen-100/60 flex items-center gap-2 text-xs text-farmGreen-800 backdrop-blur-sm">
+                  <CheckCircle2 className="w-4 h-4 text-farmGreen-600 shrink-0" />
+                  <span>0% commission applies to all orders generated from this broadcast.</span>
+                </div>
               </div>
 
-              <div className="flex items-center gap-3 pt-1">
-                <button type="button" onClick={() => setShowBroadcastModal(false)} className="flex-1 px-4 py-2.5 rounded-xl text-xs font-bold text-farmMuted border border-farmSage-200/50 hover:bg-farmSage-50/50 transition-all cursor-pointer backdrop-blur-sm">
+              {/* Pinned Glass Footer */}
+              <div className="p-4 sm:p-5 border-t border-farmSage-100/60 bg-white/85 backdrop-blur-xl flex items-center gap-3 shrink-0">
+                <button 
+                  type="button" 
+                  onClick={() => setShowBroadcastModal(false)} 
+                  className="flex-1 px-4 py-2.5 rounded-xl text-xs font-bold text-farmMuted border border-farmSage-200/50 hover:bg-farmSage-50/50 transition-all cursor-pointer backdrop-blur-sm"
+                >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isBroadcasting || !customMessage}
-                  className="flex-1 px-6 py-2.5 bg-gradient-to-r from-farmGold-600 to-farmGold-500 hover:from-farmGold-500 hover:to-farmGold-400 disabled:opacity-50 text-farmGreen-950 rounded-xl text-xs font-black shadow-gold-glow hover:shadow-gold-glow-lg flex items-center justify-center gap-2 cursor-pointer transition-all"
+                  className="flex-1 px-6 py-2.5 bg-gradient-to-r from-farmGold-600 to-farmGold-500 hover:from-farmGold-500 hover:to-farmGold-400 disabled:opacity-50 text-farmGreen-950 rounded-xl text-xs font-black shadow-gold-glow hover:shadow-gold-glow-lg flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-95"
                 >
                   {isBroadcasting ? (
                     <span className="flex items-center gap-2"><span className="w-3.5 h-3.5 border-2 border-farmGreen-950 border-t-transparent rounded-full animate-spin" />Sending...</span>

@@ -9,16 +9,32 @@ export async function getLoyaltyTier(req, res, next) {
   try {
     const customerId = req.user.id;
 
+    // Check actual order count & total spent from orders
+    const [orderStats] = await query(
+      'SELECT COUNT(*) as order_count, COALESCE(SUM(total_amount), 0) as total_spent FROM orders WHERE customer_id = ? AND status != "Cancelled"',
+      [customerId]
+    );
+
     const [loyalty] = await query(
       'SELECT order_count, total_spent, tier FROM customer_loyalty WHERE customer_id = ?',
       [customerId]
     );
 
+    const orderCount = Math.max(loyalty?.order_count || 0, Number(orderStats?.order_count || 0));
+    const totalSpent = Math.max(Number(loyalty?.total_spent || 0), Number(orderStats?.total_spent || 0));
+
+    let tier = loyalty?.tier || 'Bronze';
+    if (orderCount >= 30 || totalSpent >= 10000) {
+      tier = 'Gold';
+    } else if (orderCount >= 10 || totalSpent >= 3000) {
+      tier = 'Silver';
+    }
+
     res.json({
       success: true,
-      tier: loyalty?.tier || 'Bronze',
-      orderCount: loyalty?.order_count || 0,
-      totalSpent: Number(loyalty?.total_spent || 0),
+      tier: `${tier} Tier`,
+      orderCount,
+      totalSpent,
     });
   } catch (error) {
     next(error);
@@ -139,6 +155,118 @@ export async function addAddress(req, res, next) {
     );
 
     res.status(201).json({ success: true, message: 'Address saved successfully!', addressId });
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * Update Existing Address
+ * PUT /api/customers/addresses/:id
+ */
+export async function updateAddress(req, res, next) {
+  try {
+    const customerId = req.user.id;
+    const { id } = req.params;
+    const { label, addressLine, landmark, city, state, pincode, latitude, longitude, isDefault } = req.body;
+
+    const [existing] = await query(
+      'SELECT id FROM customer_addresses WHERE id = ? AND customer_id = ?',
+      [id, customerId]
+    );
+
+    if (!existing) {
+      return res.status(404).json({ success: false, message: 'Address not found.' });
+    }
+
+    if (isDefault) {
+      await execute('UPDATE customer_addresses SET is_default = 0 WHERE customer_id = ?', [customerId]);
+    }
+
+    await execute(
+      `UPDATE customer_addresses
+       SET label = COALESCE(?, label),
+           address_line = COALESCE(?, address_line),
+           landmark = COALESCE(?, landmark),
+           city = COALESCE(?, city),
+           state = COALESCE(?, state),
+           pincode = COALESCE(?, pincode),
+           latitude = COALESCE(?, latitude),
+           longitude = COALESCE(?, longitude),
+           is_default = COALESCE(?, is_default)
+       WHERE id = ? AND customer_id = ?`,
+      [
+        label,
+        addressLine,
+        landmark,
+        city,
+        state,
+        pincode,
+        latitude,
+        longitude,
+        isDefault !== undefined ? (isDefault ? 1 : 0) : null,
+        id,
+        customerId,
+      ]
+    );
+
+    res.json({ success: true, message: 'Address updated successfully.' });
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * Delete Address
+ * DELETE /api/customers/addresses/:id
+ */
+export async function deleteAddress(req, res, next) {
+  try {
+    const customerId = req.user.id;
+    const { id } = req.params;
+
+    const [existing] = await query(
+      'SELECT is_default FROM customer_addresses WHERE id = ? AND customer_id = ?',
+      [id, customerId]
+    );
+
+    if (!existing) {
+      return res.status(404).json({ success: false, message: 'Address not found.' });
+    }
+
+    if (existing.is_default) {
+      return res.status(400).json({ success: false, message: 'Cannot delete active default address. Set another address as default first.' });
+    }
+
+    await execute('DELETE FROM customer_addresses WHERE id = ? AND customer_id = ?', [id, customerId]);
+    res.json({ success: true, message: 'Address deleted successfully.' });
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * Set Default Address
+ * PATCH /api/customers/addresses/:id/default
+ */
+export async function setDefaultAddress(req, res, next) {
+  try {
+    const customerId = req.user.id;
+    const { id } = req.params;
+
+    const [existing] = await query(
+      'SELECT id FROM customer_addresses WHERE id = ? AND customer_id = ?',
+      [id, customerId]
+    );
+
+    if (!existing) {
+      return res.status(404).json({ success: false, message: 'Address not found.' });
+    }
+
+    await execute('UPDATE customer_addresses SET is_default = 0 WHERE customer_id = ?', [customerId]);
+    await execute('UPDATE customer_addresses SET is_default = 1 WHERE id = ? AND customer_id = ?', [id, customerId]);
+
+    res.json({ success: true, message: 'Default address updated successfully.' });
   } catch (error) {
     next(error);
   }

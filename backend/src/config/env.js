@@ -15,6 +15,7 @@ export const ENV = {
     SECRET: process.env.JWT_SECRET || 'localfarm_super_secure_jwt_secret_2026_key_!@#$',
     EXPIRES_IN: process.env.JWT_EXPIRES_IN || '7d',
   },
+  ADMIN_SECRET: process.env.ADMIN_SECRET || 'admin123',
   CLOUDINARY: {
     CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME || '',
     API_KEY: process.env.CLOUDINARY_API_KEY || '',

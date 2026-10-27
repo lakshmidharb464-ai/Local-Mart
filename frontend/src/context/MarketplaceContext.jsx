@@ -18,9 +18,10 @@ export const MarketplaceProvider = ({ children }) => {
     setIsLoading(true);
     setLoadError(null);
     try {
+      const userRole = user?.role || 'Customer';
       const [fetchedProducts, fetchedOrders] = await Promise.all([
         productService.fetchProducts(),
-        orderService.fetchOrders('All'),
+        orderService.fetchOrders(userRole),
       ]);
       setProducts(fetchedProducts || []);
       setOrders(fetchedOrders || []);
@@ -30,7 +31,7 @@ export const MarketplaceProvider = ({ children }) => {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [user?.role]);
 
   useEffect(() => {
     loadMarketplaceData();
@@ -113,13 +114,27 @@ export const MarketplaceProvider = ({ children }) => {
   const placeOrder = async (orderPayload) => {
     try {
       const placed = await orderService.placeOrder(orderPayload);
-      setOrders((prev) => [placed, ...prev]);
+      const userRole = user?.role || 'Customer';
+      // Re-fetch orders and products from real database
+      try {
+        const [freshOrders, freshProducts] = await Promise.all([
+          orderService.fetchOrders(userRole),
+          productService.fetchProducts(),
+        ]);
+        if (freshOrders && freshOrders.length > 0) setOrders(freshOrders);
+        else setOrders((prev) => [placed, ...prev]);
+        if (freshProducts && freshProducts.length > 0) setProducts(freshProducts);
+      } catch (syncErr) {
+        console.warn('Post-checkout refresh warning:', syncErr);
+        setOrders((prev) => [placed, ...prev]);
+      }
+
       if (showToast) {
-        showToast('Order Confirmed! 📦', `Order ${placed.id} placed successfully.`);
+        showToast('Order Confirmed! 📦', `Order ${placed?.id || placed?.orderId} placed successfully.`);
       }
       return placed;
     } catch (err) {
-      if (showToast) showToast('Checkout Failed', 'Could not process order.', 'error');
+      if (showToast) showToast('Checkout Failed', err.message || 'Could not process order.', 'error');
       throw err;
     }
   };

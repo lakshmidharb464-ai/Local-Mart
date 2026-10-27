@@ -156,7 +156,8 @@ const ProgressRow = ({ item, idx, maxSales, isDark }) => {
     const t = setTimeout(() => setAnimated(true), 200 + idx * 120);
     return () => clearTimeout(t);
   }, [idx]);
-  const pct = Math.min(100, (item.sales / maxSales) * 100);
+  const numSales = typeof item.sales === 'number' ? item.sales : parseFloat(String(item.sales || '0').replace(/[^0-9.]/g, '')) || item.revenue || 1;
+  const pct = Math.min(100, Math.max(15, (numSales / (maxSales || 1)) * 100));
 
   return (
     <div className={`p-4 rounded-2xl border transition-all adm-row ${
@@ -176,7 +177,7 @@ const ProgressRow = ({ item, idx, maxSales, isDark }) => {
           <span className={`font-extrabold text-sm ${isDark ? 'text-[#D4EAD9]' : 'text-farmGreen-950'}`}>{item.name}</span>
         </div>
         <div className={`font-extrabold text-sm ${isDark ? 'adm-gold-text' : 'text-emerald-800'}`}>
-          ₹{item.revenue.toLocaleString()}
+          ₹{(item.revenue || 0).toLocaleString()}
         </div>
       </div>
       <div className={`w-full h-2 rounded-full overflow-hidden ${isDark ? 'bg-[rgba(255,255,255,0.05)]' : 'bg-gray-200/80'}`}>
@@ -185,7 +186,7 @@ const ProgressRow = ({ item, idx, maxSales, isDark }) => {
           style={{ width: animated ? `${pct}%` : '0%' }}
         />
       </div>
-      <div className={`text-[11px] font-bold mt-1 ${isDark ? 'text-[#7FA882]' : 'text-farmMuted'}`}>{item.sales} units sold this month</div>
+      <div className={`text-[11px] font-bold mt-1 ${isDark ? 'text-[#7FA882]' : 'text-farmMuted'}`}>{item.sales} sold this period</div>
     </div>
   );
 };
@@ -212,7 +213,9 @@ export const ReportsAnalytics = ({ isDark = false }) => {
 
   const totalYearlyRevenue = monthlySales.reduce((acc, curr) => acc + (curr.revenue || 0), 0);
   const totalYearlyOrders  = monthlySales.reduce((acc, curr) => acc + (curr.orders || 0), 0);
-  const maxSales           = topProducts.length > 0 ? Math.max(...topProducts.map(p => p.sales || 0)) : 1;
+  const maxSales           = topProducts.length > 0 
+    ? Math.max(...topProducts.map(p => typeof p.sales === 'number' ? p.sales : parseFloat(String(p.sales || '0').replace(/[^0-9.]/g, '')) || p.revenue || 1)) 
+    : 1;
 
   const handleExportCSV = () => {
     showToast('Analytics Exported', 'CSV report downloaded successfully!');

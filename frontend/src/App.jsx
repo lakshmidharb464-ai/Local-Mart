@@ -42,26 +42,47 @@ const DashboardRedirect = () => {
 
   switch (user?.role) {
     case 'Farmer':
-      return <FarmerDashboard />;
+      return <Navigate to="/farmer" replace />;
     case 'Delivery':
-      return <DeliveryDashboard />;
+      return <Navigate to="/delivery" replace />;
     case 'Admin':
-      return <AdminDashboard />;
+      return <Navigate to="/admin" replace />;
     case 'Customer':
     default:
-      return <CustomerDashboard />;
+      return <Navigate to="/customer" replace />;
   }
 };
 
 const ProtectedRoleRoute = ({ allowedRole, children }) => {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, openAuthModal } = useAuth();
   const location = useLocation();
 
-  if (!isAuthenticated) {
-    if (allowedRole === 'Customer') {
-      return <Navigate to="/" state={{ from: location }} replace />;
+  React.useEffect(() => {
+    if (!isAuthenticated) {
+      openAuthModal('signin', allowedRole || 'Customer');
     }
-    return <UnauthorizedPage />;
+  }, [isAuthenticated, allowedRole, openAuthModal]);
+
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-[80vh] flex flex-col items-center justify-center p-6 text-center">
+        <div className="w-16 h-16 rounded-2xl bg-emerald-100 flex items-center justify-center mb-4 text-2xl shadow-sm">
+          🌿
+        </div>
+        <h2 className="font-display font-black text-2xl text-farmGreen-950 mb-2">
+          {allowedRole} Sign In Required
+        </h2>
+        <p className="text-xs text-farmMuted max-w-md mb-6 leading-relaxed">
+          Please sign in to access your {allowedRole?.toLowerCase()} account, view farm harvests, and manage your orders.
+        </p>
+        <button
+          onClick={() => openAuthModal('signin', allowedRole || 'Customer')}
+          className="px-6 py-3 bg-gradient-to-r from-emerald-600 to-farmGreen-700 hover:from-emerald-500 hover:to-farmGreen-600 text-white font-bold text-xs uppercase tracking-wider rounded-xl shadow-md cursor-pointer transition-all active:scale-95"
+        >
+          Sign In as {allowedRole}
+        </button>
+      </div>
+    );
   }
 
   if (allowedRole && user?.role !== allowedRole && user?.role !== 'Admin') {

@@ -71,15 +71,8 @@ export const DeliveryEarnings = ({
   const [copiedUtr, setCopiedUtr] = useState(false);
 
   const completedOrders = orders.filter(o => o.status === 'Delivered');
-
-  const defaultPayoutHistory = earnings.payoutHistory?.length > 0 ? earnings.payoutHistory : [
-    { id: 'PAY-8801', date: '11 Aug 2026', trips: 14, method: 'Direct Bank Transfer', amount: 1450, status: 'Settled', utr: 'UTR-9912048201' },
-    { id: 'PAY-8800', date: '10 Aug 2026', trips: 12, method: 'Direct Bank Transfer', amount: 1280, status: 'Settled', utr: 'UTR-8821034920' },
-    { id: 'PAY-8799', date: '09 Aug 2026', trips: 15, method: 'Direct Bank Transfer', amount: 1620, status: 'Settled', utr: 'UTR-7730194821' },
-    { id: 'PAY-8798', date: '08 Aug 2026', trips: 10, method: 'Direct Bank Transfer', amount: 1100, status: 'Settled', utr: 'UTR-6629481023' }
-  ];
-
-  const progressPercent = Math.min(100, Math.round(((earnings.todayTotal || 345) / dailyGoal) * 100));
+  const realPayoutHistory = earnings.payoutHistory || [];
+  const progressPercent = Math.min(100, Math.round(((Number(earnings.todayTotal || 0)) / dailyGoal) * 100));
 
   const handleDownloadPayoutStatement = () => {
     if (showToast) {
@@ -195,11 +188,11 @@ export const DeliveryEarnings = ({
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping" />
           </div>
           <div className="font-mono font-black text-3xl text-farmGreen-950 tabular-nums">
-            ₹{(earnings.todayTotal || 345).toLocaleString()}
+            ₹{Number(earnings.todayTotal || 0).toLocaleString()}
           </div>
           <div className="flex items-center justify-between border-t border-farmSage-100/40 pt-2 text-xs">
-            <span className="text-farmMuted font-bold">Trips: <strong className="tabular-nums font-mono">{earnings.todayTrips || 6}</strong></span>
-            <Sparkline data={[240, 280, 310, 290, 340, 320, earnings.todayTotal || 345]} color="#10B981" gradientId="spk-earn-today" />
+            <span className="text-farmMuted font-bold">Trips: <strong className="tabular-nums font-mono">{earnings.todayTrips || 0}</strong></span>
+            <Sparkline data={[1, Number(earnings.todayTotal || 0) > 0 ? Number(earnings.todayTotal || 0) : 1]} color="#10B981" gradientId="spk-earn-today" />
           </div>
         </div>
 
@@ -210,26 +203,26 @@ export const DeliveryEarnings = ({
             <TrendingUp className="w-4 h-4 text-emerald-600" />
           </div>
           <div className="font-mono font-black text-3xl text-farmGreen-950 tabular-nums">
-            ₹{(earnings.weeklyTotal || 2450).toLocaleString()}
+            ₹{Number(earnings.weeklyTotal || 0).toLocaleString()}
           </div>
           <div className="flex items-center justify-between border-t border-farmSage-100/40 pt-2 text-xs">
-            <span className="text-farmMuted font-bold">Trips: <strong className="tabular-nums font-mono">{earnings.weeklyTrips || 28}</strong></span>
-            <Sparkline data={[1800, 2100, 1950, 2300, 2200, 2450]} color="#059669" gradientId="spk-earn-week" />
+            <span className="text-farmMuted font-bold">Trips: <strong className="tabular-nums font-mono">{earnings.weeklyTrips || 0}</strong></span>
+            <Sparkline data={[1, Number(earnings.weeklyTotal || 0) > 0 ? Number(earnings.weeklyTotal || 0) : 1]} color="#059669" gradientId="spk-earn-week" />
           </div>
         </div>
 
         {/* Pending Payout */}
         <div className="glass-surface rounded-3xl p-6 border border-amber-200/60 shadow-glass space-y-3 hover:shadow-lg hover:-translate-y-1 transition-all">
           <div className="flex items-center justify-between text-xs text-farmMuted font-black uppercase tracking-wider">
-            <span>Next Bank Settlement</span>
+            <span>Wallet / Settlement Balance</span>
             <CreditCard className="w-4 h-4 text-amber-600" />
           </div>
           <div className="font-mono font-black text-3xl text-amber-700 tabular-nums">
-            ₹{(earnings.pendingPayout || 345).toLocaleString()}
+            ₹{Number(earnings.pendingPayout || 0).toLocaleString()}
           </div>
           <div className="text-xs text-farmMuted font-bold flex items-center justify-between border-t border-farmSage-100/40 pt-2">
-            <span>Scheduled: <strong>Tomorrow, 8:00 AM</strong></span>
-            <span className="text-amber-800 font-extrabold">Direct UPI</span>
+            <span>Settlement: <strong>Auto Direct Bank</strong></span>
+            <span className="text-amber-800 font-extrabold">UPI / NEFT</span>
           </div>
         </div>
 
@@ -241,28 +234,22 @@ export const DeliveryEarnings = ({
           Payout Components Breakdown
         </h3>
 
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="p-4 rounded-2xl bg-white/70 border border-farmSage-200/50 space-y-1">
             <span className="text-[10px] font-black text-farmMuted uppercase">Base Trip Payout</span>
-            <div className="font-mono font-black text-xl text-farmGreen-950">₹{earnings.todayBasePay || 240}</div>
+            <div className="font-mono font-black text-xl text-farmGreen-950">₹{Number(earnings.todayBasePay || 0).toLocaleString()}</div>
             <p className="text-[10px] text-farmMuted font-bold">Fixed distance rate per order</p>
           </div>
 
           <div className="p-4 rounded-2xl bg-white/70 border border-farmSage-200/50 space-y-1">
-            <span className="text-[10px] font-black text-farmMuted uppercase">Distance Multiplier</span>
-            <div className="font-mono font-black text-xl text-emerald-800">₹{earnings.todayDistanceBonus || 65}</div>
-            <p className="text-[10px] text-farmMuted font-bold">Peak hour & long distance bonus</p>
-          </div>
-
-          <div className="p-4 rounded-2xl bg-amber-50/80 border border-amber-200 space-y-1">
-            <span className="text-[10px] font-black text-amber-950 uppercase">Regional Route Bonus</span>
-            <div className="font-mono font-black text-xl text-amber-900">₹180</div>
-            <p className="text-[10px] text-amber-800 font-bold">Express corridor incentive</p>
+            <span className="text-[10px] font-black text-farmMuted uppercase">Trip Bonus</span>
+            <div className="font-mono font-black text-xl text-emerald-800">₹{Number(earnings.todayDistanceBonus || 0).toLocaleString()}</div>
+            <p className="text-[10px] text-farmMuted font-bold">Peak hour & trip volume bonus</p>
           </div>
 
           <div className="p-4 rounded-2xl bg-white/70 border border-farmSage-200/50 space-y-1">
             <span className="text-[10px] font-black text-farmMuted uppercase">Customer Tips</span>
-            <div className="font-mono font-black text-xl text-emerald-700">₹{earnings.todayTips || 40}</div>
+            <div className="font-mono font-black text-xl text-emerald-700">₹{Number(earnings.todayTips || 0).toLocaleString()}</div>
             <p className="text-[10px] text-farmMuted font-bold">100% passed to courier partner</p>
           </div>
         </div>
@@ -273,55 +260,61 @@ export const DeliveryEarnings = ({
         <div className="flex items-center justify-between">
           <h3 className="font-black text-base text-farmGreen-950 flex items-center gap-2">
             <Clock className="w-5 h-5 text-emerald-600" />
-            <span>Bank Transfer & Settlement History</span>
+            <span>Bank Transfer & Settlement History ({realPayoutHistory.length})</span>
           </h3>
           <span className="text-xs text-farmMuted font-mono font-black">Auto-Settled Daily</span>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs font-semibold">
-            <thead>
-              <tr className="border-b border-farmSage-100/40 text-[10px] font-black text-farmMuted uppercase tracking-wider bg-white/70">
-                <th className="p-3.5">Payout ID</th>
-                <th className="p-3.5">Date</th>
-                <th className="p-3.5">Completed Trips</th>
-                <th className="p-3.5">Transfer Method</th>
-                <th className="p-3.5 text-right">Settled Amount</th>
-                <th className="p-3.5 text-center">Status</th>
-                <th className="p-3.5 text-center">Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100 text-xs font-bold text-farmGreen-950">
-              {defaultPayoutHistory.map((item) => (
-                <tr key={item.id} className="hover:bg-emerald-50/50 transition-colors">
-                  <td className="p-3.5 font-mono font-black text-farmGreen-950">{item.id}</td>
-                  <td className="p-3.5 text-farmMuted">{item.date}</td>
-                  <td className="p-3.5">{item.trips} Deliveries</td>
-                  <td className="p-3.5 flex items-center gap-1.5">
-                    <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span>{item.method}</span>
-                  </td>
-                  <td className="p-3.5 text-right font-mono font-black text-sm text-emerald-800">
-                    ₹{item.amount.toLocaleString()}
-                  </td>
-                  <td className="p-3.5 text-center">
-                    <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-900 border border-emerald-200 text-[10px] font-black">
-                      ● {item.status}
-                    </span>
-                  </td>
-                  <td className="p-3.5 text-center">
-                    <button
-                      onClick={() => setSelectedPayout(item)}
-                      className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 rounded-xl border border-emerald-200 font-black text-xs cursor-pointer active:scale-95 transition-all shadow-2xs"
-                    >
-                      View Receipt
-                    </button>
-                  </td>
+        {realPayoutHistory.length === 0 ? (
+          <div className="text-center py-10 text-farmMuted text-xs font-bold border border-dashed border-farmSage-200/60 rounded-2xl p-6 bg-white/50">
+            No settlement payouts recorded yet. Deliver customer orders to generate real daily bank settlement statements!
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs font-semibold">
+              <thead>
+                <tr className="border-b border-farmSage-100/40 text-[10px] font-black text-farmMuted uppercase tracking-wider bg-white/70">
+                  <th className="p-3.5">Payout ID</th>
+                  <th className="p-3.5">Date</th>
+                  <th className="p-3.5">Completed Trips</th>
+                  <th className="p-3.5">Transfer Method</th>
+                  <th className="p-3.5 text-right">Settled Amount</th>
+                  <th className="p-3.5 text-center">Status</th>
+                  <th className="p-3.5 text-center">Action</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-gray-100 text-xs font-bold text-farmGreen-950">
+                {realPayoutHistory.map((item) => (
+                  <tr key={item.id} className="hover:bg-emerald-50/50 transition-colors">
+                    <td className="p-3.5 font-mono font-black text-farmGreen-950">{item.id}</td>
+                    <td className="p-3.5 text-farmMuted">{item.date}</td>
+                    <td className="p-3.5">{item.trips} Deliveries</td>
+                    <td className="p-3.5 flex items-center gap-1.5">
+                      <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <span>{item.method}</span>
+                    </td>
+                    <td className="p-3.5 text-right font-mono font-black text-sm text-emerald-800">
+                      ₹{item.amount.toLocaleString()}
+                    </td>
+                    <td className="p-3.5 text-center">
+                      <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-900 border border-emerald-200 text-[10px] font-black">
+                        ● {item.status}
+                      </span>
+                    </td>
+                    <td className="p-3.5 text-center">
+                      <button
+                        onClick={() => setSelectedPayout(item)}
+                        className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 rounded-xl border border-emerald-200 font-black text-xs cursor-pointer active:scale-95 transition-all shadow-2xs"
+                      >
+                        View Receipt
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Payout Receipt Modal */}

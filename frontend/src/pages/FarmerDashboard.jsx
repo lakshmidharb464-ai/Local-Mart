@@ -114,6 +114,10 @@ export const FarmerDashboard = () => {
             setProducts={setProducts}
             showAddModal={showAddModal}
             setShowAddModal={setShowAddModal}
+            addProduct={addProduct}
+            updateProduct={updateProduct}
+            deleteProduct={deleteProduct}
+            refreshData={refreshData}
           />
         );
       case 'orders':

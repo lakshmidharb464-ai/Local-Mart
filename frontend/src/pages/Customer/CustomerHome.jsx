@@ -198,36 +198,49 @@ const CatCard = React.memo(({ cat, count, onClick }) => (
    FARMER CARD
    ═══════════════════════════════════════════════════ */
 const FarmerCard = React.memo(({ farmer }) => (
-  <div className="group flex items-center gap-3.5 p-4 bg-white rounded-2xl border border-emerald-100/80 hover:border-emerald-300 shadow-farm-sm hover:shadow-organic-md transition-all duration-300 hover:-translate-y-1 cursor-default font-display relative overflow-hidden">
-    <div className="relative shrink-0">
-      <img
-        src={farmer.image}
-        alt={farmer.name}
-        className="w-12 h-12 rounded-xl object-cover border-2 border-emerald-100 group-hover:border-emerald-400 transition-colors"
-        loading="lazy"
-      />
-      <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-white shadow-xs" />
-    </div>
+  <div className="group flex flex-col justify-between p-4 sm:p-5 bg-white rounded-3xl border border-emerald-100/90 hover:border-emerald-300 shadow-farm-sm hover:shadow-organic-md transition-all duration-300 hover:-translate-y-1 cursor-default font-display relative overflow-hidden">
+    <div className="flex items-start gap-3.5">
+      {/* Farmer Avatar */}
+      <div className="relative shrink-0">
+        <img
+          src={farmer.image}
+          alt={farmer.name}
+          className="w-12 h-12 rounded-2xl object-cover border-2 border-emerald-100 group-hover:border-emerald-400 transition-colors shadow-xs"
+          loading="lazy"
+        />
+        <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-white shadow-xs" title="Verified Active Grower" />
+      </div>
 
-    <div className="flex-1 min-w-0">
-      <div className="font-black text-xs sm:text-sm text-farmGreen-950 truncate">{farmer.name}</div>
-      <div className="text-[11px] text-gray-500 font-semibold truncate mt-0.5">{farmer.specialty}</div>
-      <div className="flex items-center gap-2 mt-2">
-        <span className="flex items-center gap-1 text-[10px] text-gray-400">
-          <MapPin className="w-2.5 h-2.5 text-emerald-600 shrink-0" />
-          <span className="truncate">{farmer.location}</span>
-        </span>
-        <span className="flex items-center gap-1 text-[10px] font-black text-amber-800 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-md">
-          <Star className="w-2.5 h-2.5 fill-amber-400 text-amber-400" />
-          {farmer.rating}
-        </span>
-        <span className="inline-flex items-center gap-1 text-[9px] font-black text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded-md border border-emerald-200/60">
-          <ShieldCheck className="w-2.5 h-2.5 text-emerald-600" /> Verified
-        </span>
+      {/* Info Block */}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center justify-between gap-1.5">
+          <h4 className="font-black text-sm text-farmGreen-950 truncate group-hover:text-emerald-800 transition-colors">
+            {farmer.name}
+          </h4>
+          <span className="shrink-0 inline-flex items-center gap-1 text-[10px] font-black text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200/80">
+            <ShieldCheck className="w-3 h-3 text-emerald-600" />
+            <span>Verified</span>
+          </span>
+        </div>
+
+        <p className="text-xs text-emerald-700 font-bold truncate mt-0.5">
+          {farmer.specialty}
+        </p>
       </div>
     </div>
 
-    <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-emerald-600 group-hover:translate-x-1 transition-all shrink-0" />
+    {/* Bottom Details Row: Location + Rating */}
+    <div className="mt-3.5 pt-3 border-t border-emerald-50 flex items-center justify-between gap-2 text-xs">
+      <span className="flex items-center gap-1.5 text-gray-500 font-medium min-w-0 flex-1">
+        <MapPin className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+        <span className="truncate text-[11px]">{farmer.location}</span>
+      </span>
+
+      <span className="shrink-0 flex items-center gap-1 text-[11px] font-black text-amber-900 bg-amber-50 border border-amber-200/90 px-2 py-0.5 rounded-lg shadow-2xs font-mono">
+        <Star className="w-3 h-3 fill-amber-400 text-amber-500" />
+        <span>{Number(farmer.rating || 4.9).toFixed(1)}</span>
+      </span>
+    </div>
   </div>
 ));
 
@@ -266,7 +279,17 @@ export const CustomerHome = ({ products = [], setActiveTab, toggleWishlist, wish
   }, []);
 
   const displayFarmers = React.useMemo(() => {
-    if (farmers.length > 0) return farmers;
+    if (farmers.length > 0) {
+      return farmers.map(f => ({
+        id: f.id,
+        name: f.name,
+        specialty: f.specialty || f.farm_name || 'Organic Harvest',
+        location: f.location || f.location_address || 'Pune Rural Hub',
+        rating: f.rating || 4.9,
+        image: f.avatar_url || f.image || f.avatar || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80',
+        badge: f.badge || 'Verified',
+      }));
+    }
     const map = new Map();
     products.forEach(p => {
       if (p.farmerName && !map.has(p.farmerName)) {
@@ -276,7 +299,8 @@ export const CustomerHome = ({ products = [], setActiveTab, toggleWishlist, wish
           specialty: p.category || 'Organic Produce',
           location: p.farmerLocation || 'Local Farm Hub',
           rating: p.rating || 4.9,
-          image: p.farmerAvatar || p.image || 'https://images.unsplash.com/photo-1595273670150-bd0c3c392e46?auto=format&fit=crop&w=300&q=80',
+          image: p.farmerAvatar || p.image || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80',
+          badge: 'Verified',
         });
       }
     });
@@ -299,15 +323,86 @@ export const CustomerHome = ({ products = [], setActiveTab, toggleWishlist, wish
     updateQuantity(product.id, item.quantity + delta);
   };
 
+  const [nearMeFilter, setNearMeFilter] = useState(false);
+  const [userCoords, setUserCoords] = useState(null);
+  const [locatingUser, setLocatingUser] = useState(false);
+
+  // Haversine distance calculator
+  const calcDist = (lat1, lon1, lat2, lon2) => {
+    if (!lat1 || !lon1 || !lat2 || !lon2) return null;
+    const R = 6371;
+    const dLat = ((lat2 - lat1) * Math.PI) / 180;
+    const dLon = ((lon2 - lon1) * Math.PI) / 180;
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return parseFloat((R * c).toFixed(1));
+  };
+
+  const handleToggleNearMe = () => {
+    if (!nearMeFilter && !userCoords) {
+      if (navigator?.geolocation) {
+        setLocatingUser(true);
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            setUserCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+            setNearMeFilter(true);
+            setLocatingUser(false);
+          },
+          () => {
+            // Default to Pune / Chittoor coordinate fallback
+            setUserCoords({ lat: 18.5204, lng: 73.8567 });
+            setNearMeFilter(true);
+            setLocatingUser(false);
+          }
+        );
+      } else {
+        setUserCoords({ lat: 18.5204, lng: 73.8567 });
+        setNearMeFilter(true);
+      }
+    } else {
+      setNearMeFilter(!nearMeFilter);
+    }
+  };
+
   const approved = products.filter(p => p.status === 'Approved' || !p.status);
   const cats = ['All', 'Vegetables', 'Fruits', 'Dairy', 'Grocery'];
-  const filtered = approved.filter(p => {
-    const matchCat = activeCat === 'All' || p.category === activeCat;
-    const matchSearch = !search ||
-      p.name?.toLowerCase().includes(search.toLowerCase()) ||
-      p.farmerName?.toLowerCase().includes(search.toLowerCase());
-    return matchCat && matchSearch;
-  });
+  
+  const matchesCategory = (itemCategory, filter) => {
+    if (!filter || filter === 'All') return true;
+    const c = String(itemCategory || '').toLowerCase();
+    const f = filter.toLowerCase();
+    if (f === 'vegetables' || f === 'veggies') return c.includes('veg');
+    if (f === 'fruits') return c.includes('fruit') || c.includes('season') || c.includes('mango') || c.includes('apple') || c.includes('berry');
+    if (f === 'dairy') return c.includes('dairy') || c.includes('milk') || c.includes('egg') || c.includes('ghee');
+    if (f === 'grocery') return c.includes('groc') || c.includes('oil') || c.includes('grain') || c.includes('pulse') || c.includes('flour');
+    return c.includes(f);
+  };
+
+  const filtered = approved
+    .map(p => {
+      // Simulate/calculate farm distance
+      const farmLat = p.farmerLat || 18.5590;
+      const farmLng = p.farmerLng || 73.7868;
+      const dist = userCoords ? calcDist(userCoords.lat, userCoords.lng, farmLat, farmLng) : (p.distanceKm || 3.8);
+      return { ...p, calculatedDistKm: dist };
+    })
+    .filter(p => {
+      const matchCat = matchesCategory(p.category, activeCat);
+      const matchSearch = !search ||
+        (p.name || '').toLowerCase().includes(search.toLowerCase()) ||
+        (p.farmerName || '').toLowerCase().includes(search.toLowerCase());
+      const matchNear = !nearMeFilter || (p.calculatedDistKm !== null && p.calculatedDistKm <= 15);
+      return matchCat && matchSearch && matchNear;
+    })
+    .sort((a, b) => {
+      if (nearMeFilter) {
+        return (a.calculatedDistKm || 999) - (b.calculatedDistKm || 999);
+      }
+      return 0;
+    });
 
 
 
@@ -547,8 +642,20 @@ export const CustomerHome = ({ products = [], setActiveTab, toggleWishlist, wish
             </button>
           </div>
 
-          {/* Category Filter Pills */}
-          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+          {/* Category Filter Pills & Proximity Filter */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+            <button
+              onClick={handleToggleNearMe}
+              className={`px-4 py-2 rounded-full text-xs font-black shrink-0 transition-all cursor-pointer flex items-center gap-1.5 ${
+                nearMeFilter
+                  ? 'bg-amber-400 text-slate-950 shadow-md ring-2 ring-amber-300'
+                  : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200'
+              }`}
+            >
+              <MapPin className={`w-3.5 h-3.5 ${nearMeFilter ? 'text-slate-950' : 'text-emerald-700'}`} />
+              <span>{locatingUser ? 'Locating...' : nearMeFilter ? '📍 Farms Near Me (<15km) ✓' : 'Farms Near Me'}</span>
+            </button>
+
             {cats.map(cat => {
               const isSelected = activeCat === cat;
               return (

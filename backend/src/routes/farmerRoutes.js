@@ -13,6 +13,7 @@ import {
   getBatches,
   logBatchSpoilage,
   requestPayout,
+  getFarmerPayouts,
   getFarmerProfile,
   updateFarmerProfile,
   submitFarmerKyc,
@@ -47,6 +48,7 @@ router.get('/inventory/batches', getBatches);
 router.post('/inventory/batches', logBatchSpoilage);
 
 // Payouts & Profile & KYC
+router.get('/payouts', getFarmerPayouts);
 router.post('/payouts', requestPayout);
 router.get('/profile', getFarmerProfile);
 router.put('/profile', updateFarmerProfile);

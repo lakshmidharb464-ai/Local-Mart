@@ -657,9 +657,9 @@ export const FarmerInventory = ({ products = [], setProducts }) => {
 
       {/* Fresh Harvest Restock Modal */}
       {restockProduct && (
-        <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn">
-          <div className="glass-surface rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-5 border border-farmGreen-200/30 animate-scaleUp">
-            <div className="flex items-center justify-between pb-3 border-b border-farmSage-100/40">
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/75 backdrop-blur-md p-3 sm:p-6 flex min-h-screen items-center justify-center animate-fadeIn">
+          <div className="relative w-full max-w-md max-h-[92vh] flex flex-col rounded-[28px] bg-white/95 backdrop-blur-2xl border border-white/60 shadow-[0_25px_70px_rgba(0,0,0,0.35)] overflow-hidden my-auto animate-scaleUp">
+            <div className="p-5 sm:p-6 pb-4 border-b border-farmSage-100/60 bg-white/85 backdrop-blur-xl flex items-center justify-between shrink-0">
               <div className="flex items-center gap-3">
                 <img src={restockProduct.image} alt={restockProduct.name} className="w-12 h-12 rounded-2xl object-cover ring-2 ring-emerald-200 shrink-0" loading="lazy" />
                 <div>
@@ -669,55 +669,57 @@ export const FarmerInventory = ({ products = [], setProducts }) => {
                   <p className="text-xs text-farmMuted font-bold">{restockProduct.name}</p>
                 </div>
               </div>
-              <button onClick={() => setRestockProduct(null)} className="w-8 h-8 rounded-full bg-farmSage-100/40 hover:bg-gray-200 text-farmMuted flex items-center justify-center transition-all cursor-pointer">
+              <button onClick={() => setRestockProduct(null)} className="w-8 h-8 rounded-full bg-farmSage-100/60 hover:bg-gray-200 text-farmMuted flex items-center justify-center transition-all cursor-pointer">
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <form onSubmit={handleBatchRestockSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-farmGreen-950 block">
-                  Select Harvest Quantity Brought from Field ({restockProduct.unit}s)
-                </label>
-                <div className="grid grid-cols-4 gap-2">
-                  {[10, 25, 50, 100].map(qty => (
-                    <button
-                      key={qty}
-                      type="button"
-                      onClick={() => setRestockAmount(qty)}
-                      className={`py-2.5 rounded-xl text-xs font-extrabold border transition-all cursor-pointer ${
-                        restockAmount === qty
-                          ? 'bg-farmGreen-700 text-white border-emerald-700 shadow-md scale-105'
-                          : 'bg-white/50 text-farmGreen-950 border-farmSage-200/50 hover:bg-farmGreen-50/60'
-                      }`}
-                    >
-                      +{qty} {restockProduct.unit}
-                    </button>
-                  ))}
+            <form onSubmit={handleBatchRestockSubmit} className="flex flex-col flex-1 overflow-hidden">
+              <div className="p-5 sm:p-6 overflow-y-auto space-y-4 text-xs flex-1 scrollbar-thin">
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-farmGreen-950 block">
+                    Select Harvest Quantity Brought from Field ({restockProduct.unit}s)
+                  </label>
+                  <div className="grid grid-cols-4 gap-2">
+                    {[10, 25, 50, 100].map(qty => (
+                      <button
+                        key={qty}
+                        type="button"
+                        onClick={() => setRestockAmount(qty)}
+                        className={`py-2 rounded-xl text-xs font-extrabold border transition-all cursor-pointer ${
+                          restockAmount === qty
+                            ? 'bg-farmGreen-700 text-white border-emerald-700 shadow-md scale-105'
+                            : 'bg-white/70 text-farmGreen-950 border-farmSage-200/50 hover:bg-farmGreen-50/60'
+                        }`}
+                      >
+                        +{qty} {restockProduct.unit}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="pt-2">
+                    <span className="text-[11px] text-farmMuted font-bold block mb-1">Or Enter Custom Quantity:</span>
+                    <input
+                      type="number"
+                      min="1"
+                      value={restockAmount}
+                      onChange={(e) => setRestockAmount(e.target.value)}
+                      className="w-full p-2.5 bg-white/70 border border-emerald-300 rounded-xl text-base font-mono font-black text-farmGreen-950 focus:ring-2 focus:ring-emerald-500 shadow-2xs"
+                    />
+                  </div>
                 </div>
 
-                <div className="pt-2">
-                  <span className="text-[11px] text-farmMuted font-bold block mb-1">Or Enter Custom Quantity:</span>
-                  <input
-                    type="number"
-                    min="1"
-                    value={restockAmount}
-                    onChange={(e) => setRestockAmount(e.target.value)}
-                    className="w-full p-3 bg-white/50 border border-emerald-300 rounded-xl text-base font-mono font-black text-farmGreen-950 focus:ring-2 focus:ring-emerald-500 focus:"
-                  />
+                <div className="p-3 bg-farmGreen-50/80 rounded-2xl border border-emerald-200 text-xs text-emerald-950 flex items-center justify-between font-bold shadow-2xs">
+                  <span>Updated Total Stock:</span>
+                  <span className="text-base text-emerald-800 font-black">{restockProduct.stock + (parseInt(restockAmount) || 0)} {restockProduct.unit}s</span>
                 </div>
               </div>
 
-              <div className="p-3 bg-farmGreen-50/60 rounded-2xl border border-emerald-200 text-xs text-emerald-950 flex items-center justify-between font-bold">
-                <span>Updated Total Stock:</span>
-                <span className="text-base text-emerald-800 font-black">{restockProduct.stock + (parseInt(restockAmount) || 0)} {restockProduct.unit}s</span>
-              </div>
-
-              <div className="flex items-center justify-end gap-3 pt-2">
+              <div className="p-4 sm:p-5 border-t border-farmSage-100/60 bg-white/85 backdrop-blur-xl flex items-center justify-end gap-3 shrink-0">
                 <button
                   type="button"
                   onClick={() => setRestockProduct(null)}
-                  className="px-4 py-2 bg-farmSage-100/40 text-farmSage-700 font-bold text-xs rounded-xl hover:bg-gray-200 cursor-pointer"
+                  className="px-4 py-2.5 bg-farmSage-100/60 text-farmSage-700 font-bold text-xs rounded-xl hover:bg-gray-200 cursor-pointer transition-colors"
                 >
                   Cancel
                 </button>
@@ -736,11 +738,11 @@ export const FarmerInventory = ({ products = [], setProducts }) => {
 
       {/* Edit Price Modal */}
       {editPriceProduct && (
-        <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn">
-          <div className="glass-surface rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-5 border border-farmGreen-200/30 animate-scaleUp">
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/75 backdrop-blur-md p-3 sm:p-6 flex min-h-screen items-center justify-center animate-fadeIn">
+          <div className="relative w-full max-w-md max-h-[92vh] flex flex-col rounded-[28px] bg-white/95 backdrop-blur-2xl border border-white/60 shadow-[0_25px_70px_rgba(0,0,0,0.35)] overflow-hidden my-auto animate-scaleUp">
             
             {/* Modal Header with Crop Photo Thumbnail */}
-            <div className="flex items-center justify-between pb-3 border-b border-farmSage-100/40">
+            <div className="p-5 sm:p-6 pb-4 border-b border-farmSage-100/60 bg-white/85 backdrop-blur-xl flex items-center justify-between shrink-0">
               <div className="flex items-center gap-3.5 min-w-0">
                 <div className="relative shrink-0">
                   <img
@@ -770,91 +772,92 @@ export const FarmerInventory = ({ products = [], setProducts }) => {
               </div>
               <button
                 onClick={() => setEditPriceProduct(null)}
-                className="w-8 h-8 rounded-full bg-farmSage-100/40 hover:bg-gray-200 text-farmMuted flex items-center justify-center transition-all cursor-pointer shrink-0"
+                className="w-8 h-8 rounded-full bg-farmSage-100/60 hover:bg-gray-200 text-farmMuted flex items-center justify-center transition-all cursor-pointer shrink-0"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <form onSubmit={handleSavePriceUpdate} className="space-y-4">
-              
-              {/* Price Input & Quick Adjusters */}
-              <div className="space-y-2">
-                <label className="text-xs font-black text-farmGreen-950 flex items-center justify-between">
-                  <span>New Selling Price per {editPriceProduct.unit} (₹)</span>
-                  <span className="text-[10px] text-farmGreen-700 font-bold">Updated live on consumer store</span>
-                </label>
-                
-                <div className="relative">
-                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 font-black text-emerald-800 text-lg">₹</span>
-                  <input
-                    type="number"
-                    step="0.5"
-                    value={newPrice}
-                    onChange={(e) => setNewPrice(e.target.value)}
-                    className="w-full pl-9 pr-4 py-3 bg-white/50/90 border-2 border-emerald-300 focus:bg-white focus:border-emerald-500 rounded-2xl text-xl font-mono font-black text-farmGreen-950  transition-all"
-                  />
+            <form onSubmit={handleSavePriceUpdate} className="flex flex-col flex-1 overflow-hidden">
+              <div className="p-5 sm:p-6 overflow-y-auto space-y-4 text-xs flex-1 scrollbar-thin">
+                {/* Price Input & Quick Adjusters */}
+                <div className="space-y-2">
+                  <label className="text-xs font-black text-farmGreen-950 flex items-center justify-between">
+                    <span>New Selling Price per {editPriceProduct.unit} (₹)</span>
+                    <span className="text-[10px] text-farmGreen-700 font-bold">Updated live on consumer store</span>
+                  </label>
+                  
+                  <div className="relative">
+                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 font-black text-emerald-800 text-lg">₹</span>
+                    <input
+                      type="number"
+                      step="0.5"
+                      value={newPrice}
+                      onChange={(e) => setNewPrice(e.target.value)}
+                      className="w-full pl-9 pr-4 py-2.5 bg-white/70 border-2 border-emerald-300 focus:bg-white focus:border-emerald-500 rounded-2xl text-xl font-mono font-black text-farmGreen-950 shadow-2xs transition-all"
+                    />
+                  </div>
+
+                  {/* 1-Tap Quick Price Presets */}
+                  <div className="flex items-center gap-1.5 pt-1 overflow-x-auto scrollbar-none">
+                    <span className="text-[10px] text-farmMuted font-bold shrink-0">Quick Presets:</span>
+                    {[-10, -5, 5, 10, 20].map((adj) => {
+                      const targetVal = Math.max(1, (parseFloat(editPriceProduct.price) || 0) + adj);
+                      return (
+                        <button
+                          key={adj}
+                          type="button"
+                          onClick={() => setNewPrice(targetVal.toString())}
+                          className="px-2.5 py-1 bg-farmGreen-50/70 hover:bg-farmGreen-100/80 text-emerald-900 border border-emerald-200 rounded-lg text-[11px] font-extrabold cursor-pointer transition-all active:scale-95 whitespace-nowrap"
+                        >
+                          {adj > 0 ? `+₹${adj}` : `-₹${Math.abs(adj)}`}
+                        </button>
+                      );
+                    })}
+                    <button
+                      type="button"
+                      onClick={() => setNewPrice(editPriceProduct.price.toString())}
+                      className="px-2 py-1 bg-farmSage-100/60 hover:bg-gray-200 text-farmSage-700 rounded-lg text-[10px] font-bold cursor-pointer whitespace-nowrap"
+                    >
+                      Reset
+                    </button>
+                  </div>
                 </div>
 
-                {/* 1-Tap Quick Price Presets */}
-                <div className="flex items-center gap-1.5 pt-1 overflow-x-auto scrollbar-none">
-                  <span className="text-[10px] text-farmMuted font-bold shrink-0">Quick Presets:</span>
-                  {[-10, -5, 5, 10, 20].map((adj) => {
-                    const targetVal = Math.max(1, (parseFloat(editPriceProduct.price) || 0) + adj);
-                    return (
-                      <button
-                        key={adj}
-                        type="button"
-                        onClick={() => setNewPrice(targetVal.toString())}
-                        className="px-2.5 py-1 bg-farmGreen-50/60 hover:bg-farmGreen-100/80 text-emerald-900 border border-emerald-200 rounded-lg text-[11px] font-extrabold cursor-pointer transition-all active:scale-95 whitespace-nowrap"
-                      >
-                        {adj > 0 ? `+₹${adj}` : `-₹${Math.abs(adj)}`}
-                      </button>
-                    );
-                  })}
-                  <button
-                    type="button"
-                    onClick={() => setNewPrice(editPriceProduct.price.toString())}
-                    className="px-2 py-1 bg-farmSage-100/40 hover:bg-gray-200 text-farmSage-700 rounded-lg text-[10px] font-bold cursor-pointer whitespace-nowrap"
-                  >
-                    Reset
-                  </button>
-                </div>
+                {/* Live Yield Revenue Impact Calculator */}
+                {(() => {
+                  const updatedPriceVal = parseFloat(newPrice) || editPriceProduct.price;
+                  const oldValuation = editPriceProduct.stock * editPriceProduct.price;
+                  const newValuation = editPriceProduct.stock * updatedPriceVal;
+                  const diffValuation = newValuation - oldValuation;
+
+                  return (
+                    <div className="p-3.5 bg-gradient-to-r from-emerald-50/80 to-teal-50/80 rounded-2xl border border-emerald-200 space-y-1.5 shadow-2xs">
+                      <div className="flex items-center justify-between text-xs font-bold text-farmGreen-950">
+                        <span>Total Yield Market Valuation:</span>
+                        <span className="font-mono font-black text-emerald-800 text-sm">
+                          ₹{newValuation.toLocaleString()}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-[11px]">
+                        <span className="text-farmMuted font-medium">Revenue Impact vs Current:</span>
+                        <span className={`font-mono font-extrabold flex items-center gap-1 ${
+                          diffValuation >= 0 ? 'text-farmGreen-700' : 'text-farmTerracotta-600'
+                        }`}>
+                          {diffValuation >= 0 ? `+₹${diffValuation.toLocaleString()}` : `-₹${Math.abs(diffValuation).toLocaleString()}`}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
 
-              {/* Live Yield Revenue Impact Calculator */}
-              {(() => {
-                const updatedPriceVal = parseFloat(newPrice) || editPriceProduct.price;
-                const oldValuation = editPriceProduct.stock * editPriceProduct.price;
-                const newValuation = editPriceProduct.stock * updatedPriceVal;
-                const diffValuation = newValuation - oldValuation;
-
-                return (
-                  <div className="p-3.5 bg-gradient-to-r from-emerald-50 to-teal-50 rounded-2xl border border-emerald-200 space-y-1.5">
-                    <div className="flex items-center justify-between text-xs font-bold text-farmGreen-950">
-                      <span>Total Yield Market Valuation:</span>
-                      <span className="font-mono font-black text-emerald-800 text-sm">
-                        ₹{newValuation.toLocaleString()}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between text-[11px]">
-                      <span className="text-farmMuted font-medium">Revenue Impact vs Current:</span>
-                      <span className={`font-mono font-extrabold flex items-center gap-1 ${
-                        diffValuation >= 0 ? 'text-farmGreen-700' : 'text-farmTerracotta-600'
-                      }`}>
-                        {diffValuation >= 0 ? `+₹${diffValuation.toLocaleString()}` : `-₹${Math.abs(diffValuation).toLocaleString()}`}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })()}
-
               {/* Action Buttons */}
-              <div className="flex items-center justify-end gap-3 pt-2">
+              <div className="p-4 sm:p-5 border-t border-farmSage-100/60 bg-white/85 backdrop-blur-xl flex items-center justify-end gap-3 shrink-0">
                 <button
                   type="button"
                   onClick={() => setEditPriceProduct(null)}
-                  className="px-4 py-2.5 bg-farmSage-100/40 hover:bg-gray-200 text-farmSage-700 font-extrabold text-xs rounded-xl cursor-pointer transition-all"
+                  className="px-4 py-2.5 bg-farmSage-100/60 hover:bg-gray-200 text-farmSage-700 font-extrabold text-xs rounded-xl cursor-pointer transition-all"
                 >
                   Cancel
                 </button>

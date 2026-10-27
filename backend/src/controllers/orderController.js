@@ -38,7 +38,7 @@ export async function createOrder(req, res, next) {
 
       for (const item of items) {
         const [products] = await conn.execute(
-          'SELECT id, name, price, unit, stock, farmer_id FROM products WHERE id = ?',
+          'SELECT id, name, price, unit, stock, farmer_id FROM products WHERE id = ? FOR UPDATE',
           [item.productId || item.id]
         );
 
@@ -68,11 +68,15 @@ export async function createOrder(req, res, next) {
           totalPrice: itemTotal,
         });
 
-        // Deduct inventory
-        await conn.execute(
-          'UPDATE products SET stock = stock - ? WHERE id = ?',
-          [qty, product.id]
+        // Deduct inventory atomically with safety check
+        const [updateResult] = await conn.execute(
+          'UPDATE products SET stock = stock - ? WHERE id = ? AND stock >= ?',
+          [qty, product.id, qty]
         );
+
+        if (updateResult.affectedRows === 0) {
+          throw new Error(`Insufficient stock for "${product.name}". Another order just claimed the remaining inventory.`);
+        }
       }
 
       // Handle Coupon Discount
@@ -169,6 +173,7 @@ export async function createOrder(req, res, next) {
       );
 
       return {
+        id: orderId,
         orderId,
         subtotal,
         deliveryFee,
@@ -191,7 +196,10 @@ export async function createOrder(req, res, next) {
     res.status(201).json({
       success: true,
       message: 'Order placed successfully!',
-      order: orderResult,
+      order: {
+        id: orderResult.orderId,
+        ...orderResult,
+      },
     });
   } catch (error) {
     next(error);
@@ -210,13 +218,15 @@ export async function getMyOrders(req, res, next) {
     let sql = `
       SELECT 
         o.*,
-        u.name AS delivery_partner_name,
-        u.phone AS delivery_partner_phone,
+        MAX(u.name) AS delivery_partner_name,
+        MAX(u.phone) AS delivery_partner_phone,
+        MAX(fu.name) AS farmer_name,
         GROUP_CONCAT(CONCAT(oi.product_name, ' (', oi.quantity, ' ', oi.unit, ')') SEPARATOR ', ') AS items_summary,
         COUNT(oi.id) AS items_count
        FROM orders o
        LEFT JOIN users u ON o.delivery_partner_id = u.id
        LEFT JOIN order_items oi ON o.id = oi.order_id
+       LEFT JOIN users fu ON oi.farmer_id = fu.id
        WHERE o.customer_id = ?
     `;
 
@@ -240,6 +250,7 @@ export async function getMyOrders(req, res, next) {
     // Format orders
     const formatted = orders.map((o) => ({
       id: o.id,
+      orderId: o.id,
       date: new Date(o.created_at).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }),
       total: Number(o.total_amount),
       subtotal: Number(o.subtotal),
@@ -249,14 +260,49 @@ export async function getMyOrders(req, res, next) {
       status: o.status,
       paymentMethod: o.payment_method,
       paymentStatus: o.payment_status,
+      address: o.address_text,
+      addressText: o.address_text,
+      farmer: o.farmer_name || 'Local Farm Direct',
+      farmerName: o.farmer_name || 'Local Farm Direct',
       items: o.items_summary,
+      itemsSummary: o.items_summary,
       itemsCount: o.items_count,
       eta: o.eta,
       deliveryPartnerName: o.delivery_partner_name,
       deliveryPartnerPhone: o.delivery_partner_phone,
       proofPhotoUrl: o.proof_photo_url,
       otpCode: o.otp_code,
+      itemsList: [],
     }));
+
+    // Enrich with real order items if orders exist
+    const orderIds = formatted.map(o => o.id);
+    if (orderIds.length > 0) {
+      const orderItems = await query(
+        `SELECT oi.*, (SELECT image_url FROM product_images WHERE product_id = oi.product_id LIMIT 1) AS image
+         FROM order_items oi
+         WHERE oi.order_id IN (${orderIds.map(() => '?').join(',')})`,
+        orderIds
+      );
+
+      formatted.forEach(o => {
+        o.itemsList = orderItems
+          .filter(it => it.order_id === o.id)
+          .map(it => ({
+            id: it.id,
+            productId: it.product_id,
+            name: it.product_name,
+            quantity: Number(it.quantity),
+            unit: it.unit,
+            price: Number(it.unit_price),
+            total: Number(it.total_price),
+            image: it.image || 'https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=400&q=80',
+          }));
+        if (!o.image && o.itemsList.length > 0) {
+          o.image = o.itemsList[0].image;
+        }
+      });
+    }
 
     res.json({ success: true, count: formatted.length, orders: formatted });
   } catch (error) {
@@ -364,9 +410,9 @@ export async function getOrders(req, res, next) {
     let sql = `
       SELECT 
         o.*,
-        u.name AS customer_name,
-        u.email AS customer_email,
-        r.name AS delivery_partner_name,
+        MAX(u.name) AS customer_name,
+        MAX(u.email) AS customer_email,
+        MAX(r.name) AS delivery_partner_name,
         GROUP_CONCAT(CONCAT(oi.product_name, ' (', oi.quantity, ' ', oi.unit, ')') SEPARATOR ', ') AS items_summary,
         COUNT(oi.id) AS items_count
        FROM orders o
@@ -435,8 +481,35 @@ export async function getOrders(req, res, next) {
   }
 }
 
+// Allowable Order Statuses & Transition Matrix
+const ALLOWED_STATUSES = [
+  'Pending',
+  'Approved',
+  'Packed',
+  'Assigned',
+  'Accepted',
+  'Picked Up',
+  'Out for Delivery',
+  'Delivered',
+  'Cancelled',
+  'Failed',
+];
+
+const VALID_TRANSITIONS = {
+  Pending: ['Approved', 'Cancelled'],
+  Approved: ['Packed', 'Cancelled'],
+  Packed: ['Assigned', 'Cancelled'],
+  Assigned: ['Accepted', 'Cancelled'],
+  Accepted: ['Picked Up', 'Cancelled'],
+  'Picked Up': ['Out for Delivery', 'Failed', 'Cancelled'],
+  'Out for Delivery': ['Delivered', 'Failed', 'Cancelled'],
+  Delivered: [], // Terminal state
+  Cancelled: [], // Terminal state
+  Failed: ['Assigned', 'Cancelled'], // Retry or cancel
+};
+
 /**
- * Update Order status
+ * Update Order status with Finite State Machine & Automatic Stock Restitution
  * PATCH /api/orders/:id/status
  */
 export async function updateOrderStatus(req, res, next) {
@@ -446,37 +519,97 @@ export async function updateOrderStatus(req, res, next) {
     const actorId = req.user?.id || null;
     const actorRole = req.user?.role || 'System';
 
-    if (!status) {
-      return res.status(400).json({ success: false, message: 'Status is required.' });
+    if (!status || !ALLOWED_STATUSES.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid status. Permitted statuses: ${ALLOWED_STATUSES.join(', ')}`,
+      });
     }
 
-    await execute(
-      `UPDATE orders
-       SET status = ?,
-           failure_reason = COALESCE(?, failure_reason)
-       WHERE id = ?`,
-      [status, reason || null, id]
+    // 1. Fetch current order details
+    const [existingOrders] = await query(
+      'SELECT id, status, customer_id, delivery_partner_id FROM orders WHERE id = ?',
+      [id]
     );
 
-    await execute(
-      'INSERT INTO order_timeline (id, order_id, title, description, actor_id, actor_role) VALUES (?, ?, ?, ?, ?, ?)',
-      [uuidv4(), id, `Status: ${status}`, reason ? `Reason: ${reason}` : `Advanced to ${status}`, actorId, actorRole]
-    );
+    if (!existingOrders) {
+      return res.status(404).json({ success: false, message: 'Order not found.' });
+    }
 
-    // Fetch order owner details for targeted real-time delivery
-    const [orderInfo] = await query('SELECT customer_id, delivery_partner_id FROM orders WHERE id = ?', [id]);
+    const currentStatus = existingOrders.status;
 
-    // Broadcast live status update to all connected dashboard roles
+    // 2. Validate state machine transition rules (allow admin override if necessary)
+    if (actorRole !== 'Admin') {
+      if (['Delivered', 'Cancelled'].includes(currentStatus)) {
+        return res.status(400).json({
+          success: false,
+          message: `Cannot update order in terminal state "${currentStatus}".`,
+        });
+      }
+
+      const allowedNext = VALID_TRANSITIONS[currentStatus] || [];
+      if (!allowedNext.includes(status)) {
+        return res.status(400).json({
+          success: false,
+          message: `Illegal status transition from "${currentStatus}" to "${status}". Allowed transitions: ${allowedNext.join(', ') || 'None'}`,
+        });
+      }
+    }
+
+    // 3. Execute Status Transition & Automatic Stock Restitution within ACID Transaction
+    await withTransaction(async (conn) => {
+      // If order is being cancelled, restore product inventory
+      if (status === 'Cancelled' && currentStatus !== 'Cancelled') {
+        const [items] = await conn.execute(
+          'SELECT product_id, quantity FROM order_items WHERE order_id = ?',
+          [id]
+        );
+
+        for (const item of items) {
+          await conn.execute(
+            'UPDATE products SET stock = stock + ? WHERE id = ?',
+            [Number(item.quantity), item.product_id]
+          );
+        }
+      }
+
+      // Update order status and failure reason
+      await conn.execute(
+        `UPDATE orders
+         SET status = ?,
+             failure_reason = COALESCE(?, failure_reason)
+         WHERE id = ?`,
+        [status, reason || null, id]
+      );
+
+      // Record timeline audit trail
+      const timelineDesc = status === 'Cancelled'
+        ? `Order cancelled. Produce stock automatically restored to farm catalog. ${reason ? `Reason: ${reason}` : ''}`
+        : (reason ? `Reason: ${reason}` : `Advanced to ${status}`);
+
+      await conn.execute(
+        'INSERT INTO order_timeline (id, order_id, title, description, actor_id, actor_role) VALUES (?, ?, ?, ?, ?, ?)',
+        [uuidv4(), id, `Status: ${status}`, timelineDesc, actorId, actorRole]
+      );
+    });
+
+    // 4. Broadcast live status update to all connected dashboard roles via SSE
     realtimeHub.broadcastOrderUpdate('ORDER_STATUS_UPDATED', id, {
       status,
+      previousStatus: currentStatus,
       reason,
       actorRole,
       actorId,
-      customerId: orderInfo?.customer_id,
-      deliveryPartnerId: orderInfo?.delivery_partner_id,
+      customerId: existingOrders.customer_id,
+      deliveryPartnerId: existingOrders.delivery_partner_id,
     });
 
-    res.json({ success: true, message: `Order status updated to ${status}.` });
+    res.json({
+      success: true,
+      message: `Order status updated from "${currentStatus}" to "${status}".`,
+      previousStatus: currentStatus,
+      currentStatus: status,
+    });
   } catch (error) {
     next(error);
   }
@@ -531,6 +664,34 @@ export async function validateCoupon(req, res, next) {
         discountValue: Number(coup.discount_value),
         discountAmount: discount,
       },
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * Get active publicly available coupons
+ * GET /api/coupons/active
+ */
+export async function getActiveCoupons(req, res, next) {
+  try {
+    const coupons = await query(
+      'SELECT id, code, discount_type, discount_value, min_order_amount, max_discount_amount FROM coupons WHERE is_active = 1 AND (expires_at IS NULL OR expires_at > NOW()) ORDER BY discount_value DESC'
+    );
+    res.json({
+      success: true,
+      coupons: coupons.map((c) => ({
+        id: c.id,
+        code: c.code,
+        pct: c.discount_type === 'percentage' ? Number(c.discount_value) : null,
+        discountType: c.discount_type,
+        discountValue: Number(c.discount_value),
+        minOrderAmount: Number(c.min_order_amount),
+        maxDiscountAmount: c.max_discount_amount ? Number(c.max_discount_amount) : null,
+        label: `${c.code} (${c.discount_type === 'percentage' ? `${c.discount_value}% OFF` : `₹${c.discount_value} FLAT`})`,
+        desc: Number(c.min_order_amount) > 0 ? `Min order ₹${c.min_order_amount}` : 'No minimum order required',
+      })),
     });
   } catch (error) {
     next(error);

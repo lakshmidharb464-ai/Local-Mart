@@ -228,19 +228,30 @@ export const CustomerProducts = ({ products, toggleWishlist, wishlist, onOpenQui
 
   const activeFilterCount = (showOrganicOnly ? 1 : 0) + (priceMax < maxProductPrice ? 1 : 0);
 
+  const matchesCategory = (itemCategory, filter) => {
+    if (!filter || filter === 'All') return true;
+    const c = String(itemCategory || '').toLowerCase();
+    const f = filter.toLowerCase();
+    if (f === 'vegetables' || f === 'veggies') return c.includes('veg');
+    if (f === 'fruits') return c.includes('fruit') || c.includes('season') || c.includes('mango') || c.includes('apple') || c.includes('berry');
+    if (f === 'dairy') return c.includes('dairy') || c.includes('milk') || c.includes('egg') || c.includes('ghee');
+    if (f === 'grocery') return c.includes('groc') || c.includes('oil') || c.includes('grain') || c.includes('pulse') || c.includes('flour');
+    return c.includes(f);
+  };
+
   const filteredProducts = useMemo(() => products
     .filter(p => {
       const q = debouncedSearch.toLowerCase();
-      const matchesSearch = !q || p.name.toLowerCase().includes(q) || p.farmerName.toLowerCase().includes(q);
-      const matchesCat = selectedCategory === 'All' || p.category === selectedCategory;
-      const matchesPrice = p.price <= priceMax;
+      const matchesSearch = !q || (p.name || '').toLowerCase().includes(q) || (p.farmerName || '').toLowerCase().includes(q);
+      const matchesCat = matchesCategory(p.category, selectedCategory);
+      const matchesPrice = (p.price || 0) <= priceMax;
       const matchesOrganic = !showOrganicOnly || p.organic === true;
       return matchesSearch && matchesCat && matchesPrice && matchesOrganic;
     })
     .sort((a, b) => {
-      if (sortBy === 'price-asc') return a.price - b.price;
-      if (sortBy === 'price-desc') return b.price - a.price;
-      return b.rating - a.rating;
+      if (sortBy === 'price-asc') return (a.price || 0) - (b.price || 0);
+      if (sortBy === 'price-desc') return (b.price || 0) - (a.price || 0);
+      return (b.rating || 0) - (a.rating || 0);
     }),
     [products, debouncedSearch, selectedCategory, sortBy, priceMax, showOrganicOnly]
   );

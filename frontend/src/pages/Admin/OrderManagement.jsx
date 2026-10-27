@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { adminService } from '../../services/adminService';
 import { 
   Search, 
   ShoppingCart, 
@@ -25,7 +26,7 @@ import {
   RotateCcw
 } from 'lucide-react';
 
-export const OrderManagement = ({ orders, setOrders, isDark = false }) => {
+export const OrderManagement = ({ orders = [], setOrders, isDark = false, refreshData }) => {
   const { showToast } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStatusTab, setSelectedStatusTab] = useState('All');
@@ -45,29 +46,41 @@ export const OrderManagement = ({ orders, setOrders, isDark = false }) => {
   const statusOptions = ['All', 'Pending', 'Accepted', 'Out for Delivery', 'Delivered', 'Cancelled'];
 
   const filteredOrders = useMemo(() => {
-    return orders.filter(o => {
-      const matchesSearch = o.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                            o.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                            o.farmerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                            (o.items && o.items.toLowerCase().includes(searchQuery.toLowerCase()));
+    return (orders || []).filter(o => {
+      const oId = o.id || '';
+      const cName = o.customerName || o.customer_name || '';
+      const fName = o.farmerName || o.farmer_name || '';
+      const items = o.items || o.items_summary || '';
+
+      const matchesSearch = oId.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                            cName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                            fName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                            items.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesStatus = selectedStatusTab === 'All' || o.status === selectedStatusTab;
       return matchesSearch && matchesStatus;
     });
   }, [orders, searchQuery, selectedStatusTab]);
 
   const { totalOrders, pendingOrders, activeDispatchOrders, deliveredOrders, totalRevenueGMV } = useMemo(() => {
+    const list = orders || [];
     return {
-      totalOrders: orders.length,
-      pendingOrders: orders.filter(o => o.status === 'Pending').length,
-      activeDispatchOrders: orders.filter(o => o.status === 'Out for Delivery' || o.status === 'Accepted').length,
-      deliveredOrders: orders.filter(o => o.status === 'Delivered').length,
-      totalRevenueGMV: orders.reduce((sum, o) => sum + (o.total || 0), 0),
+      totalOrders: list.length,
+      pendingOrders: list.filter(o => o.status === 'Pending').length,
+      activeDispatchOrders: list.filter(o => o.status === 'Out for Delivery' || o.status === 'Accepted').length,
+      deliveredOrders: list.filter(o => o.status === 'Delivered').length,
+      totalRevenueGMV: list.reduce((sum, o) => sum + (Number(o.total || o.total_amount || 0)), 0),
     };
   }, [orders]);
 
-  const handleUpdateStatus = (orderId, newStatus) => {
-    setOrders(orders.map(o => o.id === orderId ? { ...o, status: newStatus } : o));
-    showToast('Order Status Updated', `Order ${orderId} changed to ${newStatus}.`);
+  const handleUpdateStatus = async (orderId, newStatus) => {
+    try {
+      await adminService.updateOrderStatus(orderId, newStatus);
+      setOrders(orders.map(o => o.id === orderId ? { ...o, status: newStatus } : o));
+      showToast('Order Status Updated', `Order ${orderId} changed to ${newStatus}.`);
+      if (refreshData) refreshData();
+    } catch (err) {
+      showToast('Update Error', err.message || 'Failed to update order status.', 'error');
+    }
   };
 
   return (

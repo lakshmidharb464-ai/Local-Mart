@@ -55,7 +55,7 @@ export const CustomerDashboard = ({ setActiveView }) => {
   const [wishlist, setWishlist] = useState(() => {
     try {
       const saved = localStorage.getItem('localfarm_wishlist');
-      return saved ? JSON.parse(saved) : (products.slice(0, 2) || []);
+      return saved ? JSON.parse(saved) : [];
     } catch {
       return [];
     }
@@ -77,8 +77,8 @@ export const CustomerDashboard = ({ setActiveView }) => {
     }
   };
 
-  const addNewCustomerOrder = (newOrder) => {
-    placeOrder(newOrder);
+  const addNewCustomerOrder = async (newOrder) => {
+    return await placeOrder(newOrder);
   };
 
   const handleOpenQuickBuy = (product) => {
