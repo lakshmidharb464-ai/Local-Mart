@@ -95,9 +95,34 @@ export const AuthProvider = ({ children }) => {
     setIsAuthModalOpen(false);
   };
 
+  const refreshUser = async () => {
+    try {
+      const freshUser = await authService.getMe();
+      setUser(freshUser || null);
+      return freshUser;
+    } catch {
+      return null;
+    }
+  };
+
+  const updateUserProfile = async (profileData) => {
+    try {
+      const updated = await authService.updateProfile(profileData);
+      setUser(updated);
+      showToast('Profile Saved ✨', 'Profile details updated successfully.');
+      return updated;
+    } catch (err) {
+      showToast('Save Failed', err.message || 'Could not update profile.', 'error');
+      throw err;
+    }
+  };
+
   return (
     <AuthContext.Provider value={{
       user,
+      setUser,
+      refreshUser,
+      updateUserProfile,
       isAuthenticated: !!user,
       isAuthModalOpen,
       authInitialTab,

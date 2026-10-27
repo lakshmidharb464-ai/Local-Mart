@@ -223,6 +223,10 @@ export async function deleteProduct(req, res, next) {
 
     await withTransaction(async (conn) => {
       await conn.execute('DELETE FROM product_images WHERE product_id = ?', [id]);
+      await conn.execute('DELETE FROM customer_wishlists WHERE product_id = ?', [id]);
+      await conn.execute('DELETE FROM customer_subscriptions WHERE product_id = ?', [id]);
+      await conn.execute('DELETE FROM reviews WHERE product_id = ?', [id]);
+      await conn.execute('DELETE FROM inventory_batches WHERE product_id = ?', [id]);
       await conn.execute('DELETE FROM products WHERE id = ?', [id]);
     });
 
@@ -593,6 +597,14 @@ export async function deleteFarmer(req, res, next) {
 
     await withTransaction(async (conn) => {
       await conn.execute('DELETE FROM product_images WHERE product_id IN (SELECT id FROM products WHERE farmer_id = ?)', [id]);
+      await conn.execute('DELETE FROM customer_wishlists WHERE product_id IN (SELECT id FROM products WHERE farmer_id = ?)', [id]);
+      await conn.execute('DELETE FROM customer_subscriptions WHERE farmer_id = ? OR product_id IN (SELECT id FROM products WHERE farmer_id = ?)', [id, id]);
+      await conn.execute('DELETE FROM reviews WHERE product_id IN (SELECT id FROM products WHERE farmer_id = ?)', [id]);
+      await conn.execute('DELETE FROM inventory_batches WHERE farmer_id = ?', [id]);
+      await conn.execute('DELETE FROM farmer_harvest_plans WHERE farmer_id = ?', [id]);
+      await conn.execute('DELETE FROM farmer_payouts WHERE farmer_id = ?', [id]);
+      await conn.execute('DELETE FROM kyc_documents WHERE user_id = ?', [id]);
+      await conn.execute('DELETE FROM notifications WHERE user_id = ?', [id]);
       await conn.execute('DELETE FROM products WHERE farmer_id = ?', [id]);
       await conn.execute('DELETE FROM farmer_profiles WHERE user_id = ?', [id]);
       await conn.execute('DELETE FROM users WHERE id = ?', [id]);
@@ -795,6 +807,12 @@ export async function deleteCustomer(req, res, next) {
     await withTransaction(async (conn) => {
       await conn.execute('DELETE FROM customer_addresses WHERE customer_id = ?', [id]);
       await conn.execute('DELETE FROM customer_loyalty WHERE customer_id = ?', [id]);
+      await conn.execute('DELETE FROM customer_wishlists WHERE customer_id = ?', [id]);
+      await conn.execute('DELETE FROM customer_subscriptions WHERE customer_id = ?', [id]);
+      await conn.execute('DELETE FROM coupon_redemptions WHERE customer_id = ?', [id]);
+      await conn.execute('DELETE FROM reviews WHERE customer_id = ?', [id]);
+      await conn.execute('DELETE FROM kyc_documents WHERE user_id = ?', [id]);
+      await conn.execute('DELETE FROM notifications WHERE user_id = ?', [id]);
       await conn.execute('DELETE FROM users WHERE id = ?', [id]);
     });
 
@@ -1022,7 +1040,11 @@ export async function deleteDeliveryPartner(req, res, next) {
     const adminId = req.user.id;
 
     await withTransaction(async (conn) => {
+      await conn.execute('UPDATE orders SET delivery_partner_id = NULL WHERE delivery_partner_id = ?', [id]);
+      await conn.execute('DELETE FROM delivery_tracking WHERE delivery_partner_id = ?', [id]);
       await conn.execute('DELETE FROM delivery_shifts WHERE delivery_partner_id = ?', [id]);
+      await conn.execute('DELETE FROM kyc_documents WHERE user_id = ?', [id]);
+      await conn.execute('DELETE FROM notifications WHERE user_id = ?', [id]);
       await conn.execute('DELETE FROM delivery_profiles WHERE user_id = ?', [id]);
       await conn.execute('DELETE FROM users WHERE id = ?', [id]);
     });
@@ -1162,6 +1184,30 @@ export async function getAdminSettings(req, res, next) {
         config[s.setting_key] = s.setting_value;
       }
     });
+
+    // Provide top-level convenience aliases so frontend can consume either config.marketplace or flat properties
+    if (config.marketplace) {
+      config.storeName = config.marketplace.storeName;
+      config.deliveryFee = config.marketplace.deliveryFee;
+      config.minOrder = config.marketplace.minOrderAmount ?? config.marketplace.minOrder;
+      config.currency = config.marketplace.currency;
+      config.hubLocation = config.marketplace.hubLocation;
+    }
+    if (config.commission) {
+      config.commissionRate = config.commission.defaultCommissionRate;
+      config.payoutSchedule = config.commission.payoutSchedule;
+      config.minPayout = config.commission.minPayout;
+      config.gstIncluded = config.commission.gstIncluded;
+    }
+    if (config.notifications) {
+      config.newOrderAlert = config.notifications.newOrderAlert;
+      config.farmerRegAlert = config.notifications.farmerRegAlert;
+      config.lowStockAlert = config.notifications.lowStockAlert;
+    }
+    if (config.security) {
+      config.twoFactorAuth = config.security.twoFactorAuth;
+    }
+
     res.json({ success: true, settings: config });
   } catch (error) {
     next(error);
@@ -1197,7 +1243,7 @@ export async function updateAdminSettings(req, res, next) {
  */
 export async function getKycQueue(req, res, next) {
   try {
-    const queue = await query(
+    const rawQueue = await query(
       `SELECT 
         kd.*,
         u.name AS user_name,
@@ -1208,6 +1254,18 @@ export async function getKycQueue(req, res, next) {
        JOIN users u ON kd.user_id = u.id
        ORDER BY kd.created_at DESC`
     );
+
+    const queue = rawQueue.map((kd) => ({
+      ...kd,
+      docType: kd.doc_type,
+      docUrl: kd.doc_url,
+      farmer: kd.user_name,
+      farmerName: kd.user_name,
+      farmerId: kd.user_id,
+      uploadDate: new Date(kd.created_at).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' }),
+      fileName: `${(kd.doc_type || 'KYC_Doc').replace(/[^a-zA-Z0-9]/g, '_')}_verified.pdf`,
+      status: kd.status || 'Pending',
+    }));
 
     res.json({ success: true, queue });
   } catch (error) {
@@ -1253,7 +1311,18 @@ export async function decideKyc(req, res, next) {
  */
 export async function getAuditLogs(req, res, next) {
   try {
-    const logs = await query('SELECT * FROM audit_logs ORDER BY created_at DESC LIMIT 100');
+    const rawLogs = await query('SELECT * FROM audit_logs ORDER BY created_at DESC LIMIT 100');
+    const logs = rawLogs.map((l) => ({
+      ...l,
+      admin: l.admin_name,
+      timestamp: new Date(l.created_at).toLocaleString('en-IN', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      }),
+    }));
     res.json({ success: true, logs });
   } catch (error) {
     next(error);

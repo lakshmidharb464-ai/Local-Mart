@@ -6,7 +6,6 @@ import {
   Leaf,
   ChevronRight,
   Sprout,
-  Sparkles,
   ShieldCheck,
   Clock,
   Star,
@@ -50,31 +49,29 @@ export const HeroSection = () => {
     <section
       id="home"
       aria-label="Welcome to LocalFarm Direct"
-      className="relative pt-24 sm:pt-28 pb-12 overflow-hidden bg-gradient-to-br from-[#031508] via-[#062413] to-[#0A3018] text-white"
+      className="relative min-h-[620px] lg:min-h-[680px] pt-24 sm:pt-28 pb-12 overflow-hidden bg-[#031508] text-white flex items-center"
     >
-      {/* ── Ambient Radial Lighting Orbs ── */}
-      <div
-        className="absolute top-[-120px] left-1/4 w-[700px] h-[700px] rounded-full pointer-events-none opacity-35 blur-3xl animate-pulse"
-        style={{ background: 'radial-gradient(circle, rgba(16,185,129,0.35) 0%, rgba(5,150,105,0.1) 50%, transparent 70%)', animationDuration: '9s' }}
-        aria-hidden="true"
-      />
-      <div
-        className="absolute top-1/3 right-[-100px] w-[600px] h-[600px] rounded-full pointer-events-none opacity-25 blur-3xl"
-        style={{ background: 'radial-gradient(circle, rgba(245,158,11,0.25) 0%, rgba(217,119,6,0.08) 50%, transparent 70%)' }}
-        aria-hidden="true"
-      />
+      {/* ── FULL COVER HERO IMAGE POSITIONED ON THE RIGHT ── */}
+      <div className="absolute right-0 top-14 sm:top-18 lg:top-20 bottom-0 w-full lg:w-[54%] xl:w-[50%] z-0 overflow-hidden pointer-events-none">
+        <img
+          src="/hero_farmer_banner.jpg"
+          alt="Verified local organic farmer holding fresh chemical-free harvest produce"
+          className={`w-full h-full object-cover object-[center_top] select-none transition-all duration-1000 ${visible ? 'opacity-95 scale-100' : 'opacity-0 scale-105'
+            }`}
+          loading="eager"
+          fetchpriority="high"
+          draggable={false}
+        />
 
-      {/* ── Background Subtle Organic Grid Overlay ── */}
-      <div
-        className="absolute inset-0 opacity-[0.035] pointer-events-none"
-        style={{
-          backgroundImage: `radial-gradient(#34d399 1px, transparent 1px)`,
-          backgroundSize: '28px 28px'
-        }}
-        aria-hidden="true"
-      />
+        {/* Seamless Edge Blends: Left blend to text side, bottom blend to About, top blend below navbar */}
+        <div className="absolute inset-y-0 left-0 w-36 sm:w-56 bg-gradient-to-r from-[#031508] to-transparent" />
+        <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-[#062413] to-transparent" />
+        <div className="absolute inset-x-0 top-0 h-16 sm:h-20 bg-gradient-to-b from-[#031508] to-transparent" />
+        {/* Subtle mobile overlay so text remains legible on smaller screens */}
+        <div className="absolute inset-0 bg-[#031508]/75 lg:hidden" />
+      </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 w-full">
 
         {/* ── Clean Top Hook Indicator (De-cluttered) ── */}
         <div className="flex items-center justify-between mb-8 pt-1">
@@ -93,16 +90,9 @@ export const HeroSection = () => {
             <span className="text-emerald-500/50">·</span>
             <span className="text-emerald-100 font-medium">100% Zero Middlemen</span>
           </div>
-
-          <div className="hidden sm:flex items-center gap-2 text-xs font-semibold text-emerald-200/80">
-            <span className="flex items-center gap-1">
-              <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-              Direct Fair Pricing for Farmers & Consumers
-            </span>
-          </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center pb-10">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center pb-6">
 
           {/* ── LEFT: High-Impact Hook & 2 Primary Actions (Shop & Sell) ── */}
           <div
@@ -184,87 +174,56 @@ export const HeroSection = () => {
 
           </div>
 
-          {/* ── RIGHT: Seamless Farmer Image with Edge Blending & Floating Trust Badges ── */}
-          <div className="lg:col-span-6 relative flex justify-center items-center w-full min-h-[460px] sm:min-h-[520px]">
+          {/* ── RIGHT: Interactive Floating Badges Integrated Directly Over the Cover Visual ── */}
+          <div className="lg:col-span-6 relative flex flex-col justify-between w-full min-h-[380px] sm:min-h-[460px] lg:min-h-[520px] py-2">
 
-            {/* Ambient Background Aura */}
+            {/* Top Interactive Badges */}
+            <div className="flex items-center justify-between gap-3 w-full">
+              {/* Floating Badge 1: Verified Farmer */}
+              <div
+                className={`flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-full bg-slate-950/85 backdrop-blur-xl border border-emerald-400/40 shadow-xl hover:scale-105 hover:border-emerald-400/70 transition-all duration-300 cursor-pointer ${visible ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-4'
+                  }`}
+              >
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="text-xs font-bold text-white">👨‍🌾 Rajesh Kumar</span>
+                <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-amber-400/20 text-amber-300 border border-amber-400/30">
+                  ★ 5
+                </span>
+              </div>
+
+              {/* Floating Badge 2: Direct 98% Payout */}
+              <div
+                className={`flex items-center gap-1.5 px-3.5 sm:px-4 py-2 rounded-full bg-emerald-950/90 backdrop-blur-xl border border-emerald-400/50 shadow-xl hover:scale-105 hover:border-emerald-400/80 transition-all duration-300 delay-100 cursor-pointer ${visible ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-4'
+                  }`}
+              >
+                <Sprout className="w-3.5 h-3.5 text-emerald-300" />
+                <span className="text-[11px] font-extrabold text-emerald-200">Zero Brokerage</span>
+              </div>
+            </div>
+
+            {/* Bottom Interactive Badge: 2-Hour Express */}
             <div
-              className="absolute inset-0 pointer-events-none blur-3xl opacity-50"
-              style={{
-                background: 'radial-gradient(circle at 50% 50%, rgba(16,185,129,0.3) 0%, rgba(20,184,166,0.15) 50%, transparent 75%)'
-              }}
-            />
-
-            {/* Blended Farmer Visual Frame */}
-            <div className="relative z-10 w-full max-w-lg rounded-3xl overflow-hidden border border-emerald-500/30 shadow-[0_20px_60px_rgba(0,0,0,0.7)] group bg-emerald-950/20 backdrop-blur-sm">
-              <div className="relative">
-                <img
-                  src="/hero_farmer_banner.jpg"
-                  alt="Verified local organic farmer holding fresh chemical-free harvest produce"
-                  className={`w-full h-[400px] sm:h-[460px] object-cover object-top select-none transition-all duration-700 group-hover:scale-[1.03] ${visible ? 'opacity-100' : 'opacity-0'
-                    }`}
-                  style={{
-                    maskImage: 'linear-gradient(to bottom, black 78%, transparent 100%)',
-                    WebkitMaskImage: 'linear-gradient(to bottom, black 78%, transparent 100%)'
-                  }}
-                  loading="eager"
-                  fetchpriority="high"
-                  draggable={false}
-                />
-
-                {/* Soft Edge Vignette Gradient Overlay */}
-                <div
-                  className="absolute inset-0 pointer-events-none bg-gradient-to-t from-[#062413] via-transparent to-transparent opacity-80"
-                  aria-hidden="true"
-                />
-
-                {/* ── Floating Badge 1: Verified Farmer (Top Left) ── */}
-                <div
-                  className={`absolute top-4 left-4 z-20 flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-950/85 backdrop-blur-xl border border-emerald-400/40 shadow-xl transition-all duration-500 ${visible ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-4'
-                    }`}
-                >
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
-                  <span className="text-xs font-bold text-white">👨‍🌾 {firstFarmer.farmerName || 'Rajesh Patil'}</span>
-                  <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-amber-400/20 text-amber-300 border border-amber-400/30">
-                    ★ {firstFarmer.rating || '4.98'}
-                  </span>
+              className={`w-full flex items-center justify-between p-3.5 sm:p-4 rounded-2xl bg-slate-950/85 backdrop-blur-xl border border-teal-400/35 shadow-2xl hover:scale-[1.01] hover:border-teal-400/60 transition-all duration-500 delay-200 cursor-pointer ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
+                }`}
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-teal-500/20 border border-teal-400/40 flex items-center justify-center text-teal-300 shrink-0">
+                  <Truck className="w-5 h-5" />
                 </div>
-
-                {/* ── Floating Badge 2: Direct 98% Payout (Top Right) ── */}
-                <div
-                  className={`absolute top-4 right-4 z-20 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-950/90 backdrop-blur-xl border border-emerald-400/50 shadow-xl transition-all duration-500 delay-100 ${visible ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-4'
-                    }`}
-                >
-                  <Sprout className="w-3.5 h-3.5 text-emerald-300" />
-                  <span className="text-[11px] font-extrabold text-emerald-200">Zero Brokerage</span>
-                </div>
-
-                {/* ── Floating Badge 3: 2-Hour Express (Bottom Left) ── */}
-                <div
-                  className={`absolute bottom-4 left-4 right-4 z-20 flex items-center justify-between p-3 rounded-2xl bg-slate-950/85 backdrop-blur-xl border border-teal-400/30 shadow-2xl transition-all duration-700 delay-200 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
-                    }`}
-                >
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-9 h-9 rounded-xl bg-teal-500/20 border border-teal-400/40 flex items-center justify-center text-teal-300 shrink-0">
-                      <Truck className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <div className="text-xs font-black text-white">
-                        Harvested Today · 5:30 AM
-                      </div>
-                      <div className="text-[11px] text-teal-200/80 font-medium">
-                        Packed & dispatched in 2 hours
-                      </div>
-                    </div>
+                <div>
+                  <div className="text-xs font-black text-white">
+                    Harvested Today · 5:30 AM
                   </div>
-
-                  <div className="text-right">
-                    <span className="text-[10px] uppercase tracking-wider font-extrabold px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
-                      100% Fresh
-                    </span>
+                  <div className="text-[11px] text-teal-200/80 font-medium">
+                    Packed & dispatched in 2 hours
                   </div>
                 </div>
+              </div>
 
+              <div className="text-right">
+                <span className="text-[10px] uppercase tracking-wider font-extrabold px-2.5 py-1 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
+                  100% Fresh
+                </span>
               </div>
             </div>
 

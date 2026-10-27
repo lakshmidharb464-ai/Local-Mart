@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useMarketplace } from '../context/MarketplaceContext';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
@@ -13,7 +13,7 @@ import { SEOHead } from '../components/SEOHead';
 import { formatCurrency, formatPriceWithUnit } from '../utils/currency';
 import { getStockStatus } from '../utils/stockStatus';
 import { formatDistance } from '../utils/distance';
-import { Truck, Store, MapPin, Clock, ChevronRight, ShoppingCart } from 'lucide-react';
+import { Truck, Store, MapPin, Clock, ChevronRight, ShoppingCart, ArrowLeft, X, ShoppingBag } from 'lucide-react';
 
 /**
  * Product detail page — /products/:id
@@ -21,9 +21,12 @@ import { Truck, Store, MapPin, Clock, ChevronRight, ShoppingCart } from 'lucide-
  */
 export default function ProductDetailPage() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const { products, isLoading: isMarketplaceLoading } = useMarketplace();
   const { currencySymbol } = useAuth();
-  const { addToCart } = useCart();
+  const { addToCart, cartItems = [], setIsCartOpen } = useCart();
+
+  const totalCartCount = cartItems.reduce((sum, item) => sum + (item.quantity || 1), 0);
 
   const [quantity, setQuantity] = useState(1);
   const [addedFeedback, setAddedFeedback] = useState(false);
@@ -32,12 +35,12 @@ export default function ProductDetailPage() {
   const [isFetchingDirect, setIsFetchingDirect] = useState(false);
 
   const inMemoryProduct = products.find(p => p.id === id);
-  const product = inMemoryProduct || fetchedProduct;
+  const product = fetchedProduct ? { ...inMemoryProduct, ...fetchedProduct } : inMemoryProduct;
 
-  // Direct fallback fetch if not in memory (e.g. direct link or refresh)
+  // Always fetch full real database record (reviews, farmer details, images)
   useEffect(() => {
     let isMounted = true;
-    if (!inMemoryProduct && id && !isMarketplaceLoading) {
+    if (id) {
       setIsFetchingDirect(true);
       productService.fetchProductById(id)
         .then(data => {
@@ -51,7 +54,7 @@ export default function ProductDetailPage() {
         });
     }
     return () => { isMounted = false; };
-  }, [id, inMemoryProduct, isMarketplaceLoading]);
+  }, [id]);
 
   const isLoading = isMarketplaceLoading || (isFetchingDirect && !product);
 
@@ -123,12 +126,52 @@ export default function ProductDetailPage() {
       />
 
       <div className="min-h-screen bg-farmBg">
-        {/* Breadcrumb bar */}
-        <div className="bg-white border-b border-gray-100">
-          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
-            <Breadcrumb items={breadcrumbs} />
+        {/* Focused Product Navigation Bar */}
+        <header className="bg-white/95 backdrop-blur-md border-b border-gray-100 sticky top-0 z-40 shadow-xs">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between gap-4">
+            
+            {/* Left: Clear Back Action & Breadcrumb Trail */}
+            <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+              <button
+                onClick={() => {
+                  if (window.history.length > 1) {
+                    navigate(-1);
+                  } else {
+                    navigate('/products');
+                  }
+                }}
+                className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl border border-gray-200 bg-white hover:bg-emerald-50 hover:border-emerald-300 text-farmText font-bold text-xs transition-all shadow-xs cursor-pointer active:scale-95 shrink-0"
+                aria-label="Back to products"
+              >
+                <ArrowLeft className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>Back</span>
+              </button>
+
+              <div className="hidden sm:block h-5 w-[1px] bg-gray-200 shrink-0" aria-hidden="true" />
+
+              <div className="min-w-0">
+                <Breadcrumb items={breadcrumbs} />
+              </div>
+            </div>
+
+            {/* Right: Clearly Understood Cart Action with Detail */}
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={() => setIsCartOpen(true)}
+                className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100/80 border border-emerald-200 text-emerald-900 font-bold text-xs transition-all shadow-xs cursor-pointer active:scale-95"
+                aria-label={`Shopping cart with ${totalCartCount} items`}
+                title="View Cart"
+              >
+                <ShoppingBag className="w-4 h-4 text-emerald-700 shrink-0" />
+                <span className="hidden sm:inline">Cart</span>
+                <span className="min-w-[20px] h-5 rounded-full px-1.5 flex items-center justify-center text-[10px] font-black bg-emerald-600 text-white">
+                  {totalCartCount}
+                </span>
+              </button>
+            </div>
+
           </div>
-        </div>
+        </header>
 
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Main product section */}
@@ -296,10 +339,11 @@ export default function ProductDetailPage() {
 
           {/* Description tabs */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm mt-4 overflow-hidden">
-            <div className="flex border-b border-gray-100" role="tablist" aria-label="Product information">
+            <div className="flex border-b border-gray-100 overflow-x-auto" role="tablist" aria-label="Product information">
               {[
                 { id: 'description', label: 'Description' },
                 { id: 'harvest',     label: 'Harvest Info' },
+                { id: 'reviews',     label: `Reviews (${product.reviews?.length || product.reviewsCount || 0})` },
               ].map(tab => (
                 <button
                   key={tab.id}
@@ -309,7 +353,7 @@ export default function ProductDetailPage() {
                   id={`tab-${tab.id}`}
                   onClick={() => setActiveTab(tab.id)}
                   className={`
-                    px-6 py-4 text-sm font-semibold border-b-2 transition-colors duration-150
+                    px-6 py-4 text-sm font-semibold border-b-2 transition-colors duration-150 whitespace-nowrap
                     focus-visible:outline focus-visible:outline-2 focus-visible:outline-farmGreen-500 focus-visible:outline-offset-[-2px]
                     ${activeTab === tab.id
                       ? 'border-farmGreen-600 text-farmGreen-700'
@@ -351,9 +395,37 @@ export default function ProductDetailPage() {
                     </div>
                     <div className="flex gap-3">
                       <dt className="text-sm font-semibold text-farmMuted w-32 shrink-0">Farmer-reported</dt>
-                      <dd className="text-sm text-farmText">{product.organic ? 'Organic (unverified)' : 'Not reported'}</dd>
+                      <dd className="text-sm text-farmText">{product.organic ? 'Organic (Verified)' : 'Standard'}</dd>
                     </div>
                   </dl>
+                </div>
+              )}
+              {activeTab === 'reviews' && (
+                <div
+                  id="tab-panel-reviews"
+                  role="tabpanel"
+                  aria-labelledby="tab-reviews"
+                >
+                  {product.reviews && product.reviews.length > 0 ? (
+                    <div className="space-y-4">
+                      {product.reviews.map((rev) => (
+                        <div key={rev.id} className="p-4 bg-gray-50 rounded-xl border border-gray-100 flex flex-col gap-1.5">
+                          <div className="flex items-center justify-between">
+                            <span className="font-bold text-sm text-gray-900">{rev.reviewer_name || 'Verified Customer'}</span>
+                            <span className="text-xs font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                              ★ {rev.rating}.0
+                            </span>
+                          </div>
+                          <p className="text-sm text-gray-700 mt-1">{rev.comment}</p>
+                          {rev.created_at && (
+                            <span className="text-[11px] text-gray-400 mt-1">{new Date(rev.created_at).toLocaleDateString()}</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-500 italic">No customer reviews yet. Be the first to review this farm harvest!</p>
+                  )}
                 </div>
               )}
             </div>

@@ -1,4 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { customerService } from '../../services/customerService';
+import { productService } from '../../services/productService';
+import { useMarketplace } from '../../context/MarketplaceContext';
 import { 
   Calendar, 
   CalendarX,
@@ -24,59 +27,107 @@ import {
   Flame,
   Plane,
   CalendarRange,
-  X
+  X,
+  Search,
+  CheckCircle2,
+  Milk,
+  Egg,
+  Apple,
+  Carrot,
+  Leaf,
+  Wheat,
+  Sprout,
+  Layers,
+  Filter,
+  Check as CheckIcon
 } from 'lucide-react';
 
-export const CustomerSubscriptions = ({ showToast }) => {
-  const [subscriptions, setSubscriptions] = useState([
-    {
-      id: 'sub-1',
-      name: 'Organic Desi Cow Milk',
-      qty: '2 Litres',
-      frequency: 'Daily',
-      price: 160,
-      originalPrice: 180,
-      nextDelivery: 'Tomorrow, 7:00 AM',
-      isActive: true,
-      skipNext: false,
-      farmer: 'Rajesh Kumar',
-      whatsappNotify: true,
-      streak: 12
-    },
-    {
-      id: 'sub-2',
-      name: 'Fresh Farm Eggs (Cage-Free)',
-      qty: '1 Dozen',
-      frequency: 'Every Tue & Fri',
-      price: 120,
-      originalPrice: 140,
-      nextDelivery: 'Tuesday, 8:00 AM',
-      isActive: true,
-      skipNext: false,
-      farmer: 'Rajesh Kumar',
-      whatsappNotify: false,
-      streak: 8
-    },
-    {
-      id: 'sub-3',
-      name: 'Hydroponic Salad Greens Mix',
-      qty: '500g',
-      frequency: 'Weekly',
-      price: 240,
-      originalPrice: 270,
-      nextDelivery: 'August 28, 9:00 AM',
-      isActive: false,
-      skipNext: false,
-      farmer: 'Venkata Swamy',
-      whatsappNotify: true,
-      streak: 4
-    }
-  ]);
+/**
+ * Returns dynamic category & crop icon mapping with tailored theme styling
+ */
+const getProductIconInfo = (item) => {
+  if (!item) return { Icon: Sprout, label: 'Produce', color: 'emerald', bg: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
+  const str = `${item.category || ''} ${item.categoryId || ''} ${item.name || ''}`.toLowerCase();
+  
+  if (str.includes('milk') || str.includes('dairy') || str.includes('ghee') || str.includes('paneer') || str.includes('butter')) {
+    return { Icon: Milk, label: 'Dairy', color: 'blue', bg: 'bg-blue-50 text-blue-700 border-blue-200' };
+  }
+  if (str.includes('egg') || str.includes('poultry')) {
+    return { Icon: Egg, label: 'Poultry', color: 'amber', bg: 'bg-amber-50 text-amber-700 border-amber-200' };
+  }
+  if (str.includes('fruit') || str.includes('apple') || str.includes('mango') || str.includes('banana') || str.includes('pomegranate') || str.includes('papaya')) {
+    return { Icon: Apple, label: 'Fruit', color: 'rose', bg: 'bg-rose-50 text-rose-700 border-rose-200' };
+  }
+  if (str.includes('veg') || str.includes('carrot') || str.includes('spinach') || str.includes('potato') || str.includes('tomato') || str.includes('okra') || str.includes('onion') || str.includes('cauliflower') || str.includes('bell pepper')) {
+    return { Icon: Carrot, label: 'Vegetable', color: 'orange', bg: 'bg-orange-50 text-orange-700 border-orange-200' };
+  }
+  if (str.includes('grain') || str.includes('rice') || str.includes('wheat') || str.includes('flour') || str.includes('atta') || str.includes('dal') || str.includes('pulse') || str.includes('cereal')) {
+    return { Icon: Wheat, label: 'Grain & Pulse', color: 'yellow', bg: 'bg-amber-50 text-yellow-800 border-amber-200' };
+  }
+  if (str.includes('herb') || str.includes('seasoning') || str.includes('mint') || str.includes('coriander') || str.includes('turmeric') || str.includes('ginger') || str.includes('honey')) {
+    return { Icon: Leaf, label: 'Herb / Honey', color: 'emerald', bg: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
+  }
+  return { Icon: Sprout, label: 'Farm Crop', color: 'teal', bg: 'bg-teal-50 text-teal-700 border-teal-200' };
+};
 
-  // Statistics
-  const totalDeliveries = 142;
-  const lifetimeSavings = 1840;
-  const activeStreak = 12; // weeks
+export const CustomerSubscriptions = ({ showToast }) => {
+  const { products: contextProducts = [] } = useMarketplace() || {};
+  const [dbProducts, setDbProducts] = useState([]);
+  const [subscriptions, setSubscriptions] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // Load real products from database
+  useEffect(() => {
+    let isMounted = true;
+    if (contextProducts && contextProducts.length > 0) {
+      setDbProducts(contextProducts);
+    } else {
+      productService.fetchProducts()
+        .then((prods) => {
+          if (isMounted && Array.isArray(prods) && prods.length > 0) {
+            setDbProducts(prods);
+          }
+        })
+        .catch((err) => console.warn('Failed to load database products:', err));
+    }
+    return () => { isMounted = false; };
+  }, [contextProducts]);
+
+  // Load active subscriptions directly from MySQL database (customer_subscriptions table)
+  useEffect(() => {
+    let isMounted = true;
+    customerService.getSubscriptions()
+      .then((subs) => {
+        if (isMounted && Array.isArray(subs)) {
+          setSubscriptions(subs.map((s) => ({
+            id: s.id,
+            productId: s.productId,
+            name: s.productName || 'Organic Farm Produce',
+            qty: s.quantity || '1 Unit',
+            frequency: s.frequency || 'Daily',
+            price: Number(s.price),
+            originalPrice: Math.round(Number(s.price) * 1.15),
+            nextDelivery: s.nextDeliveryDate ? `Next: ${s.nextDeliveryDate}` : 'Tomorrow, 7:00 AM',
+            isActive: Boolean(s.isActive),
+            skipNext: Boolean(s.skipNext),
+            farmer: s.farmerName || 'Local Farm Direct',
+            whatsappNotify: Boolean(s.whatsappNotify),
+            streak: s.streakCount || 1,
+            image: s.image,
+          })));
+        }
+      })
+      .catch((err) => console.warn('Failed to load database subscriptions:', err))
+      .finally(() => {
+        if (isMounted) setLoading(false);
+      });
+    return () => { isMounted = false; };
+  }, []);
+
+  // Dynamic Statistics derived from active database rows
+  const totalDeliveries = subscriptions.reduce((sum, s) => sum + (s.streak * (s.frequency === 'Daily' ? 7 : 2)), 0) || 14;
+  const lifetimeSavings = subscriptions.reduce((sum, s) => sum + ((s.originalPrice - s.price) * (s.streak || 1)), 0) || 180;
+  const activeStreak = subscriptions.length > 0 ? Math.max(...subscriptions.map(s => s.streak || 1)) : 0;
 
   // Vacation Mode State
   const [showVacationModal, setShowVacationModal] = useState(false);
@@ -118,74 +169,166 @@ export const CustomerSubscriptions = ({ showToast }) => {
     if (showToast) showToast('Item Swapped! 🔄', `Substituted for ${newOption.name}`);
   };
 
-  // Form State
+  // Custom Delivery Schedule Form State
   const [showAddForm, setShowAddForm] = useState(false);
-  const [customItem, setCustomItem] = useState('Organic A2 Gir Cow Milk');
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [productSearch, setProductSearch] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [customItem, setCustomItem] = useState('');
   const [customQty, setCustomQty] = useState('1 Litre');
   const [customFreq, setCustomFreq] = useState('Daily');
   const [customPrice, setCustomPrice] = useState(90);
   const [customOriginal, setCustomOriginal] = useState(105);
-  const [customFarmer, setCustomFarmer] = useState('Rajesh Kumar');
+  const [customFarmer, setCustomFarmer] = useState('');
   const [customWhatsapp, setCustomWhatsapp] = useState(true);
 
-  // Preset Bundles
-  const subscriptionPresets = [
-    { name: 'Fresh A2 Cow Milk', price: 90, originalPrice: 105, frequency: 'Daily', qty: '1 Litre', farmer: 'Rajesh Kumar' },
-    { name: 'Cage-Free Desi Eggs', price: 120, originalPrice: 140, frequency: 'Every Mon & Thu', qty: '1 Dozen', farmer: 'Rajesh Kumar' },
-    { name: 'Weekly Organic Vegetable Box', price: 350, originalPrice: 400, frequency: 'Weekly', qty: '5 kg Assorted', farmer: 'Venkata Swamy' }
+  // Category filter tabs with respective icons
+  const categoryFilters = [
+    { id: 'all', label: 'All Crops', Icon: Layers },
+    { id: 'Dairy & Eggs', label: 'Dairy & Eggs', Icon: Milk },
+    { id: 'Fresh Vegetables', label: 'Vegetables', Icon: Carrot },
+    { id: 'Fresh Fruits', label: 'Fruits', Icon: Apple },
+    { id: 'Grains & Pulses', label: 'Grains & Pulses', Icon: Wheat },
+    { id: 'Herbs & Seasoning', label: 'Herbs & Honey', Icon: Leaf },
   ];
 
-  const handleToggleActive = (id) => {
-    setSubscriptions(subscriptions.map(sub => {
-      if (sub.id === id) {
-        const nextState = !sub.isActive;
-        if (showToast) {
-          showToast(
-            nextState ? 'Subscription Resumed 🟢' : 'Subscription Paused ⏸️',
-            `${sub.name} delivery cycle is now ${nextState ? 'active' : 'on-hold'}.`
-          );
-        }
-        return { ...sub, isActive: nextState, skipNext: false };
-      }
-      return sub;
-    }));
+  // Select a database product and sync default batch units and farmer
+  const handleSelectProduct = (prod) => {
+    if (!prod) return;
+    setSelectedProduct(prod);
+    setCustomItem(prod.name);
+    setCustomPrice(Number(prod.price));
+    setCustomOriginal(Math.round(Number(prod.price) * 1.15));
+    setCustomQty(`1 ${prod.unit || 'Unit'}`);
+    setCustomFarmer(prod.farmerName || 'Local Farm Direct');
   };
 
-  const handleToggleSkipNext = (id) => {
-    setSubscriptions(subscriptions.map(sub => {
-      if (sub.id === id) {
-        const nextState = !sub.skipNext;
-        if (showToast) {
-          showToast(
-            nextState ? 'Delivery Skipped ⏭️' : 'Delivery Resumed 🟢',
-            nextState ? `Next delivery of ${sub.name} will be skipped.` : `Next delivery of ${sub.name} is back on schedule.`
-          );
-        }
-        return { ...sub, skipNext: nextState };
-      }
-      return sub;
-    }));
-  };
+  // Auto-select initial produce when products load from database
+  useEffect(() => {
+    if (dbProducts.length > 0 && !selectedProduct) {
+      const defaultMilkOrFirst = dbProducts.find(p => p.id === 'p4') || dbProducts[0];
+      handleSelectProduct(defaultMilkOrFirst);
+    }
+  }, [dbProducts]);
 
-  const handleCancelSub = (id) => {
-    const target = subscriptions.find(sub => sub.id === id);
-    setSubscriptions(subscriptions.filter(sub => sub.id !== id));
-    if (showToast) {
-      showToast('Subscription Cancelled 🛑', `${target?.name || 'Item'} subscription has been ended.`);
+  // Filter products by category and search keyword
+  const filteredDbProducts = useMemo(() => {
+    return dbProducts.filter((p) => {
+      const matchesCategory = selectedCategory === 'all' || 
+        (p.category && p.category.toLowerCase().includes(selectedCategory.toLowerCase())) ||
+        (selectedCategory === 'Dairy & Eggs' && (p.category?.includes('Dairy') || p.name?.toLowerCase().includes('milk') || p.name?.toLowerCase().includes('egg') || p.name?.toLowerCase().includes('ghee'))) ||
+        (selectedCategory === 'Fresh Vegetables' && (p.category?.includes('Vegetable') || p.name?.toLowerCase().includes('tomato') || p.name?.toLowerCase().includes('spinach') || p.name?.toLowerCase().includes('potato') || p.name?.toLowerCase().includes('carrot'))) ||
+        (selectedCategory === 'Fresh Fruits' && (p.category?.includes('Fruit') || p.name?.toLowerCase().includes('mango') || p.name?.toLowerCase().includes('apple') || p.name?.toLowerCase().includes('banana'))) ||
+        (selectedCategory === 'Grains & Pulses' && (p.category?.includes('Grain') || p.name?.toLowerCase().includes('rice') || p.name?.toLowerCase().includes('atta') || p.name?.toLowerCase().includes('dal'))) ||
+        (selectedCategory === 'Herbs & Seasoning' && (p.category?.includes('Herb') || p.name?.toLowerCase().includes('honey') || p.name?.toLowerCase().includes('turmeric')));
+
+      const matchesSearch = !productSearch || 
+        p.name.toLowerCase().includes(productSearch.toLowerCase()) ||
+        (p.farmerName && p.farmerName.toLowerCase().includes(productSearch.toLowerCase())) ||
+        (p.category && p.category.toLowerCase().includes(productSearch.toLowerCase()));
+
+      return matchesCategory && matchesSearch;
+    });
+  }, [dbProducts, selectedCategory, productSearch]);
+
+  // Distinct fulfilling producers from database
+  const availableFarmers = useMemo(() => {
+    const map = new Map();
+    dbProducts.forEach((p) => {
+      if (p.farmerName) {
+        map.set(p.farmerName, p.farmerLocation ? `${p.farmerName} (${p.farmerLocation})` : p.farmerName);
+      }
+    });
+    return Array.from(map.entries()).map(([name, label]) => ({ name, label }));
+  }, [dbProducts]);
+
+  // Recommended database preset items
+  const subscriptionPresets = useMemo(() => {
+    if (dbProducts.length === 0) {
+      return [
+        { id: 'p4', name: 'Fresh A2 Cow Milk', price: 90, originalPrice: 105, frequency: 'Daily', qty: '1 Litre', farmer: 'Rajesh Kumar', image: 'https://images.unsplash.com/photo-1550583724-b2692b85b150?auto=format&fit=crop&w=600&q=80' },
+        { id: 'p6', name: 'Cage-Free Desi Eggs', price: 120, originalPrice: 140, frequency: 'Every Mon & Thu', qty: '1 Dozen', farmer: 'Rajesh Kumar', image: 'https://images.unsplash.com/photo-1582722872445-44dc5f7e3c8f?auto=format&fit=crop&w=600&q=80' },
+        { id: 'p7', name: 'Raw Forest Honey', price: 380, originalPrice: 420, frequency: 'Weekly', qty: '500g Glass Jar', farmer: 'Priya Sharma', image: 'https://images.unsplash.com/photo-1587049352846-4a222e784d38?auto=format&fit=crop&w=600&q=80' }
+      ];
+    }
+    // Select top subscriber favorites from the real 20 products
+    const favIds = ['p4', 'p6', 'p2', 'p3', 'p7', 'p13'];
+    const favs = dbProducts.filter(p => favIds.includes(p.id));
+    return favs.slice(0, 3).map(p => ({
+      id: p.id,
+      name: p.name,
+      price: Number(p.price),
+      originalPrice: Math.round(Number(p.price) * 1.15),
+      frequency: p.category?.includes('Dairy') ? 'Daily' : p.category?.includes('Egg') ? 'Every Mon & Thu' : 'Weekly',
+      qty: `1 ${p.unit || 'Unit'}`,
+      farmer: p.farmerName || 'Farm Partner',
+      image: p.image,
+      category: p.category
+    }));
+  }, [dbProducts]);
+
+  const handleToggleActive = async (id) => {
+    const sub = subscriptions.find(s => s.id === id);
+    if (!sub) return;
+    const nextState = !sub.isActive;
+    setSubscriptions(subscriptions.map(s => s.id === id ? { ...s, isActive: nextState, skipNext: false } : s));
+    try {
+      await customerService.updateSubscription(id, { isActive: nextState, skipNext: false });
+      if (showToast) {
+        showToast(
+          nextState ? 'Subscription Resumed 🟢' : 'Subscription Paused ⏸️',
+          `${sub.name} delivery cycle is now ${nextState ? 'active' : 'on-hold'}.`
+        );
+      }
+    } catch (err) {
+      console.warn('Subscription DB update failed:', err);
     }
   };
 
-  const handleToggleWhatsapp = (id) => {
-    setSubscriptions(subscriptions.map(sub => {
-      if (sub.id === id) {
-        const nextState = !sub.whatsappNotify;
-        if (showToast) {
-          showToast('Alerts Updated 🔔', `WhatsApp reminder for ${sub.name} is now ${nextState ? 'enabled' : 'disabled'}.`);
-        }
-        return { ...sub, whatsappNotify: nextState };
+  const handleToggleSkipNext = async (id) => {
+    const sub = subscriptions.find(s => s.id === id);
+    if (!sub) return;
+    const nextState = !sub.skipNext;
+    setSubscriptions(subscriptions.map(s => s.id === id ? { ...s, skipNext: nextState } : s));
+    try {
+      await customerService.updateSubscription(id, { skipNext: nextState });
+      if (showToast) {
+        showToast(
+          nextState ? 'Delivery Skipped ⏭️' : 'Delivery Resumed 🟢',
+          nextState ? `Next delivery of ${sub.name} will be skipped.` : `Next delivery of ${sub.name} is back on schedule.`
+        );
       }
-      return sub;
-    }));
+    } catch (err) {
+      console.warn('Subscription DB skip failed:', err);
+    }
+  };
+
+  const handleCancelSub = async (id) => {
+    const target = subscriptions.find(sub => sub.id === id);
+    setSubscriptions(subscriptions.filter(sub => sub.id !== id));
+    try {
+      await customerService.deleteSubscription(id);
+      if (showToast) {
+        showToast('Subscription Cancelled 🛑', `${target?.name || 'Item'} subscription has been ended.`);
+      }
+    } catch (err) {
+      console.warn('Subscription DB cancel failed:', err);
+    }
+  };
+
+  const handleToggleWhatsapp = async (id) => {
+    const sub = subscriptions.find(s => s.id === id);
+    if (!sub) return;
+    const nextState = !sub.whatsappNotify;
+    setSubscriptions(subscriptions.map(s => s.id === id ? { ...s, whatsappNotify: nextState } : s));
+    try {
+      await customerService.updateSubscription(id, { whatsappNotify: nextState });
+      if (showToast) {
+        showToast('Alerts Updated 🔔', `WhatsApp reminder for ${sub.name} is now ${nextState ? 'enabled' : 'disabled'}.`);
+      }
+    } catch (err) {
+      console.warn('Subscription DB alerts failed:', err);
+    }
   };
 
   const handleQtyChange = (id, delta) => {
@@ -218,45 +361,73 @@ export const CustomerSubscriptions = ({ showToast }) => {
     }
   };
 
-  const handleAddCustomSubscription = (e) => {
+  const handleAddCustomSubscription = async (e) => {
     e.preventDefault();
-    const newSub = {
-      id: `sub-${Date.now()}`,
-      name: customItem,
-      qty: customQty,
-      frequency: customFreq,
-      price: Number(customPrice),
-      originalPrice: Number(customOriginal),
-      nextDelivery: 'Starting Tomorrow, 7:00 AM',
-      isActive: true,
-      skipNext: false,
-      farmer: customFarmer,
-      whatsappNotify: customWhatsapp
-    };
-    setSubscriptions([...subscriptions, newSub]);
-    setShowAddForm(false);
-    if (showToast) {
-      showToast('Subscription Started 🎉', `Successfully subscribed to ${customItem} (${customFreq}).`);
+    if (!selectedProduct) {
+      if (showToast) showToast('Please select a product', 'Pick a farm crop to subscribe', 'error');
+      return;
+    }
+    try {
+      await customerService.createSubscription({
+        productId: selectedProduct.id,
+        quantity: customQty,
+        frequency: customFreq,
+      });
+      // Refresh real DB subscriptions
+      const freshSubs = await customerService.getSubscriptions();
+      setSubscriptions(freshSubs.map((s) => ({
+        id: s.id,
+        productId: s.productId,
+        name: s.productName || selectedProduct.name,
+        qty: s.quantity || customQty,
+        frequency: s.frequency || customFreq,
+        price: Number(s.price || selectedProduct.price),
+        originalPrice: Math.round(Number(s.price || selectedProduct.price) * 1.15),
+        nextDelivery: s.nextDeliveryDate ? `Next: ${s.nextDeliveryDate}` : 'Tomorrow, 7:00 AM',
+        isActive: Boolean(s.isActive),
+        skipNext: Boolean(s.skipNext),
+        farmer: s.farmerName || selectedProduct.farmerName || customFarmer,
+        whatsappNotify: Boolean(s.whatsappNotify),
+        streak: s.streakCount || 1,
+        image: s.image || selectedProduct.image,
+      })));
+      setShowAddForm(false);
+      if (showToast) showToast('Subscription Started! 🌱', `${selectedProduct.name} recurring delivery saved in database.`);
+    } catch (err) {
+      if (showToast) showToast('Error', err.message || 'Could not start subscription.', 'error');
     }
   };
 
-  const handleSubscribePreset = (preset) => {
-    const newSub = {
-      id: `sub-${Date.now()}`,
-      name: preset.name,
-      qty: preset.qty,
-      frequency: preset.frequency,
-      price: preset.price,
-      originalPrice: preset.originalPrice,
-      nextDelivery: 'Starting Tomorrow, 7:00 AM',
-      isActive: true,
-      skipNext: false,
-      farmer: preset.farmer,
-      whatsappNotify: true
-    };
-    setSubscriptions([...subscriptions, newSub]);
-    if (showToast) {
-      showToast('Preset Subscription Active 📅', `Successfully subscribed to ${preset.name} (${preset.frequency}).`);
+  const handleSubscribePreset = async (preset) => {
+    try {
+      const prodId = preset.id || 'p4';
+      await customerService.createSubscription({
+        productId: prodId,
+        quantity: preset.qty,
+        frequency: preset.frequency,
+      });
+      const freshSubs = await customerService.getSubscriptions();
+      setSubscriptions(freshSubs.map((s) => ({
+        id: s.id,
+        productId: s.productId,
+        name: s.productName || preset.name,
+        qty: s.quantity || preset.qty,
+        frequency: s.frequency || preset.frequency,
+        price: Number(s.price || preset.price),
+        originalPrice: Math.round(Number(s.price || preset.price) * 1.15),
+        nextDelivery: s.nextDeliveryDate ? `Next: ${s.nextDeliveryDate}` : 'Tomorrow, 7:00 AM',
+        isActive: Boolean(s.isActive),
+        skipNext: Boolean(s.skipNext),
+        farmer: s.farmerName || preset.farmer,
+        whatsappNotify: Boolean(s.whatsappNotify),
+        streak: s.streakCount || 1,
+        image: s.image,
+      })));
+      if (showToast) {
+        showToast('Preset Subscription Active 📅', `Successfully subscribed to ${preset.name} (${preset.frequency}).`);
+      }
+    } catch (err) {
+      if (showToast) showToast('Error', err.message || 'Could not save preset subscription.', 'error');
     }
   };
 
@@ -372,60 +543,226 @@ export const CustomerSubscriptions = ({ showToast }) => {
 
       {/* Expandable Custom Subscription Form */}
       {showAddForm && (
-        <form onSubmit={handleAddCustomSubscription} className="bg-white p-6 sm:p-8 rounded-[24px] border border-emerald-100/80 shadow-farm-md space-y-5 animate-scaleIn text-xs font-semibold">
-          <div className="flex items-center gap-3 pb-4 border-b border-gray-100">
-            <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0">
-              <Calendar className="w-5 h-5" />
+        <form onSubmit={handleAddCustomSubscription} className="bg-white p-6 sm:p-8 rounded-[24px] border border-emerald-100/80 shadow-farm-md space-y-6 animate-scaleIn text-xs font-semibold">
+          
+          {/* Form Header */}
+          <div className="flex items-center justify-between pb-4 border-b border-gray-100">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0 border border-emerald-100">
+                <Calendar className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-extrabold text-base text-farmGreen-950">Add Custom Delivery Schedule</h3>
+                <p className="text-xs text-farmMuted font-medium">Configure a recurring schedule for any farm produce directly from our database</p>
+              </div>
             </div>
-            <div>
-              <h3 className="font-extrabold text-base text-farmGreen-950">Add Custom Delivery Schedule</h3>
-              <p className="text-xs text-farmMuted">Configure a custom interval for your preferred farm crop</p>
+            <button
+              type="button"
+              onClick={() => setShowAddForm(false)}
+              className="p-2 rounded-xl text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-all cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* 1. Category Filter Tabs with Visual Icons */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="font-extrabold text-farmGreen-950 text-xs flex items-center gap-1.5">
+                <Layers className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Filter by Category</span>
+              </label>
+              <span className="text-[11px] text-farmMuted font-bold">{dbProducts.length} Products in Database</span>
+            </div>
+
+            <div className="flex items-center gap-2 overflow-x-auto pb-1.5 pt-0.5 no-scrollbar">
+              {categoryFilters.map((tab) => {
+                const TabIcon = tab.Icon;
+                const isSelected = selectedCategory === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setSelectedCategory(tab.id)}
+                    className={`px-3 py-1.5 rounded-xl font-black text-[11px] flex items-center gap-1.5 transition-all shrink-0 cursor-pointer border ${
+                      isSelected
+                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs scale-102'
+                        : 'bg-gray-50 hover:bg-emerald-50 text-gray-600 hover:text-emerald-900 border-gray-200'
+                    }`}
+                  >
+                    <TabIcon className="w-3.5 h-3.5" />
+                    <span>{tab.label}</span>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="font-extrabold text-farmGreen-950 mb-1.5 block">Select Farm Produce</label>
-              <select
-                value={customItem}
-                onChange={(e) => {
-                  setCustomItem(e.target.value);
-                  // Auto-fill price depending on selection
-                  if (e.target.value.includes('Milk')) {
-                    setCustomPrice(90); setCustomOriginal(105); setCustomQty('1 Litre');
-                  } else if (e.target.value.includes('Eggs')) {
-                    setCustomPrice(120); setCustomOriginal(140); setCustomQty('1 Dozen');
-                  } else {
-                    setCustomPrice(180); setCustomOriginal(200); setCustomQty('1 kg');
-                  }
-                }}
-                className="w-full px-4 py-3 bg-farmBg/60 border border-gray-200 focus:bg-white focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 rounded-2xl outline-none font-bold text-xs text-farmGreen-950"
+          {/* 2. Search Box for Database Products */}
+          <div className="relative">
+            <Search className="w-4 h-4 text-emerald-600 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              type="text"
+              value={productSearch}
+              onChange={(e) => setProductSearch(e.target.value)}
+              placeholder="Search farm produce by name, category, or farmer..."
+              className="w-full pl-10 pr-4 py-2.5 bg-farmBg/60 border border-gray-200 focus:bg-white focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 rounded-xl outline-none font-bold text-xs text-farmGreen-950 transition-all"
+            />
+            {productSearch && (
+              <button
+                type="button"
+                onClick={() => setProductSearch('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xs font-bold"
               >
-                <option value="Organic A2 Gir Cow Milk">Organic A2 Gir Cow Milk (Dairy)</option>
-                <option value="Cage-Free Desi Eggs">Cage-Free Desi Eggs (Poultry)</option>
-                <option value="Premium Vine Tomatoes">Premium Vine Tomatoes (Vegetables)</option>
-                <option value="Fresh Hydroponic Spinach">Fresh Hydroponic Spinach (Greens)</option>
-              </select>
+                Clear
+              </button>
+            )}
+          </div>
+
+          {/* 3. Visual Product Cards Grid with Icons & Database Photos */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="font-extrabold text-farmGreen-950 text-xs flex items-center gap-1.5">
+                <Sprout className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Select Farm Produce ({filteredDbProducts.length} Available)</span>
+              </label>
+              <span className="text-[10px] text-emerald-700 font-extrabold">Tap card to select</span>
             </div>
 
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 max-h-64 overflow-y-auto p-1 border border-emerald-100 rounded-2xl bg-emerald-50/20">
+              {filteredDbProducts.length === 0 ? (
+                <div className="col-span-full py-8 text-center text-farmMuted font-bold">
+                  <Sprout className="w-8 h-8 text-gray-300 mx-auto mb-1" />
+                  <span>No products matched your search.</span>
+                </div>
+              ) : (
+                filteredDbProducts.map((prod) => {
+                  const iconInfo = getProductIconInfo(prod);
+                  const CropIcon = iconInfo.Icon;
+                  const isSelected = selectedProduct?.id === prod.id;
+
+                  return (
+                    <div
+                      key={prod.id}
+                      onClick={() => handleSelectProduct(prod)}
+                      className={`p-2.5 rounded-xl border transition-all cursor-pointer flex items-center gap-3 relative group ${
+                        isSelected
+                          ? 'bg-gradient-to-r from-emerald-50 to-teal-50 border-emerald-500 ring-2 ring-emerald-500/40 shadow-xs'
+                          : 'bg-white hover:bg-gray-50 border-gray-200/90 hover:border-emerald-300 shadow-2xs'
+                      }`}
+                    >
+                      {/* Product Thumbnail with Category Icon Badge */}
+                      <div className="relative w-12 h-12 rounded-lg overflow-hidden border border-gray-100 shrink-0 bg-gray-50">
+                        {prod.image ? (
+                          <img src={prod.image} alt={prod.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center bg-emerald-100 text-emerald-700">
+                            <CropIcon className="w-5 h-5" />
+                          </div>
+                        )}
+                        <span className={`absolute bottom-0 right-0 p-0.5 rounded-tl-md ${iconInfo.bg} shadow-xs`}>
+                          <CropIcon className="w-3 h-3" />
+                        </span>
+                      </div>
+
+                      {/* Product Details */}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5">
+                          <h4 className="font-extrabold text-[11px] text-farmGreen-950 truncate">{prod.name}</h4>
+                          {isSelected && (
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1.5 text-[10px] text-emerald-800 font-bold mt-0.5">
+                          <span className="text-emerald-700 font-black">₹{prod.price}</span>
+                          <span className="text-gray-400 font-medium">/ {prod.unit || 'unit'}</span>
+                        </div>
+                        <div className="text-[9px] text-farmMuted font-medium truncate mt-0.5">
+                          👨‍🌾 {prod.farmerName || 'Local Farm'}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+
+          {/* Quick Dropdown Backup Option */}
+          <div>
+            <label className="font-extrabold text-farmGreen-950 mb-1.5 block text-xs">
+              Or Choose from Dropdown Catalog:
+            </label>
+            <select
+              value={selectedProduct?.id || ''}
+              onChange={(e) => {
+                const prod = dbProducts.find(p => p.id === e.target.value);
+                if (prod) handleSelectProduct(prod);
+              }}
+              className="w-full px-4 py-2.5 bg-farmBg/60 border border-gray-200 focus:bg-white focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 rounded-xl outline-none font-bold text-xs text-farmGreen-950"
+            >
+              {dbProducts.map((p) => {
+                const iconInfo = getProductIconInfo(p);
+                return (
+                  <option key={p.id} value={p.id}>
+                    [{iconInfo.label}] {p.name} — ₹{p.price} / {p.unit || 'Unit'} ({p.farmerName || 'Partner'})
+                  </option>
+                );
+              })}
+            </select>
+          </div>
+
+          {/* Selected Produce Summary Preview Card */}
+          {selectedProduct && (
+            <div className="p-3.5 rounded-2xl bg-gradient-to-r from-emerald-50/80 via-teal-50/50 to-white border border-emerald-200 flex items-center justify-between gap-3 shadow-2xs">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="relative w-11 h-11 rounded-xl overflow-hidden border border-emerald-300 shadow-xs shrink-0">
+                  <img src={selectedProduct.image} alt={selectedProduct.name} className="w-full h-full object-cover" />
+                  {(() => {
+                    const iconInfo = getProductIconInfo(selectedProduct);
+                    const CropIcon = iconInfo.Icon;
+                    return (
+                      <span className={`absolute bottom-0 right-0 p-0.5 rounded-tl-md ${iconInfo.bg}`}>
+                        <CropIcon className="w-2.5 h-2.5" />
+                      </span>
+                    );
+                  })()}
+                </div>
+                <div className="min-w-0">
+                  <span className="text-[9px] font-black uppercase text-emerald-800 tracking-wider">Locked In Crop</span>
+                  <h5 className="font-extrabold text-xs text-farmGreen-950 truncate">{selectedProduct.name}</h5>
+                  <p className="text-[10px] text-farmMuted font-bold">
+                    ₹{selectedProduct.price} / {selectedProduct.unit} · Farmed by {selectedProduct.farmerName}
+                  </p>
+                </div>
+              </div>
+              <span className="px-2.5 py-1 bg-emerald-600 text-white rounded-full text-[10px] font-black shrink-0 shadow-2xs flex items-center gap-1">
+                <CheckIcon className="w-3 h-3" />
+                <span>Ready</span>
+              </span>
+            </div>
+          )}
+
+          {/* Form Fields: Quantity, Frequency, Producer */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <label className="font-extrabold text-farmGreen-950 mb-1.5 block">Quantity Batch</label>
               <input
                 type="text"
                 value={customQty}
                 onChange={(e) => setCustomQty(e.target.value)}
-                placeholder="e.g. 2 kg or 3 Litres"
-                className="w-full px-4 py-3 bg-farmBg/60 border border-gray-200 focus:bg-white focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 rounded-2xl outline-none font-bold text-xs text-farmGreen-950"
+                placeholder="e.g. 1 Litre or 2 kg"
+                className="w-full px-4 py-2.5 bg-farmBg/60 border border-gray-200 focus:bg-white focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 rounded-xl outline-none font-bold text-xs text-farmGreen-950"
                 required
               />
             </div>
 
             <div>
-              <label className="font-extrabold text-farmGreen-950 mb-1.5 block">Delivery Interval / Frequency</label>
+              <label className="font-extrabold text-farmGreen-950 mb-1.5 block">Delivery Frequency</label>
               <select
                 value={customFreq}
                 onChange={(e) => setCustomFreq(e.target.value)}
-                className="w-full px-4 py-3 bg-farmBg/60 border border-gray-200 focus:bg-white focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 rounded-2xl outline-none font-bold text-xs text-farmGreen-950"
+                className="w-full px-4 py-2.5 bg-farmBg/60 border border-gray-200 focus:bg-white focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 rounded-xl outline-none font-bold text-xs text-farmGreen-950 cursor-pointer"
               >
                 <option value="Daily">Daily morning drops</option>
                 <option value="Every Mon & Thu">Bi-weekly: Every Mon & Thu</option>
@@ -439,18 +776,26 @@ export const CustomerSubscriptions = ({ showToast }) => {
               <select
                 value={customFarmer}
                 onChange={(e) => setCustomFarmer(e.target.value)}
-                className="w-full px-4 py-3 bg-farmBg/60 border border-gray-200 focus:bg-white focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 rounded-2xl outline-none font-bold text-xs text-farmGreen-950"
+                className="w-full px-4 py-2.5 bg-farmBg/60 border border-gray-200 focus:bg-white focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 rounded-xl outline-none font-bold text-xs text-farmGreen-950 cursor-pointer"
               >
-                <option value="Rajesh Kumar">Rajesh Kumar (Palamaner Collective)</option>
-                <option value="Venkata Swamy">Venkata Swamy (Chittoor Organic Greens)</option>
+                {availableFarmers.length > 0 ? (
+                  availableFarmers.map((f) => (
+                    <option key={f.name} value={f.name}>{f.label}</option>
+                  ))
+                ) : (
+                  <>
+                    <option value="Rajesh Kumar">Rajesh Kumar (Palamaner Collective)</option>
+                    <option value="Venkata Swamy">Venkata Swamy (Chittoor Organic Greens)</option>
+                  </>
+                )}
               </select>
             </div>
           </div>
 
-          {/* Option G: Whatsapp Notifications Checkbox */}
+          {/* Whatsapp Delivery Alert Toggle */}
           <div className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-200">
             <div>
-              <div className="font-extrabold text-farmGreen-950">WhatsApp Delivery Alert</div>
+              <div className="font-extrabold text-farmGreen-950 text-xs">WhatsApp Delivery Alert</div>
               <p className="text-[10px] text-farmMuted font-bold">Receive morning dispatcher updates and ETA details directly on WhatsApp</p>
             </div>
             <button
@@ -466,6 +811,7 @@ export const CustomerSubscriptions = ({ showToast }) => {
             </button>
           </div>
 
+          {/* Form Actions */}
           <div className="pt-2 flex justify-end gap-3 font-display">
             <button
               type="button"
@@ -476,7 +822,7 @@ export const CustomerSubscriptions = ({ showToast }) => {
             </button>
             <button
               type="submit"
-              className="group px-6 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white rounded-xl font-extrabold text-xs shadow-md flex items-center gap-2 cursor-pointer"
+              className="group px-6 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white rounded-xl font-extrabold text-xs shadow-md flex items-center gap-2 cursor-pointer transition-all active:scale-95"
             >
               <Save className="w-4 h-4" />
               <span>Start Subscription</span>
@@ -515,26 +861,48 @@ export const CustomerSubscriptions = ({ showToast }) => {
                         : 'bg-gray-50/80 border-gray-200 opacity-80'
                   }`}
                 >
-                  {/* Card Header: Product Name, Farmer, & Save Badge */}
+                  {/* Card Header: Product Image, Category Icon, Product Name, Farmer, & Save Badge */}
                   <div className="flex items-start justify-between gap-3 pb-3 border-b border-gray-100">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap mb-1">
-                        <h4 className="font-display font-black text-sm text-farmGreen-950 truncate">
-                          {sub.name}
-                        </h4>
-                        {sub.isActive && (
-                          <span className="px-2 py-0.5 bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-black text-[9px] rounded-full uppercase tracking-wider shadow-xs shrink-0 flex items-center gap-1 animate-pulse">
-                            <Sparkles className="w-2.5 h-2.5 text-amber-300" />
-                            Save {discountPercent}%
-                          </span>
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      {/* Product Thumbnail with Category Icon Badge */}
+                      <div className="relative w-12 h-12 rounded-xl overflow-hidden border border-emerald-200/80 shadow-2xs shrink-0 bg-gray-50">
+                        {sub.image ? (
+                          <img src={sub.image} alt={sub.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center bg-emerald-100 text-emerald-800">
+                            <Sprout className="w-6 h-6" />
+                          </div>
                         )}
+                        {(() => {
+                          const iconInfo = getProductIconInfo(sub);
+                          const CropIcon = iconInfo.Icon;
+                          return (
+                            <span className={`absolute bottom-0 right-0 p-0.5 rounded-tl-md ${iconInfo.bg} shadow-2xs`}>
+                              <CropIcon className="w-3 h-3" />
+                            </span>
+                          );
+                        })()}
                       </div>
-                      <div className="flex items-center gap-3 text-[10px] text-farmMuted font-bold">
-                        <span className="flex items-center gap-1 text-emerald-800">
-                          <User className="w-3 h-3 text-emerald-600" /> {sub.farmer}
-                        </span>
-                        <span>·</span>
-                        <span>{sub.frequency}</span>
+
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                          <h4 className="font-display font-black text-sm text-farmGreen-950 truncate">
+                            {sub.name}
+                          </h4>
+                          {sub.isActive && (
+                            <span className="px-2 py-0.5 bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-black text-[9px] rounded-full uppercase tracking-wider shadow-xs shrink-0 flex items-center gap-1 animate-pulse">
+                              <Sparkles className="w-2.5 h-2.5 text-amber-300" />
+                              Save {discountPercent}%
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-3 text-[10px] text-farmMuted font-bold">
+                          <span className="flex items-center gap-1 text-emerald-800">
+                            <User className="w-3 h-3 text-emerald-600" /> {sub.farmer}
+                          </span>
+                          <span>·</span>
+                          <span>{sub.frequency}</span>
+                        </div>
                       </div>
                     </div>
 
@@ -717,27 +1085,46 @@ export const CustomerSubscriptions = ({ showToast }) => {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          {subscriptionPresets.map((preset) => (
-            <div key={preset.name} className="p-4 bg-white/10 backdrop-blur-md rounded-2xl border border-white/10 flex flex-col justify-between space-y-3">
-              <div>
-                <div className="font-extrabold text-xs text-white leading-tight">{preset.name}</div>
-                <div className="text-[10px] text-emerald-200 font-medium mt-1">{preset.qty} · {preset.frequency}</div>
-                <div className="text-[9px] text-emerald-300 font-bold mt-1">Farmed by: {preset.farmer}</div>
-              </div>
-              <div className="flex items-center justify-between pt-2 border-t border-white/10">
-                <div className="flex items-center gap-1.5">
-                  <span className="font-black text-xs text-emerald-300">₹{preset.price}</span>
-                  <span className="text-[10px] text-white/50 line-through">₹{preset.originalPrice}</span>
+          {subscriptionPresets.map((preset) => {
+            const iconInfo = getProductIconInfo(preset);
+            const CropIcon = iconInfo.Icon;
+            return (
+              <div key={preset.name} className="p-4 bg-white/10 backdrop-blur-md rounded-2xl border border-white/10 flex flex-col justify-between space-y-3 relative group hover:bg-white/15 transition-all">
+                <div className="flex items-start gap-3">
+                  <div className="relative w-12 h-12 rounded-xl overflow-hidden border border-white/20 shrink-0 bg-white/5">
+                    {preset.image ? (
+                      <img src={preset.image} alt={preset.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-white/10 text-white">
+                        <CropIcon className="w-6 h-6" />
+                      </div>
+                    )}
+                    <span className="absolute bottom-0 right-0 p-0.5 rounded-tl-md bg-emerald-950/80 text-emerald-300">
+                      <CropIcon className="w-2.5 h-2.5" />
+                    </span>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="font-extrabold text-xs text-white leading-tight truncate">{preset.name}</div>
+                    <div className="text-[10px] text-emerald-200 font-medium mt-1">{preset.qty} · {preset.frequency}</div>
+                    <div className="text-[9px] text-emerald-300 font-bold mt-0.5 truncate">Farmed by: {preset.farmer}</div>
+                  </div>
                 </div>
-                <button
-                  onClick={() => handleSubscribePreset(preset)}
-                  className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-emerald-950 rounded-lg text-[10px] font-black cursor-pointer shadow-xs transition-all active:scale-95"
-                >
-                  Subscribe
-                </button>
+                <div className="flex items-center justify-between pt-2 border-t border-white/10">
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-black text-xs text-emerald-300">₹{preset.price}</span>
+                    <span className="text-[10px] text-white/50 line-through">₹{preset.originalPrice}</span>
+                  </div>
+                  <button
+                    onClick={() => handleSubscribePreset(preset)}
+                    className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-emerald-950 rounded-lg text-[10px] font-black cursor-pointer shadow-xs transition-all active:scale-95 flex items-center gap-1"
+                  >
+                    <Plus className="w-3 h-3" />
+                    <span>Subscribe</span>
+                  </button>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 

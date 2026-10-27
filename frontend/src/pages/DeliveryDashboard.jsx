@@ -87,12 +87,16 @@ export const DeliveryDashboard = () => {
   }, [loadDeliveryData]);
 
   // ── Status update — calls real backend then refreshes ─────────
-  const handleUpdateStatus = useCallback(async (orderId, newStatus, reason = null) => {
+  const handleUpdateStatus = useCallback(async (orderId, newStatus, meta = null) => {
     try {
+      const reasonText = typeof meta === 'string' ? meta : (meta?.note || meta?.failureReason || '');
       if (newStatus === 'Accepted') {
         await deliveryService.acceptOrder(orderId);
       } else {
-        await deliveryService.updateOrderStatus(orderId, newStatus, reason || '');
+        const payload = typeof meta === 'string'
+          ? (newStatus === 'Failed' ? { failureReason: meta } : { note: meta })
+          : (meta || {});
+        await deliveryService.updateOrderStatus(orderId, newStatus, payload);
       }
       
       // Optimistic UI update
@@ -102,16 +106,16 @@ export const DeliveryDashboard = () => {
         return {
           ...o,
           status: newStatus,
-          failureReason: reason || o.failureReason,
+          failureReason: reasonText || o.failureReason,
           deliveredTime: newStatus === 'Delivered' ? timeNow : o.deliveredTime,
           pickedUpTime: newStatus === 'Picked Up' ? timeNow : o.pickedUpTime,
           timeline: [
             ...(o.timeline || []),
-            { status: newStatus, time: timeNow, note: reason ? `Reason: ${reason}` : `Status advanced to ${newStatus}` }
+            { status: newStatus, time: timeNow, note: reasonText ? `Reason: ${reasonText}` : `Status advanced to ${newStatus}` }
           ]
         };
       }));
-      if (showToast) showToast(`Order Updated 🎉`, `Marked as ${newStatus}${reason ? `: ${reason}` : ''}`);
+      if (showToast) showToast(`Order Updated 🎉`, `Marked as ${newStatus}${reasonText ? `: ${reasonText}` : ''}`);
       // Refresh real database metrics
       loadDeliveryData();
     } catch (err) {

@@ -138,44 +138,42 @@ export const FarmerHarvestPlanner = () => {
 
   const handleAddSeason = async (e) => {
     e.preventDefault();
-    const newSeason = {
-      id: `h-${Date.now()}`,
-      cropName: name,
-      name,
-      startDate,
-      endDate,
-      expectedVolume: Number(expectedVolume),
-      currentYield: 0,
-      status: 'Scheduled',
-      buyerNotified: false,
-      lastBroadcastMsg: ''
-    };
     try {
       await farmerService.createHarvestPlan({
         cropName: name,
         startDate,
         endDate,
         expectedVolume: Number(expectedVolume)
-      }).catch(err => console.warn('Sync plan error:', err));
-    } catch (e) {
-      console.warn('Harvest plan sync error:', e);
+      });
+      const freshPlans = await farmerService.getHarvestPlans();
+      if (Array.isArray(freshPlans)) {
+        setSeasons(freshPlans.map(normalizePlan));
+      }
+      if (showToast) {
+        showToast('Harvest Schedule Saved 🌾', `${name} saved to database.`);
+      }
+    } catch (err) {
+      if (showToast) {
+        showToast('Harvest Plan Error', err.message || 'Could not save harvest plan to database.', 'error');
+      }
     }
-    setSeasons(prev => [...prev, normalizePlan(newSeason)]);
     setName('');
     setStartDate('');
     setEndDate('');
     setExpectedVolume('');
     setShowAddForm(false);
-    if (showToast) {
-      showToast('Harvest Schedule Saved 🌾', `${name} added to timeline.`);
-    }
   };
 
-  const handleDeleteSeason = (id) => {
+  const handleDeleteSeason = async (id) => {
     const target = seasons.find(s => s.id === id);
     setSeasons(seasons.filter(s => s.id !== id));
-    if (showToast) {
-      showToast('Schedule Removed 🗑️', `${target?.name || 'Item'} season has been cleared.`);
+    try {
+      await farmerService.deleteHarvestPlan(id);
+      if (showToast) {
+        showToast('Schedule Removed 🗑️', `${target?.name || 'Item'} season removed from database.`);
+      }
+    } catch (err) {
+      console.warn('Harvest plan delete error:', err);
     }
   };
 

@@ -35,6 +35,18 @@ async function startServer() {
           }
         }
         console.log('⚡ High-throughput composite indices verified and active.');
+
+        // Automatically ensure real-world products are populated without requiring manual seed
+        try {
+          const [countRow] = await query('SELECT COUNT(*) as total FROM products');
+          if (!countRow || countRow.total < 20) {
+            console.log('🌾 Database product catalog check: populating verified real farm products...');
+            const { insertRealProducts } = await import('./database/insert_real_products.js');
+            await insertRealProducts();
+          }
+        } catch (catErr) {
+          console.warn('Catalog auto-ensure warning:', catErr.message);
+        }
       } catch (patchErr) {
         // Schema already modified or table not yet created
       }

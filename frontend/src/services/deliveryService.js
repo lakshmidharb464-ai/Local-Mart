@@ -36,19 +36,20 @@ export const deliveryService = {
   },
 
   /** PATCH /api/delivery/orders/:id/status */
-  async updateOrderStatus(orderId, status, note = '') {
+  async updateOrderStatus(orderId, status, meta = {}) {
+    const payload = typeof meta === 'string' ? { status, note: meta } : { status, ...meta };
     const res = await apiClient(`/delivery/orders/${orderId}/status`, {
       method: 'PATCH',
-      body: { status, note },
+      body: payload,
     });
     return res;
   },
 
   /** POST /api/delivery/location */
-  async sendLocation(lat, lng) {
+  async sendLocation(lat, lng, orderId = null) {
     const res = await apiClient('/delivery/location', {
       method: 'POST',
-      body: { lat, lng },
+      body: { lat, lng, orderId },
     });
     return res;
   },
@@ -70,6 +71,14 @@ export const deliveryService = {
     const res = await apiClient('/delivery/shifts', {
       method: 'POST',
       body: shiftData,
+    });
+    return res;
+  },
+
+  /** DELETE /api/delivery/shifts/:id */
+  async cancelShift(shiftId) {
+    const res = await apiClient(`/delivery/shifts/${shiftId}`, {
+      method: 'DELETE',
     });
     return res;
   },

@@ -186,7 +186,7 @@ const CatCard = React.memo(({ cat, count, onClick }) => (
       <div className="absolute bottom-2.5 left-3 right-3">
         <div className="font-black text-xs sm:text-sm text-white leading-tight drop-shadow-xs">{cat.name}</div>
         <div className="text-[10px] text-emerald-300 font-bold mt-0.5 flex items-center gap-1 opacity-90 group-hover:opacity-100">
-          <span>{count} items</span>
+          <span>{count} {count === 1 ? 'item' : 'items'}</span>
           <ArrowRight className="w-2.5 h-2.5 group-hover:translate-x-0.5 transition-transform" />
         </div>
       </div>
@@ -370,14 +370,14 @@ export const CustomerHome = ({ products = [], setActiveTab, toggleWishlist, wish
   const approved = products.filter(p => p.status === 'Approved' || !p.status);
   const cats = ['All', 'Vegetables', 'Fruits', 'Dairy', 'Grocery'];
   
-  const matchesCategory = (itemCategory, filter) => {
+  const matchesCategory = (itemCategory, filter, itemName = '') => {
     if (!filter || filter === 'All') return true;
-    const c = String(itemCategory || '').toLowerCase();
+    const c = `${itemCategory || ''} ${itemName || ''}`.toLowerCase();
     const f = filter.toLowerCase();
-    if (f === 'vegetables' || f === 'veggies') return c.includes('veg');
-    if (f === 'fruits') return c.includes('fruit') || c.includes('season') || c.includes('mango') || c.includes('apple') || c.includes('berry');
-    if (f === 'dairy') return c.includes('dairy') || c.includes('milk') || c.includes('egg') || c.includes('ghee');
-    if (f === 'grocery') return c.includes('groc') || c.includes('oil') || c.includes('grain') || c.includes('pulse') || c.includes('flour');
+    if (f === 'vegetables' || f === 'veggies') return c.includes('veg') || c.includes('spinach') || c.includes('tomato') || c.includes('carrot') || c.includes('onion') || c.includes('potato');
+    if (f === 'fruits') return c.includes('fruit') || c.includes('season') || c.includes('mango') || c.includes('apple') || c.includes('berry') || c.includes('strawberr') || c.includes('citrus');
+    if (f === 'dairy') return c.includes('dairy') || c.includes('milk') || c.includes('egg') || c.includes('ghee') || c.includes('paneer') || c.includes('butter') || c.includes('curd');
+    if (f === 'grocery') return c.includes('groc') || c.includes('oil') || c.includes('grain') || c.includes('pulse') || c.includes('flour') || c.includes('spice');
     return c.includes(f);
   };
 
@@ -390,7 +390,7 @@ export const CustomerHome = ({ products = [], setActiveTab, toggleWishlist, wish
       return { ...p, calculatedDistKm: dist };
     })
     .filter(p => {
-      const matchCat = matchesCategory(p.category, activeCat);
+      const matchCat = matchesCategory(p.category || p.categoryName || p.categoryId, activeCat, p.name);
       const matchSearch = !search ||
         (p.name || '').toLowerCase().includes(search.toLowerCase()) ||
         (p.farmerName || '').toLowerCase().includes(search.toLowerCase());
@@ -404,8 +404,6 @@ export const CustomerHome = ({ products = [], setActiveTab, toggleWishlist, wish
       return 0;
     });
 
-
-
   const catConfig = [
     { name: 'Vegetables', image: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=500&q=80' },
     { name: 'Fruits',     image: 'https://images.unsplash.com/photo-1553279768-865429fa0078?auto=format&fit=crop&w=500&q=80' },
@@ -413,7 +411,10 @@ export const CustomerHome = ({ products = [], setActiveTab, toggleWishlist, wish
     { name: 'Grocery',    image: 'https://images.unsplash.com/photo-1589985270826-4b7bb135bc9d?auto=format&fit=crop&w=500&q=80' },
   ];
 
-  const getCatCount = (name) => approved.filter(p => p.category === name).length;
+  const getCatCount = (name) => {
+    if (name === 'All') return approved.length;
+    return approved.filter(p => matchesCategory(p.category || p.categoryName || p.categoryId, name, p.name)).length;
+  };
 
   const perks = [
     { icon: Truck, text: 'Same-Day Delivery', gradient: 'bg-gradient-to-br from-emerald-500 to-emerald-700' },
@@ -658,22 +659,21 @@ export const CustomerHome = ({ products = [], setActiveTab, toggleWishlist, wish
 
             {cats.map(cat => {
               const isSelected = activeCat === cat;
+              const count = getCatCount(cat);
               return (
                 <button
                   key={cat}
                   onClick={() => setActiveCat(cat)}
-                  className={`px-4 py-2 rounded-full text-xs font-extrabold shrink-0 transition-all cursor-pointer ${
+                  className={`px-4 py-2 rounded-full text-xs font-extrabold shrink-0 transition-all cursor-pointer flex items-center gap-1.5 ${
                     isSelected
                       ? 'bg-emerald-800 text-white shadow-md'
                       : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
                   }`}
                 >
                   <span>{cat}</span>
-                  {cat !== 'All' && (
-                    <span className={`ml-1.5 text-[10px] ${isSelected ? 'text-emerald-200' : 'text-gray-500'}`}>
-                      ({getCatCount(cat)})
-                    </span>
-                  )}
+                  <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${isSelected ? 'bg-emerald-700 text-emerald-100' : 'bg-gray-200 text-gray-600'}`}>
+                    {count}
+                  </span>
                 </button>
               );
             })}

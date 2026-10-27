@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
+import { orderService } from '../../services/orderService';
 import { 
   Truck, 
   Clock, 
@@ -61,10 +62,12 @@ export const CustomerOrders = ({ orders, setOrders }) => {
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  // Confirm cancel order
-  const handleConfirmCancel = () => {
+  // Confirm cancel order — persists directly to database via PATCH /api/orders/:id/status
+  const handleConfirmCancel = async () => {
     if (!orderToCancel) return;
-    setOrders(orders.map(o => o.id === orderToCancel.id ? { 
+    const targetId = orderToCancel.id;
+    // Optimistic UI update
+    setOrders(orders.map(o => o.id === targetId ? { 
       ...o, 
       status: 'Cancelled',
       timeline: [
@@ -72,8 +75,14 @@ export const CustomerOrders = ({ orders, setOrders }) => {
         { title: 'Cancelled', time: 'Just now', done: true, desc: `Cancelled: ${cancelReason}` }
       ]
     } : o));
-    showToast('Order Cancelled', `Order ${orderToCancel.id} has been cancelled.`);
+    showToast('Order Cancelled', `Order ${targetId} has been cancelled.`);
     setOrderToCancel(null);
+
+    try {
+      await orderService.updateOrderStatus(targetId, 'Cancelled', cancelReason);
+    } catch (err) {
+      console.warn('Order cancellation DB sync failed:', err);
+    }
   };
 
   const handleDownloadInvoice = (order) => {

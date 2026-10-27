@@ -95,6 +95,17 @@ export const authService = {
       inMemoryUser = null;
       return null;
     }
+  },
+
+  /**
+   * Update profile information
+   */
+  async updateProfile(profileData) {
+    await apiClient('/auth/profile', {
+      method: 'PUT',
+      body: profileData,
+    });
+    return this.getMe();
   }
 };
 

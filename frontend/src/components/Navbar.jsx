@@ -27,6 +27,7 @@ export const Navbar = ({ activeView, setActiveView }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [activeLink, setActiveLink] = useState('home');
+  const [hoveredLink, setHoveredLink] = useState(null);
   const { user, isAuthenticated, logout, openAuthModal } = useAuth();
   const { cartItems, setIsCartOpen } = useCart();
   const scrollTicking = useRef(false);
@@ -74,7 +75,7 @@ export const Navbar = ({ activeView, setActiveView }) => {
         window.requestAnimationFrame(() => {
           setScrolled(window.scrollY > 20);
           if (location.pathname === '/') {
-            const sections = ['home', 'about', 'services', 'marketplace', 'features', 'contact'];
+            const sections = ['home', 'about', 'services', 'features', 'contact'];
             for (const id of [...sections].reverse()) {
               const el = document.getElementById(id);
               if (el && window.scrollY >= el.offsetTop - 160) {
@@ -190,34 +191,40 @@ export const Navbar = ({ activeView, setActiveView }) => {
 
           {/* 2. Distinct Center Floating Island Pill Navigation */}
           <nav
+            onMouseLeave={() => setHoveredLink(null)}
             className="hidden lg:flex items-center gap-1 p-1.5 rounded-full bg-slate-900/70 backdrop-blur-2xl border border-emerald-500/25 shadow-[inset_0_1px_1px_rgba(255,255,255,0.1),0_4px_20px_rgba(0,0,0,0.3)]"
             aria-label="Primary Navigation"
           >
             {navLinks.map((link) => {
-              const isActive = (link.isRoute && location.pathname === link.to) || (!link.isRoute && location.pathname === '/' && activeLink === link.id);
+              const currentActive = location.pathname === '/' 
+                ? activeLink 
+                : (navLinks.find(l => l.isRoute && l.to === location.pathname)?.id || 'home');
+              const isSelected = hoveredLink ? hoveredLink === link.id : currentActive === link.id;
               const Icon = link.icon;
               return (
                 <NavLink
                   key={link.label}
                   to={link.to}
+                  onMouseEnter={() => setHoveredLink(link.id)}
                   onClick={(e) => {
                     e.preventDefault();
+                    setHoveredLink(null);
                     handleNavClick(link);
                   }}
-                  className={`relative px-4 py-1.5 rounded-full text-xs font-semibold transition-all duration-300 flex items-center gap-1.5 cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 group ${
-                    isActive
+                  className={`relative px-4 py-1.5 rounded-full text-xs font-semibold transition-all duration-300 flex items-center gap-1.5 cursor-pointer outline-none focus:outline-none focus-visible:outline-none group ${
+                    isSelected
                       ? 'bg-gradient-to-r from-emerald-500/30 via-teal-500/30 to-emerald-600/30 text-white font-bold border border-emerald-400/50 shadow-[0_0_15px_rgba(16,185,129,0.35)]'
-                      : 'text-emerald-100/80 hover:text-white hover:bg-white/[0.08] border border-transparent'
+                      : 'text-emerald-100/80 hover:text-white border border-transparent'
                   }`}
-                  aria-current={isActive ? 'page' : undefined}
+                  aria-current={currentActive === link.id ? 'page' : undefined}
                 >
                   <Icon
                     className={`w-3.5 h-3.5 transition-transform duration-200 ${
-                      isActive ? 'text-emerald-300 scale-110' : 'text-emerald-400/80 group-hover:scale-105'
+                      isSelected ? 'text-emerald-300 scale-110' : 'text-emerald-400/80 group-hover:scale-105'
                     }`}
                   />
                   <span>{link.label}</span>
-                  {isActive && (
+                  {isSelected && (
                     <span className="w-1.5 h-1.5 rounded-full ml-0.5 bg-emerald-400 shadow-[0_0_8px_#34d399] animate-pulse" />
                   )}
                 </NavLink>
@@ -366,7 +373,9 @@ export const Navbar = ({ activeView, setActiveView }) => {
               <div className="space-y-1">
                 {navLinks.map((link) => {
                   const Icon = link.icon;
-                  const isActive = (link.isRoute && location.pathname === link.to) || (!link.isRoute && location.pathname === '/' && activeLink === link.id);
+                  const isActive = location.pathname === '/' 
+                    ? activeLink === link.id 
+                    : (link.isRoute && location.pathname === link.to);
                   return (
                     <NavLink
                       key={link.label}

@@ -1,6 +1,7 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { MemberRank } from '../../components/MemberRank';
+import { apiClient } from '../../services/apiClient';
+import { MemberRank, getMemberTier } from '../../components/MemberRank';
 import { Profile } from '../../components/Profile';
 import { 
   User, 
@@ -34,42 +35,102 @@ import {
 } from 'lucide-react';
 
 export const CustomerProfileSettings = ({ initialSubTab = 'profile' }) => {
-  const { user, showToast, logout } = useAuth();
+  const { user, showToast, logout, refreshUser, updateUserProfile } = useAuth();
   const [activeSubTab, setActiveSubTab] = useState(initialSubTab);
 
-  // Profile State
-  const [name, setName] = useState(user?.name || 'Anita Sharma');
-  const [email, setEmail] = useState(user?.email || 'anita.sharma@gmail.com');
-  const [phone, setPhone] = useState('+91 98450 67123');
-  const [avatar, setAvatar] = useState(user?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80');
+  // Profile State derived authentically from database / auth session
+  const [name, setName] = useState(user?.name || '');
+  const [email, setEmail] = useState(user?.email || '');
+  const [phone, setPhone] = useState(user?.phone || user?.profile?.phone || '');
+  const [avatar, setAvatar] = useState(user?.avatarUrl || user?.avatar_url || user?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80');
 
-  // Option A: Saved Addresses State
-  const [addresses, setAddresses] = useState([
-    {
-      id: 'addr-1',
-      tag: 'Home',
-      houseNo: 'Flat 402, Green Acres',
-      streetArea: 'Baner Road',
-      landmark: 'Near Baner Bio Diversity Park',
-      city: 'Pune',
-      stateName: 'Maharashtra',
-      pincode: '411045',
-      deliveryInstruction: 'Leave with gate security',
-      isDefault: true
-    },
-    {
-      id: 'addr-2',
-      tag: 'Work',
-      houseNo: '12th Floor, Cyber Towers',
-      streetArea: 'Senapati Bapat Road',
-      landmark: 'Opposite Marriott Hotel',
-      city: 'Pune',
-      stateName: 'Maharashtra',
-      pincode: '411016',
-      deliveryInstruction: 'Call upon arrival',
-      isDefault: false
+  // Customer Loyalty & Tier Metrics from DB
+  const [loyaltyMetrics, setLoyaltyMetrics] = useState({
+    orderCount: Number(user?.profile?.order_count ?? user?.orderCount ?? 0),
+    totalSpent: Number(user?.profile?.total_spent ?? 0),
+    tier: user?.profile?.tier || 'Bronze'
+  });
+
+  // Saved Addresses from DB
+  const [addresses, setAddresses] = useState([]);
+  const [loadingAddresses, setLoadingAddresses] = useState(true);
+
+  // Fetch authentic database records
+  useEffect(() => {
+    // Sync immediate props from AuthContext
+    if (user) {
+      if (user.name) setName(user.name);
+      if (user.email) setEmail(user.email);
+      if (user.phone) setPhone(user.phone);
+      if (user.avatarUrl || user.avatar_url || user.avatar) {
+        setAvatar(user.avatarUrl || user.avatar_url || user.avatar);
+      }
     }
-  ]);
+
+    // 1. Fetch fresh user details directly from database via /auth/me
+    apiClient('/auth/me')
+      .then((res) => {
+        if (res?.user) {
+          const dbUser = res.user;
+          setName(dbUser.name || '');
+          setEmail(dbUser.email || '');
+          setPhone(dbUser.phone || '');
+          if (dbUser.avatar_url || dbUser.avatarUrl || dbUser.avatar) {
+            setAvatar(dbUser.avatar_url || dbUser.avatarUrl || dbUser.avatar);
+          }
+        }
+      })
+      .catch((err) => console.warn('Could not fetch fresh /auth/me:', err));
+
+    // 2. Fetch authentic customer loyalty tier and order metrics from DB
+    apiClient('/customers/tier')
+      .then((res) => {
+        if (res?.success) {
+          setLoyaltyMetrics({
+            orderCount: res.orderCount || 0,
+            totalSpent: res.totalSpent || 0,
+            tier: res.tier || 'Bronze Tier'
+          });
+        }
+      })
+      .catch(() => {});
+
+    // 3. Fetch saved customer addresses from DB
+    apiClient('/customers/addresses')
+      .then((res) => {
+        if (res?.addresses && Array.isArray(res.addresses)) {
+          const mapped = res.addresses.map((a) => ({
+            id: a.id,
+            tag: a.label || 'Home',
+            houseNo: a.address_line || '',
+            streetArea: a.landmark || '',
+            landmark: a.landmark || '',
+            city: a.city || '',
+            stateName: a.state || '',
+            pincode: a.pincode || '',
+            deliveryInstruction: 'Leave with gate security',
+            isDefault: Boolean(a.is_default)
+          }));
+          setAddresses(mapped);
+        }
+      })
+    // 4. Fetch real database subscriptions
+    apiClient('/subscriptions')
+      .then((res) => {
+        if (res?.subscriptions && Array.isArray(res.subscriptions)) {
+          setSubscriptions(res.subscriptions.map((s) => ({
+            id: s.id,
+            name: s.productName || 'Organic Farm Produce',
+            qty: s.quantity || '1 Unit',
+            frequency: s.frequency || 'Daily',
+            price: Number(s.price),
+            nextDelivery: s.nextDeliveryDate ? `Next: ${s.nextDeliveryDate}` : 'Tomorrow, 7:00 AM',
+            isActive: Boolean(s.isActive),
+          })));
+        }
+      })
+      .catch(() => {});
+  }, [user?.id]);
 
   // Form States for Adding/Editing Address
   const [isEditingAddress, setIsEditingAddress] = useState(false);
@@ -87,36 +148,8 @@ export const CustomerProfileSettings = ({ initialSubTab = 'profile' }) => {
   const [isLocating, setIsLocating] = useState(false);
   const [copiedAddressId, setCopiedAddressId] = useState(null);
 
-  // Option C: Subscriptions State
-  const [subscriptions, setSubscriptions] = useState([
-    {
-      id: 'sub-1',
-      name: 'Organic Desi Cow Milk',
-      qty: '2 Litres',
-      frequency: 'Daily',
-      price: 160,
-      nextDelivery: 'Tomorrow, 7:00 AM',
-      isActive: true
-    },
-    {
-      id: 'sub-2',
-      name: 'Fresh Farm Eggs (Cage-Free)',
-      qty: '1 Dozen',
-      frequency: 'Every Tue & Fri',
-      price: 120,
-      nextDelivery: 'Tuesday, 8:00 AM',
-      isActive: true
-    },
-    {
-      id: 'sub-3',
-      name: 'Hydroponic Salad Greens Mix',
-      qty: '500g',
-      frequency: 'Weekly',
-      price: 240,
-      nextDelivery: 'August 28, 9:00 AM',
-      isActive: false
-    }
-  ]);
+  // Subscriptions State directly connected to database
+  const [subscriptions, setSubscriptions] = useState([]);
 
   const subscriptionPresets = [
     { name: 'Fresh A2 Cow Milk', price: 90, frequency: 'Daily', qty: '1 Litre' },
@@ -141,14 +174,6 @@ export const CustomerProfileSettings = ({ initialSubTab = 'profile' }) => {
   const [themeMode, setThemeMode] = useState('Light');
   const [whatsappSubAlerts, setWhatsappSubAlerts] = useState(true);
 
-  // Profile Save Callback
-  const handleSaveProfileData = (updatedData) => {
-    setName(updatedData.name);
-    setEmail(updatedData.email);
-    setPhone(updatedData.phone);
-    setAvatar(updatedData.avatar);
-    showToast('Profile Saved', 'Customer information updated successfully.');
-  };
 
   // Address Handlers
   const handleStartAddNewAddress = () => {
@@ -177,59 +202,125 @@ export const CustomerProfileSettings = ({ initialSubTab = 'profile' }) => {
     setIsEditingAddress(true);
   };
 
-  const handleSaveAddressForm = (e) => {
-    e.preventDefault();
-    if (editingAddressId) {
-      // Update
-      setAddresses(addresses.map(addr => addr.id === editingAddressId ? {
-        ...addr,
-        tag: formTag,
-        houseNo: formHouseNo,
-        streetArea: formStreetArea,
-        landmark: formLandmark,
-        city: formCity,
-        stateName: formStateName,
-        pincode: formPincode,
-        deliveryInstruction: formInstruction
-      } : addr));
-      showToast('Address Updated 📍', `${formTag} delivery address has been updated.`);
-    } else {
-      // Add
-      const newAddr = {
-        id: `addr-${Date.now()}`,
-        tag: formTag,
-        houseNo: formHouseNo,
-        streetArea: formStreetArea,
-        landmark: formLandmark,
-        city: formCity,
-        stateName: formStateName,
-        pincode: formPincode,
-        deliveryInstruction: formInstruction,
-        isDefault: addresses.length === 0
-      };
-      setAddresses([...addresses, newAddr]);
-      showToast('Address Saved 📍', `${formTag} delivery destination successfully registered.`);
+  const handleSaveProfileData = async (updatedData) => {
+    try {
+      if (updateUserProfile) {
+        await updateUserProfile({
+          name: updatedData.name,
+          phone: updatedData.phone,
+          avatarUrl: updatedData.avatar,
+        });
+      } else {
+        await apiClient('/auth/profile', {
+          method: 'PUT',
+          body: {
+            name: updatedData.name,
+            phone: updatedData.phone,
+            avatarUrl: updatedData.avatar,
+          },
+        });
+        showToast('Profile Saved ✨', 'Customer profile details updated successfully.');
+      }
+      setName(updatedData.name);
+      if (updatedData.phone !== undefined) setPhone(updatedData.phone);
+      if (updatedData.avatar) setAvatar(updatedData.avatar);
+      if (refreshUser) refreshUser();
+    } catch (err) {
+      showToast('Save Failed', err.message || 'Unable to update profile.', 'error');
     }
-    setIsEditingAddress(false);
   };
 
-  const handleSetDefaultAddress = (id) => {
-    setAddresses(addresses.map(addr => ({
-      ...addr,
-      isDefault: addr.id === id
-    })));
-    const selected = addresses.find(addr => addr.id === id);
-    showToast('Default Address Saved', `${selected?.tag || 'Location'} set as primary delivery destination.`);
+  const handleSaveAddressForm = async (e) => {
+    e.preventDefault();
+    try {
+      const fullAddressLine = formHouseNo ? `${formHouseNo}, ${formStreetArea}` : formStreetArea;
+      if (editingAddressId) {
+        // Update in DB
+        await apiClient(`/customers/addresses/${editingAddressId}`, {
+          method: 'PUT',
+          body: {
+            label: formTag,
+            addressLine: fullAddressLine,
+            landmark: formLandmark,
+            city: formCity,
+            state: formStateName,
+            pincode: formPincode
+          }
+        });
+        setAddresses(addresses.map(addr => addr.id === editingAddressId ? {
+          ...addr,
+          tag: formTag,
+          houseNo: formHouseNo,
+          streetArea: formStreetArea,
+          landmark: formLandmark,
+          city: formCity,
+          stateName: formStateName,
+          pincode: formPincode,
+          deliveryInstruction: formInstruction
+        } : addr));
+        showToast('Address Updated 📍', `${formTag} delivery destination updated.`);
+      } else {
+        // Insert into DB
+        const res = await apiClient('/customers/addresses', {
+          method: 'POST',
+          body: {
+            label: formTag,
+            addressLine: fullAddressLine,
+            landmark: formLandmark,
+            city: formCity,
+            state: formStateName,
+            pincode: formPincode,
+            isDefault: addresses.length === 0
+          }
+        });
+        const newAddr = {
+          id: res?.addressId || `addr-${Date.now()}`,
+          tag: formTag,
+          houseNo: formHouseNo,
+          streetArea: formStreetArea,
+          landmark: formLandmark,
+          city: formCity,
+          stateName: formStateName,
+          pincode: formPincode,
+          deliveryInstruction: formInstruction,
+          isDefault: addresses.length === 0
+        };
+        setAddresses([newAddr, ...addresses]);
+        showToast('Address Saved 📍', `${formTag} delivery destination registered.`);
+      }
+      setIsEditingAddress(false);
+    } catch (err) {
+      showToast('Address Error', err.message || 'Could not save address', 'error');
+    }
   };
 
-  const handleDeleteAddress = (id) => {
+  const handleSetDefaultAddress = async (id) => {
+    try {
+      await apiClient(`/customers/addresses/${id}/default`, { method: 'PATCH' });
+      setAddresses(addresses.map(addr => ({
+        ...addr,
+        isDefault: addr.id === id
+      })));
+      const selected = addresses.find(addr => addr.id === id);
+      showToast('Default Address Saved', `${selected?.tag || 'Location'} set as primary delivery destination.`);
+    } catch (err) {
+      showToast('Error', err.message || 'Could not set default address', 'error');
+    }
+  };
+
+  const handleDeleteAddress = async (id) => {
     const target = addresses.find(addr => addr.id === id);
     if (target?.isDefault) {
       showToast('Action Denied ⚠️', 'Cannot delete your active default address. Set another default first.', 'error');
       return;
     }
-    setAddresses(addresses.filter(addr => addr.id !== id));
-    showToast('Address Deleted 🗑️', `${target?.tag || 'Location'} address has been removed.`);
+    try {
+      await apiClient(`/customers/addresses/${id}`, { method: 'DELETE' });
+      setAddresses(addresses.filter(addr => addr.id !== id));
+      showToast('Address Deleted 🗑️', `${target?.tag || 'Location'} address has been removed.`);
+    } catch (err) {
+      showToast('Error', err.message || 'Could not delete address', 'error');
+    }
   };
 
   const handleDetectLocation = () => {
@@ -256,39 +347,63 @@ export const CustomerProfileSettings = ({ initialSubTab = 'profile' }) => {
     setTimeout(() => setCopiedAddressId(null), 2000);
   };
 
-  // Subscription Handlers
-  const handleToggleSubActive = (id) => {
-    setSubscriptions(subscriptions.map(sub => {
-      if (sub.id === id) {
-        const nextState = !sub.isActive;
-        showToast(
-          nextState ? 'Subscription Resumed 🟢' : 'Subscription Paused ⏸️',
-          `${sub.name} delivery cycle is now ${nextState ? 'active' : 'on-hold'}.`
-        );
-        return { ...sub, isActive: nextState };
-      }
-      return sub;
-    }));
+  // Subscription Handlers connected directly to database API
+  const handleToggleSubActive = async (id) => {
+    const sub = subscriptions.find(s => s.id === id);
+    if (!sub) return;
+    const nextState = !sub.isActive;
+    setSubscriptions(subscriptions.map(s => s.id === id ? { ...s, isActive: nextState } : s));
+    try {
+      await apiClient(`/subscriptions/${id}`, {
+        method: 'PATCH',
+        body: { isActive: nextState }
+      });
+      showToast(
+        nextState ? 'Subscription Resumed 🟢' : 'Subscription Paused ⏸️',
+        `${sub.name} delivery cycle is now ${nextState ? 'active' : 'on-hold'}.`
+      );
+    } catch (err) {
+      console.warn('Subscription DB update failed:', err);
+    }
   };
 
-  const handleCancelSubscription = (id) => {
+  const handleCancelSubscription = async (id) => {
     const target = subscriptions.find(sub => sub.id === id);
     setSubscriptions(subscriptions.filter(sub => sub.id !== id));
-    showToast('Subscription Cancelled 🛑', `${target?.name || 'Item'} subscription has been ended.`);
+    try {
+      await apiClient(`/subscriptions/${id}`, { method: 'DELETE' });
+      showToast('Subscription Cancelled 🛑', `${target?.name || 'Item'} subscription has been ended.`);
+    } catch (err) {
+      console.warn('Subscription DB delete failed:', err);
+    }
   };
 
-  const handleAddPresetSubscription = (preset) => {
-    const newSub = {
-      id: `sub-${Date.now()}`,
-      name: preset.name,
-      qty: preset.qty,
-      frequency: preset.frequency,
-      price: preset.price,
-      nextDelivery: 'Starting Tomorrow, 7:00 AM',
-      isActive: true
-    };
-    setSubscriptions([...subscriptions, newSub]);
-    showToast('Subscription Active 📅', `Successfully subscribed to ${preset.name} (${preset.frequency}).`);
+  const handleAddPresetSubscription = async (preset) => {
+    try {
+      let productId = 'p4';
+      if (preset.name.toLowerCase().includes('egg')) productId = 'p6';
+      else if (preset.name.toLowerCase().includes('veg') || preset.name.toLowerCase().includes('box')) productId = 'p7';
+
+      await apiClient('/subscriptions', {
+        method: 'POST',
+        body: { productId, quantity: preset.qty, frequency: preset.frequency }
+      });
+      const res = await apiClient('/subscriptions');
+      if (res?.subscriptions && Array.isArray(res.subscriptions)) {
+        setSubscriptions(res.subscriptions.map((s) => ({
+          id: s.id,
+          name: s.productName || preset.name,
+          qty: s.quantity || preset.qty,
+          frequency: s.frequency || preset.frequency,
+          price: Number(s.price),
+          nextDelivery: s.nextDeliveryDate ? `Next: ${s.nextDeliveryDate}` : 'Tomorrow, 7:00 AM',
+          isActive: Boolean(s.isActive),
+        })));
+      }
+      showToast('Subscription Active 📅', `Successfully subscribed to ${preset.name} (${preset.frequency}).`);
+    } catch (err) {
+      showToast('Error', err.message || 'Could not save subscription.', 'error');
+    }
   };
 
   // Password & Notification Handlers
@@ -348,16 +463,16 @@ export const CustomerProfileSettings = ({ initialSubTab = 'profile' }) => {
 
             <div className="space-y-1.5">
               <div className="flex items-center gap-2 flex-wrap">
-                <h2 className="font-display font-black text-2xl sm:text-3xl text-white tracking-tight">{name}</h2>
+                <h2 className="font-display font-black text-2xl sm:text-3xl text-white tracking-tight">{name || 'Customer'}</h2>
                 <span className="bg-farmGreen-400/20 backdrop-blur-md text-farmGreen-200 text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-wider border border-farmGreen-400/30 flex items-center gap-1 shadow-xs">
                   <Sparkles className="w-3 h-3 text-farmOrange-400" /> Verified Buyer
                 </span>
               </div>
-              <p className="text-xs text-farmGreen-200/90 font-medium">{email} · {phone}</p>
+              <p className="text-xs text-farmGreen-200/90 font-medium">{email || 'No email registered'} · {phone || 'No phone registered'}</p>
               
               {/* Member Rank Component */}
               <div className="pt-1">
-                <MemberRank orderCount={Number(user?.profile?.order_count ?? user?.orderCount ?? user?.order_count ?? 0)} compact={true} tooltipPosition="bottom" tooltipAlign="left" />
+                <MemberRank orderCount={loyaltyMetrics.orderCount} compact={true} tooltipPosition="bottom" tooltipAlign="left" />
               </div>
             </div>
           </div>
@@ -416,47 +531,58 @@ export const CustomerProfileSettings = ({ initialSubTab = 'profile' }) => {
         {/* Option D: Profile Subtab with Savings Rank Stats */}
         {activeSubTab === 'profile' && (
           <div className="space-y-6 animate-fadeIn">
-            {/* Membership Tier & Savings Panel */}
-            <div className="bg-gradient-to-br from-emerald-50 via-white to-teal-50/30 p-6 rounded-[24px] border border-emerald-100/80 shadow-farm-sm space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center font-extrabold text-lg shadow-sm">
-                    🥇
+            {/* Membership Tier & Savings Panel from Database */}
+            {(() => {
+              const tierInfo = getMemberTier(loyaltyMetrics.orderCount);
+              const tierBadge = tierInfo.level === 'Gold' ? '🥇' : tierInfo.level === 'Silver' ? '🥈' : '🥉';
+              return (
+                <div className="bg-gradient-to-br from-emerald-50 via-white to-teal-50/30 p-6 rounded-[24px] border border-emerald-100/80 shadow-farm-sm space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center font-extrabold text-lg shadow-sm">
+                        {tierBadge}
+                      </div>
+                      <div>
+                        <h3 className="font-extrabold text-base text-farmGreen-950">{tierInfo.tier} Status</h3>
+                        <p className="text-xs text-farmMuted font-bold">
+                          {tierInfo.nextTier ? `Progress to ${tierInfo.nextTier}: ${tierInfo.ordersNeeded} more orders needed` : 'Maximum VIP Tier Achieved!'}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    {/* Live Stats indicators */}
+                    <div className="flex items-center gap-5">
+                      <div className="text-center sm:text-right">
+                        <div className="text-[10px] text-farmMuted font-black uppercase tracking-wider">Total Orders</div>
+                        <div className="font-black text-lg text-farmGreen-950">{loyaltyMetrics.orderCount}</div>
+                      </div>
+                      <div className="w-px h-8 bg-gray-200" />
+                      <div className="text-center sm:text-right">
+                        <div className="text-[10px] text-farmMuted font-black uppercase tracking-wider">Total Spent</div>
+                        <div className="font-black text-lg text-emerald-700">₹{Number(loyaltyMetrics.totalSpent).toLocaleString()}</div>
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="font-extrabold text-base text-farmGreen-950">Gold Buyer Status</h3>
-                    <p className="text-xs text-farmMuted font-bold">Progress to Emerald Rank: 35 / 50 Orders</p>
-                  </div>
-                </div>
-                
-                {/* Stats indicators */}
-                <div className="flex items-center gap-5">
-                  <div className="text-center sm:text-right">
-                    <div className="text-[10px] text-farmMuted font-black uppercase tracking-wider">Total Orders</div>
-                    <div className="font-black text-lg text-farmGreen-950">35</div>
-                  </div>
-                  <div className="w-px h-8 bg-gray-200" />
-                  <div className="text-center sm:text-right">
-                    <div className="text-[10px] text-farmMuted font-black uppercase tracking-wider">Lifetime Savings</div>
-                    <div className="font-black text-lg text-emerald-700">₹2,450</div>
-                  </div>
-                </div>
-              </div>
 
-              {/* Progress Bar */}
-              <div className="space-y-2">
-                <div className="flex justify-between text-[11px] font-extrabold text-farmGreen-950">
-                  <span>Gold Member (Tier 2)</span>
-                  <span>70% to Emerald (Tier 3)</span>
+                  {/* Progress Bar */}
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-[11px] font-extrabold text-farmGreen-950">
+                      <span>{tierInfo.tier}</span>
+                      <span>{tierInfo.progressPct !== undefined ? `${tierInfo.progressPct}% to ${tierInfo.nextTier}` : 'Top Rank'}</span>
+                    </div>
+                    <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden relative">
+                      <div
+                        className="absolute top-0 left-0 h-full bg-gradient-to-r from-amber-400 via-emerald-500 to-emerald-600 rounded-full transition-all duration-1000"
+                        style={{ width: `${tierInfo.progressPct || 100}%` }}
+                      />
+                    </div>
+                    <p className="text-[10px] text-farmMuted font-medium italic">
+                      * Current member benefits: {tierInfo.discount} and {tierInfo.delivery} delivery.
+                    </p>
+                  </div>
                 </div>
-                <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden relative">
-                  <div className="absolute top-0 left-0 h-full bg-gradient-to-r from-amber-400 via-emerald-500 to-emerald-600 rounded-full transition-all duration-1000" style={{ width: '70%' }} />
-                </div>
-                <p className="text-[10px] text-farmMuted font-medium italic">
-                  * Reach Emerald status (50 orders) to unlock free delivery on all orders and custom priority harvest notifications!
-                </p>
-              </div>
-            </div>
+              );
+            })()}
 
             <Profile
               initialData={{ name, email, phone, avatar }}

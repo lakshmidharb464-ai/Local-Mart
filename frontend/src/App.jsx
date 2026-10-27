@@ -104,6 +104,9 @@ const MainLayout = () => {
   // Checkout gets minimal layout (no full navbar/footer distractions)
   const isCheckoutRoute = location.pathname.startsWith('/checkout');
 
+  // Product detail view gets focused card presentation (no navbar in big screen card)
+  const isProductDetailRoute = location.pathname.startsWith('/products/');
+
   const isKnownRoute = ['/', '/products', '/farms', '/cart', '/checkout', '/order-confirmation', '/dashboard', '/customer', '/farmer', '/delivery', '/admin'].some(path =>
     location.pathname === '/' || location.pathname.startsWith(path)
   );
@@ -113,13 +116,16 @@ const MainLayout = () => {
   // Unauthenticated user trying to access protected dashboard route renders UnauthorizedPage
   const isProtectedGateTriggered = isDashboardRoute && !isAuthenticated;
 
-  // Hide Navbar & Footer for Dashboards, Checkout, 404 NotFoundPage, and 403 UnauthorizedPage
-  const hideNavbarAndFooter = (isDashboardRoute && isAuthenticated) || isCheckoutRoute || isErrorOrGatePage || isProtectedGateTriggered;
+  // Hide Navbar for Dashboards, Checkout, 404/403, and Product Detail big screen card view
+  const hideNavbar = (isDashboardRoute && isAuthenticated) || isCheckoutRoute || isErrorOrGatePage || isProtectedGateTriggered || isProductDetailRoute;
+
+  // Hide Footer for Dashboards, Checkout, and 404/403
+  const hideFooter = (isDashboardRoute && isAuthenticated) || isCheckoutRoute || isErrorOrGatePage || isProtectedGateTriggered;
 
   return (
     <div className="min-h-screen flex flex-col bg-farmBg text-farmText font-body">
       <SEOHead />
-      {!hideNavbarAndFooter && <Navbar />}
+      {!hideNavbar && <Navbar />}
 
       <main className="flex-1">
         <ErrorBoundary>
@@ -181,7 +187,7 @@ const MainLayout = () => {
         </ErrorBoundary>
       </main>
 
-      {!hideNavbarAndFooter && <Footer />}
+      {!hideFooter && <Footer />}
       <CartDrawer />
       <AuthModal />
       <PrdModal />

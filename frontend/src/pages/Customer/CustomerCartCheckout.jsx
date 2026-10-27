@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
+import { useMarketplace } from '../../context/MarketplaceContext';
 import { AddressForm } from './AddressForm';
 import { PaymentForm } from './PaymentForm';
 import { DiscountForm } from './DiscountForm';
@@ -87,6 +88,7 @@ const StepBar = ({ current, onStepClick }) => (
 ═══════════════════════════════════════════════════ */
 export const CustomerCartCheckout = ({ setActiveTab, addNewCustomerOrder }) => {
   const { cartItems, clearCart, updateQuantity, removeFromCart } = useCart();
+  const { products } = useMarketplace();
   const { showToast, user } = useAuth();
 
   const [step, setStep] = useState(1);
@@ -94,6 +96,24 @@ export const CustomerCartCheckout = ({ setActiveTab, addNewCustomerOrder }) => {
   const [address, setAddress] = useState(ADDRESS_PRESETS[0].addr);
   const [deliveryNotes, setDeliveryNotes] = useState('');
   const [deliverySlot, setDeliverySlot] = useState('express'); // 'express' | 'morning' | 'evening'
+
+  // Auto-prune stale cart items that no longer exist in the active database catalog
+  useEffect(() => {
+    if (products && products.length > 0 && cartItems.length > 0) {
+      const invalidItems = cartItems.filter(item => {
+        const pId = item.product?.id || item.id;
+        return !products.some(p => p.id === pId);
+      });
+      if (invalidItems.length > 0) {
+        invalidItems.forEach(item => {
+          removeFromCart(item.product?.id || item.id);
+        });
+        if (showToast) {
+          showToast('Basket Updated', 'Removed outdated items no longer available in the farm catalog.', 'info');
+        }
+      }
+    }
+  }, [products, cartItems, removeFromCart, showToast]);
 
   // Live coupons from DB
   const [liveCoupons, setLiveCoupons] = useState([]);
@@ -209,6 +229,13 @@ export const CustomerCartCheckout = ({ setActiveTab, addNewCustomerOrder }) => {
       if (showToast) showToast('Order Placed Successfully! 🎉', `Order ${assignedId} dispatched to farmer & delivery.`);
     } catch (err) {
       console.error('[Checkout] Order placement error:', err);
+      // If error indicates a missing/stale product, auto-remove it from the cart
+      if (err.message) {
+        const match = err.message.match(/Product ["']?([a-zA-Z0-9_-]+)["']?/i);
+        if (match && match[1]) {
+          removeFromCart(match[1]);
+        }
+      }
       if (showToast) showToast('Checkout Failed', err.message || 'Could not place order. Please check stock.', 'error');
     } finally {
       setIsPlacing(false);

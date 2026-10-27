@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
+import { apiClient } from '../../services/apiClient';
+import { getMemberTier } from '../../components/MemberRank';
 import {
   Home, Leaf, Heart, ShoppingCart, PackageCheck,
   Settings, LogOut, Sprout, Menu, X, ChevronRight,
@@ -141,8 +143,48 @@ export const CustomerNavbar = ({ activeTab, setActiveTab, wishlistCount = 0 }) =
     { id: 'orders',        label: 'My Orders',      icon: PackageCheck },
   ];
 
-  const avatar = user?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80';
-  const userName = user?.name || 'nanibhai2026';
+  const [memberRank, setMemberRank] = useState(() => {
+    const fallbackCount = Number(user?.profile?.order_count ?? user?.orderCount ?? user?.order_count ?? 0);
+    const tierObj = getMemberTier(fallbackCount);
+    const initialTier = user?.profile?.tier ? `${user.profile.tier} Tier` : `${tierObj.level} Tier`;
+    return {
+      tier: initialTier,
+      orderCount: fallbackCount,
+      level: tierObj.level
+    };
+  });
+
+  useEffect(() => {
+    if (user?.id) {
+      apiClient('/customers/tier')
+        .then(res => {
+          if (res?.success) {
+            const rawTier = res.tier || 'Bronze Tier';
+            const tierClean = rawTier.endsWith('Tier') ? rawTier : `${rawTier} Tier`;
+            const level = tierClean.replace(' Tier', '').trim();
+            setMemberRank({
+              tier: tierClean,
+              orderCount: res.orderCount ?? 0,
+              level: level
+            });
+          }
+        })
+        .catch(() => {});
+    }
+  }, [user?.id]);
+
+  const rankColor = memberRank.level.toLowerCase().includes('gold')
+    ? '#d97706'
+    : memberRank.level.toLowerCase().includes('silver')
+      ? '#64748b'
+      : '#b45309';
+
+  const deliveryPin = user?.profile?.city
+    ? `${user.profile.city}${user.profile.pincode ? `, ${user.profile.pincode}` : ''}`
+    : user?.address || 'Baner, Pune';
+
+  const avatar = user?.avatarUrl || user?.avatar_url || user?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80';
+  const userName = user?.name || user?.email?.split('@')[0] || 'Anita Sharma';
 
   return (
     <header
@@ -344,13 +386,13 @@ export const CustomerNavbar = ({ activeTab, setActiveTab, wishlistCount = 0 }) =
                       >
                         {userName}
                       </h4>
-                      <p className="text-[11px] truncate" style={{ color: '#4b6355' }}>{user?.email || 'anita.sharma@gmail.com'}</p>
+                      <p className="text-[11px] truncate" style={{ color: '#4b6355' }}>{user?.email || 'customer@localfarmdirect.in'}</p>
                       <div
                         className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider"
                         style={{ background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.3)', color: '#16a34a' }}
                       >
                         <ShieldCheck className="w-3 h-3" />
-                        <span>Verified Gold Buyer</span>
+                        <span>Verified {memberRank.level} Buyer</span>
                       </div>
                     </div>
                   </div>
@@ -358,8 +400,8 @@ export const CustomerNavbar = ({ activeTab, setActiveTab, wishlistCount = 0 }) =
                   {/* Stat Chips */}
                   <div className="p-3 grid grid-cols-2 gap-2" style={{ borderBottom: '1px solid #f0f6f1' }}>
                     {[
-                      { icon: MapPin, label: 'Delivery Pin', val: 'Baner, Pune', color: '#16a34a' },
-                      { icon: Award, label: 'Member Rank', val: 'Gold Tier', color: '#d97706' },
+                      { icon: MapPin, label: 'Delivery Pin', val: deliveryPin, color: '#16a34a' },
+                      { icon: Award, label: 'Member Rank', val: memberRank.tier, color: rankColor },
                     ].map(({ icon: Icon, label, val, color }) => (
                       <div
                         key={label}

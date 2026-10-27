@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../context/AuthContext';
+import { farmerService } from '../../services/farmerService';
 import { 
   Package, 
   ShoppingCart, 
@@ -101,6 +102,7 @@ export const FarmerDashboardView = ({
   setProducts,
   orders = [], 
   setOrders,
+  updateOrderStatus,
   setActiveTab, 
   setShowAddModal,
   farmStatus = 'open',
@@ -125,35 +127,55 @@ export const FarmerDashboardView = ({
   const totalSales = orders.reduce((sum, o) => sum + Number(o.total || 0), 0);
   const lowStockProducts = products.filter(p => p.stock < 15);
 
-  const handleQuickAdvanceOrder = (orderId, currentStatus) => {
+  const handleQuickAdvanceOrder = async (orderId, currentStatus) => {
     let nextStatus = 'Accepted';
     if (currentStatus === 'Pending') nextStatus = 'Accepted';
     else if (currentStatus === 'Accepted') nextStatus = 'Out for Delivery';
     else if (currentStatus === 'Out for Delivery') nextStatus = 'Delivered';
 
     if (setOrders) setOrders(orders.map(o => o.id === orderId ? { ...o, status: nextStatus } : o));
-    if (showToast) showToast('Order Updated', `Order ${orderId} progressed to ${nextStatus}`);
+    try {
+      if (updateOrderStatus) {
+        await updateOrderStatus(orderId, nextStatus);
+      } else {
+        await farmerService.updateOrderStatus(orderId, nextStatus);
+      }
+      if (showToast) showToast('Order Updated 📦', `Order ${orderId} progressed to ${nextStatus} in database.`);
+    } catch (err) {
+      if (showToast) showToast('Update Error', err.message || 'Could not update order status in database.', 'error');
+    }
   };
 
-  const handleQuickRestock = (productId, productName) => {
+  const handleQuickRestock = async (productId, productName) => {
     setRestockingId(productId);
-    setTimeout(() => {
-      if (setProducts) setProducts(products.map(p => p.id === productId ? { ...p, stock: (p.stock || 0) + 25 } : p));
+    const prod = products.find(p => p.id === productId);
+    const nextStock = (prod?.stock || 0) + 25;
+    if (setProducts) setProducts(products.map(p => p.id === productId ? { ...p, stock: nextStock } : p));
+    try {
+      await farmerService.updateProduct(productId, { stock: nextStock });
+      if (showToast) showToast('Restocked in Database 🌾', `Added +25 units to ${productName}. Stock is now ${nextStock}.`);
+    } catch (err) {
+      if (showToast) showToast('Restock Error', err.message || 'Could not update stock in database.', 'error');
+    } finally {
       setRestockingId(null);
-      if (showToast) showToast('Restocked', `Added +25 units to ${productName}.`);
-    }, 400);
+    }
   };
 
-  const handleSendBroadcast = (e) => {
+  const handleSendBroadcast = async (e) => {
     e.preventDefault();
     setIsBroadcasting(true);
-    setTimeout(() => {
-      setIsBroadcasting(false);
+    const msg = customMessage || broadcastTemplate;
+    try {
+      await farmerService.sendBroadcast(msg, 'Farmer Harvest Announcement');
       setShowBroadcastModal(false);
       setBroadcastTemplate('');
       setCustomMessage('');
-      if (showToast) showToast('Broadcast Sent 📢', 'Notification broadcast sent to all subscribed buyers.');
-    }, 700);
+      if (showToast) showToast('Broadcast Dispatched 📢', 'Notification saved to database & broadcast to buyers.');
+    } catch (err) {
+      if (showToast) showToast('Broadcast Error', err.message || 'Could not send broadcast notification.', 'error');
+    } finally {
+      setIsBroadcasting(false);
+    }
   };
 
   const broadcastTemplates = [

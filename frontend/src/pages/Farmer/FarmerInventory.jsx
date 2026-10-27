@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useTranslation } from 'react-i18next';
+import { farmerService } from '../../services/farmerService';
 import { 
   Boxes, 
   AlertTriangle, 
@@ -52,10 +53,10 @@ export const FarmerInventory = ({ products = [], setProducts }) => {
   const filteredProducts = products
     .filter(p => {
       const matchesSearch = 
-        p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.category.toLowerCase().includes(searchQuery.toLowerCase());
+        (p.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (p.category || '').toLowerCase().includes(searchQuery.toLowerCase());
 
-      const matchesCategory = selectedCategory === 'all' || p.category.toLowerCase() === selectedCategory.toLowerCase();
+      const matchesCategory = selectedCategory === 'all' || (p.category || '').toLowerCase() === selectedCategory.toLowerCase();
 
       if (!matchesSearch || !matchesCategory) return false;
 
@@ -77,7 +78,7 @@ export const FarmerInventory = ({ products = [], setProducts }) => {
   const unavailableCount = products.filter(p => p.isUnavailable || p.stock === 0).length;
   const totalInventoryValue = products.reduce((acc, p) => acc + (p.stock * p.price), 0);
 
-  const handleUpdateStock = (id, delta, name) => {
+  const handleUpdateStock = async (id, delta, name) => {
     try {
       if (typeof navigator !== 'undefined' && navigator.vibrate) {
         navigator.vibrate(15);
@@ -85,43 +86,57 @@ export const FarmerInventory = ({ products = [], setProducts }) => {
     } catch {
       // Ignore vibration errors
     }
-    setProducts(products.map(p => {
-      if (p.id === id) {
-        const newStock = Math.max(0, p.stock + delta);
-        return { ...p, stock: newStock };
-      }
-      return p;
-    }));
+    const prod = products.find(p => p.id === id);
+    if (!prod) return;
+    const newStock = Math.max(0, (prod.stock || 0) + delta);
+    setProducts(products.map(p => p.id === id ? { ...p, stock: newStock } : p));
+    try {
+      await farmerService.updateProduct(id, { stock: newStock });
+      if (showToast) showToast('Stock Updated 📦', `${name || prod.name}: ${newStock} ${prod.unit || 'kg'} saved in database.`);
+    } catch (err) {
+      if (showToast) showToast('Database Error', err.message || 'Could not update stock in database.', 'error');
+    }
   };
 
-  const handleToggleAvailability = (id, currentStatus, name) => {
-    setProducts(products.map(p => {
-      if (p.id === id) {
-        const isUnavailable = !p.isUnavailable;
-        return { ...p, isUnavailable };
-      }
-      return p;
-    }));
-    if (showToast) showToast('Status Updated', `${name} sales status updated.`);
+  const handleToggleAvailability = async (id, currentStatus, name) => {
+    const prod = products.find(p => p.id === id);
+    if (!prod) return;
+    const isCurrentlyOff = prod.status === 'Inactive' || prod.isUnavailable;
+    const newStatus = isCurrentlyOff ? 'Approved' : 'Inactive';
+    const newUnavailable = !isCurrentlyOff;
+
+    setProducts(products.map(p => p.id === id ? { ...p, isUnavailable: newUnavailable, status: newStatus } : p));
+    try {
+      await farmerService.updateProduct(id, { status: newStatus });
+      if (showToast) showToast('Status Updated 🟢', `${name || prod.name} is now ${newStatus === 'Approved' ? 'Live & For Sale' : 'Paused / Unavailable'}.`);
+    } catch (err) {
+      if (showToast) showToast('Database Error', err.message || 'Could not update status in database.', 'error');
+    }
   };
 
-  const handleBatchRestockSubmit = (e) => {
+  const handleBatchRestockSubmit = async (e) => {
     e.preventDefault();
     if (!restockProduct) return;
     const addQty = parseInt(restockAmount) || 0;
+    const newStock = (restockProduct.stock || 0) + addQty;
     setProducts(products.map(p => {
       if (p.id === restockProduct.id) {
-        return { ...p, stock: p.stock + addQty, isUnavailable: false };
+        return { ...p, stock: newStock, isUnavailable: false, status: 'Approved' };
       }
       return p;
     }));
-    if (showToast) {
-      showToast('Fresh Harvest Added! 🌾', `Added +${addQty} ${restockProduct.unit}s of ${restockProduct.name}.`);
+    try {
+      await farmerService.updateProduct(restockProduct.id, { stock: newStock, status: 'Approved' });
+      if (showToast) {
+        showToast('Fresh Harvest Saved! 🌾', `Added +${addQty} ${restockProduct.unit}s of ${restockProduct.name} in database.`);
+      }
+    } catch (err) {
+      if (showToast) showToast('Database Error', err.message || 'Could not save stock in database.', 'error');
     }
     setRestockProduct(null);
   };
 
-  const handleSavePriceUpdate = (e) => {
+  const handleSavePriceUpdate = async (e) => {
     e.preventDefault();
     if (!editPriceProduct) return;
     const updatedPrice = parseFloat(newPrice) || editPriceProduct.price;
@@ -131,22 +146,34 @@ export const FarmerInventory = ({ products = [], setProducts }) => {
       }
       return p;
     }));
-    if (showToast) {
-      showToast('Price Updated 🏷️', `Price set to ₹${updatedPrice}/${editPriceProduct.unit}.`);
+    try {
+      await farmerService.updateProduct(editPriceProduct.id, { price: updatedPrice });
+      if (showToast) {
+        showToast('Price Updated 🏷️', `Price set to ₹${updatedPrice}/${editPriceProduct.unit} in database.`);
+      }
+    } catch (err) {
+      if (showToast) showToast('Database Error', err.message || 'Could not save price in database.', 'error');
     }
     setEditPriceProduct(null);
   };
 
-  const handleQuickFlashDeal = (prodId, prodName) => {
+  const handleQuickFlashDeal = async (prodId, prodName) => {
+    const prod = products.find(p => p.id === prodId);
+    if (!prod) return;
+    const discounted = Math.round(prod.price * 0.8);
     setProducts(products.map(p => {
       if (p.id === prodId) {
-        const discounted = Math.round(p.price * 0.8);
         return { ...p, originalPrice: p.price, price: discounted, isFlashSale: true };
       }
       return p;
     }));
-    if (showToast) {
-      showToast('Anti-Waste Flash Deal ⚡', `Applied 20% discount on ${prodName} to accelerate fresh sales!`);
+    try {
+      await farmerService.updateProduct(prodId, { price: discounted, flashDiscount: 20 });
+      if (showToast) {
+        showToast('Anti-Waste Flash Deal ⚡', `Applied 20% discount on ${prodName} in database!`);
+      }
+    } catch (err) {
+      if (showToast) showToast('Database Error', err.message || 'Could not apply discount in database.', 'error');
     }
   };
 

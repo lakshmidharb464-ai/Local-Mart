@@ -121,7 +121,7 @@ export const FarmerDashboard = () => {
           />
         );
       case 'orders':
-        return <FarmerOrders orders={orders} setOrders={setOrders} />;
+        return <FarmerOrders orders={orders} setOrders={setOrders} updateOrderStatus={updateOrderStatus} />;
       case 'inventory':
         return <FarmerInventory products={products} setProducts={setProducts} />;
       case 'sales':
@@ -138,6 +138,7 @@ export const FarmerDashboard = () => {
             setProducts={setProducts}
             orders={orders}
             setOrders={setOrders}
+            updateOrderStatus={updateOrderStatus}
             setActiveTab={setActiveTab}
             setShowAddModal={setShowAddModal}
             farmStatus={farmStatus}

@@ -364,6 +364,40 @@ export const AdminSettings = ({ isDark = false }) => {
   // Audit Log States
   const [auditFilter, setAuditFilter] = useState('All');
 
+  // Sync loaded settings into states
+  useEffect(() => {
+    if (serverSettings && Object.keys(serverSettings).length > 0) {
+      const mp = serverSettings.marketplace || serverSettings;
+      if (mp.storeName) setStoreName(mp.storeName);
+      if (mp.deliveryFee !== undefined) setDeliveryFee(Number(mp.deliveryFee));
+      if (mp.minOrderAmount !== undefined) setMinOrder(Number(mp.minOrderAmount));
+      else if (mp.minOrder !== undefined) setMinOrder(Number(mp.minOrder));
+      if (mp.currency) setCurrency(mp.currency);
+      if (mp.hubLocation) setHubLocation(mp.hubLocation);
+
+      const comm = serverSettings.commission;
+      if (comm) {
+        if (comm.defaultCommissionRate !== undefined) setCommission(Number(comm.defaultCommissionRate));
+        else if (comm.rate !== undefined) setCommission(Number(comm.rate));
+        if (comm.payoutSchedule) setPayoutSchedule(comm.payoutSchedule);
+        if (comm.minPayout !== undefined) setMinPayout(Number(comm.minPayout));
+        if (comm.gstIncluded !== undefined) setGstIncluded(Boolean(comm.gstIncluded));
+      }
+
+      const notifs = serverSettings.notifications;
+      if (notifs) {
+        if (notifs.newOrderAlert !== undefined) setNewOrderAlert(Boolean(notifs.newOrderAlert));
+        if (notifs.farmerRegAlert !== undefined) setFarmerRegAlert(Boolean(notifs.farmerRegAlert));
+        if (notifs.lowStockAlert !== undefined) setLowStockAlert(Boolean(notifs.lowStockAlert));
+      }
+
+      const sec = serverSettings.security;
+      if (sec) {
+        if (sec.twoFactorAuth !== undefined) setTwoFactorAuth(Boolean(sec.twoFactorAuth));
+      }
+    }
+  }, [serverSettings]);
+
   /* ── Handlers ── */
   const handleSaveProfileData = (updatedData) => {
     setProfileName(updatedData.name);
@@ -383,47 +417,96 @@ export const AdminSettings = ({ isDark = false }) => {
     setNewPassword('');
   };
 
-  const handleSaveMarketplace = (e) => {
+  const handleSaveMarketplace = async (e) => {
     e.preventDefault();
-    if (showToast) showToast('Marketplace Settings Saved 🏪', 'Platform fees & configuration updated.');
-  };
-
-  const handleSaveNotifications = (e) => {
-    e.preventDefault();
-    if (showToast) showToast('Notification Preferences Saved 🔔', 'System alert settings updated.');
-  };
-
-  const handleSaveSecurity = (e) => {
-    e.preventDefault();
-    if (showToast) showToast('Security Settings Updated 🛡️', 'Two-Factor Auth and password settings saved.');
-  };
-
-  const handleUserAction = (action, targetUser) => {
-    if (action === 'suspend') {
-      setUserStatuses(prev => ({ ...prev, [targetUser.id]: 'Suspended' }));
-      if (showToast) showToast('Account Suspended 🚫', `${targetUser.name}'s account has been suspended.`, 'error');
-    } else if (action === 'unsuspend') {
-      setUserStatuses(prev => ({ ...prev, [targetUser.id]: 'Active' }));
-      if (showToast) showToast('Account Reactivated ✅', `${targetUser.name}'s account is now active.`);
-    } else if (action === 'approve') {
-      setUserStatuses(prev => ({ ...prev, [targetUser.id]: 'Active' }));
-      if (showToast) showToast('Account Approved ✅', `${targetUser.name} has been approved and activated.`);
-    } else if (action === 'view-docs') {
-      setActiveSubTab('kyc');
+    try {
+      await adminService.updateSettings({
+        marketplace: { storeName, deliveryFee, minOrderAmount: minOrder, currency, hubLocation }
+      });
+      if (showToast) showToast('Marketplace Settings Saved 🏪', 'Platform fees & configuration updated.');
+    } catch (err) {
+      if (showToast) showToast('Error ⚠️', err.message || 'Failed to save marketplace settings.', 'error');
     }
   };
 
-  const handleKycAction = (id, action) => {
-    setKycItems(prev => prev.map(k => k.id === id ? { ...k, status: action === 'approve' ? 'Approved' : 'Rejected' } : k));
-    if (showToast) showToast(
-      action === 'approve' ? 'KYC Approved ✅' : 'KYC Rejected ❌',
-      action === 'approve' ? 'Document verified and farmer status updated.' : 'Document rejected. Farmer will be notified.'
-    );
+  const handleSaveNotifications = async (e) => {
+    e.preventDefault();
+    try {
+      await adminService.updateSettings({
+        notifications: { newOrderAlert, farmerRegAlert, lowStockAlert }
+      });
+      if (showToast) showToast('Notification Preferences Saved 🔔', 'System alert settings updated.');
+    } catch (err) {
+      if (showToast) showToast('Error ⚠️', err.message || 'Failed to save notification preferences.', 'error');
+    }
   };
 
-  const handleSaveCommission = (e) => {
+  const handleSaveSecurity = async (e) => {
     e.preventDefault();
-    if (showToast) showToast('Commission Rules Saved 💰', `Platform commission set to ${commission}%. Payout: ${payoutSchedule}.`);
+    try {
+      await adminService.updateSettings({
+        security: { twoFactorAuth, sessionTimeout: '30 mins' }
+      });
+      if (showToast) showToast('Security Settings Updated 🛡️', 'Two-Factor Auth and password settings saved.');
+    } catch (err) {
+      if (showToast) showToast('Error ⚠️', err.message || 'Failed to save security settings.', 'error');
+    }
+  };
+
+  const handleUserAction = async (action, targetUser) => {
+    try {
+      if (action === 'suspend') {
+        if (targetUser.role === 'Farmer' || userRoleFilter === 'farmers') {
+          await adminService.setFarmerStatus(targetUser.id, 'Inactive');
+        } else if (targetUser.role === 'Delivery' || userRoleFilter === 'delivery') {
+          await adminService.setDeliveryPartnerStatus(targetUser.id, 'Inactive');
+        } else {
+          await adminService.setCustomerStatus(targetUser.id, 'Inactive');
+        }
+        setUserStatuses(prev => ({ ...prev, [targetUser.id]: 'Suspended' }));
+        if (showToast) showToast('Account Suspended 🚫', `${targetUser.name}'s account has been suspended.`, 'error');
+      } else if (action === 'unsuspend' || action === 'approve') {
+        if (targetUser.role === 'Farmer' || userRoleFilter === 'farmers') {
+          await adminService.setFarmerStatus(targetUser.id, 'Active');
+        } else if (targetUser.role === 'Delivery' || userRoleFilter === 'delivery') {
+          await adminService.setDeliveryPartnerStatus(targetUser.id, 'Approved');
+        } else {
+          await adminService.setCustomerStatus(targetUser.id, 'Active');
+        }
+        setUserStatuses(prev => ({ ...prev, [targetUser.id]: 'Active' }));
+        if (showToast) showToast('Account Activated ✅', `${targetUser.name}'s account is now active.`);
+      } else if (action === 'view-docs') {
+        setActiveSubTab('kyc');
+      }
+    } catch (err) {
+      if (showToast) showToast('Action Error', err.message || 'Failed to update user status.', 'error');
+    }
+  };
+
+  const handleKycAction = async (id, action) => {
+    const decision = action === 'approve' ? 'Approved' : 'Rejected';
+    try {
+      await adminService.decideKyc(id, decision);
+      setKycItems(prev => prev.map(k => k.id === id ? { ...k, status: decision } : k));
+      if (showToast) showToast(
+        decision === 'Approved' ? 'KYC Approved ✅' : 'KYC Rejected ❌',
+        decision === 'Approved' ? 'Document verified and farmer status updated.' : 'Document rejected. Farmer will be notified.'
+      );
+    } catch (err) {
+      if (showToast) showToast('KYC Error', err.message || 'Failed to update KYC decision.', 'error');
+    }
+  };
+
+  const handleSaveCommission = async (e) => {
+    e.preventDefault();
+    try {
+      await adminService.updateSettings({
+        commission: { defaultCommissionRate: commission, payoutSchedule, minPayout, gstIncluded }
+      });
+      if (showToast) showToast('Commission Rules Saved 💰', `Platform commission set to ${commission}%. Payout: ${payoutSchedule}.`);
+    } catch (err) {
+      if (showToast) showToast('Error ⚠️', err.message || 'Failed to save commission settings.', 'error');
+    }
   };
 
   const handleToggleZone = (id) => {
@@ -444,12 +527,19 @@ export const AdminSettings = ({ isDark = false }) => {
     );
   };
 
-  const handleSaveMaintenance = (e) => {
+  const handleSaveMaintenance = async (e) => {
     e.preventDefault();
-    if (showToast) showToast(
-      maintenanceMode ? 'Maintenance Mode Active 🔧' : 'Platform Live ✅',
-      maintenanceMode ? 'Platform is in maintenance. Only admins can access.' : 'Platform restored to full operation.'
-    );
+    try {
+      await adminService.updateSettings({
+        maintenance: { active: maintenanceMode, message: maintenanceMsg, scheduledDate: maintenanceDate }
+      });
+      if (showToast) showToast(
+        maintenanceMode ? 'Maintenance Mode Active 🔧' : 'Platform Live ✅',
+        maintenanceMode ? 'Platform is in maintenance. Only admins can access.' : 'Platform restored to full operation.'
+      );
+    } catch (err) {
+      if (showToast) showToast('Error ⚠️', err.message || 'Failed to save maintenance mode.', 'error');
+    }
   };
 
   const filteredUsers = (() => {

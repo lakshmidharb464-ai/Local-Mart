@@ -15,9 +15,17 @@ export const AuditLogTab = ({
   const displayAudit = useMemo(() => {
     let list = filteredAudit;
     if (timeFilter === 'today') {
-      list = list.filter(item => item.timestamp.startsWith('2026-08-25'));
+      const todayDate = new Date().toDateString();
+      list = list.filter(item => {
+        if (!item) return false;
+        if (item.created_at && new Date(item.created_at).toDateString() === todayDate) return true;
+        const raw = String(item.timestamp || '');
+        return raw.includes('Today') || (item.created_at && raw.includes(new Date().getFullYear().toString()));
+      });
     } else if (timeFilter === '7d') {
-      list = list.slice(0, 8);
+      list = list.slice(0, 15);
+    } else if (timeFilter === '30d') {
+      list = list.slice(0, 50);
     }
     return list;
   }, [filteredAudit, timeFilter]);

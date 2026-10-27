@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { deliveryService } from '../../services/deliveryService';
 import { 
   Package, 
   MapPin, 
@@ -43,6 +44,17 @@ export const MyDeliveries = ({ orders = [], onUpdateStatus, setSelectedOrder, se
   const [otpError, setOtpError] = useState('');
   const [copiedId, setCopiedId] = useState(null);
   const [isOnlineDuty, setIsOnlineDuty] = useState(true);
+
+  const handleToggleDuty = async () => {
+    const nextState = !isOnlineDuty;
+    setIsOnlineDuty(nextState);
+    try {
+      await deliveryService.toggleDuty(nextState);
+      if (showToast) showToast('Duty Updated', `Status changed to ${nextState ? 'ONLINE' : 'OFFLINE'}.`);
+    } catch (err) {
+      console.warn('Failed to update duty in database:', err);
+    }
+  };
 
   const filteredOrders = orders.filter((del) => {
     const matchesSearch = 
@@ -126,7 +138,7 @@ export const MyDeliveries = ({ orders = [], onUpdateStatus, setSelectedOrder, se
       return;
     }
     if (otpOrder) {
-      onUpdateStatus(otpOrder.orderId || otpOrder.id, 'Delivered');
+      onUpdateStatus(otpOrder.orderId || otpOrder.id, 'Delivered', { otpCode: otpInput.trim() });
       if (showToast) showToast('Delivery Success! 🎉', `Order ${otpOrder.id} verified with OTP PIN & marked as delivered.`);
       setOtpOrder(null);
     }
@@ -162,7 +174,7 @@ export const MyDeliveries = ({ orders = [], onUpdateStatus, setSelectedOrder, se
                   Courier Fleet Dispatch
                 </span>
                 <button
-                  onClick={() => setIsOnlineDuty(!isOnlineDuty)}
+                  onClick={handleToggleDuty}
                   className={`px-3 py-0.5 rounded-full text-[10px] font-black transition-all cursor-pointer flex items-center gap-1 shadow-xs ${
                     isOnlineDuty ? 'bg-emerald-500 text-stone-950 font-black' : 'bg-stone-800 text-stone-300'
                   }`}

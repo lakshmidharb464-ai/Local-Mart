@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { farmerService } from '../../services/farmerService';
 import { 
   Search, 
   Eye, 
@@ -31,7 +32,7 @@ import {
   FileText
 } from 'lucide-react';
 
-export const FarmerOrders = ({ orders = [], setOrders }) => {
+export const FarmerOrders = ({ orders = [], setOrders, updateOrderStatus }) => {
   const { showToast } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStatusTab, setSelectedStatusTab] = useState('All');
@@ -41,14 +42,14 @@ export const FarmerOrders = ({ orders = [], setOrders }) => {
   const statusOptions = ['All', 'Pending', 'Accepted', 'Out for Delivery', 'Delivered', 'Cancelled'];
 
   const filteredOrders = orders.filter(o => {
-    const matchesSearch = o.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          o.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          (o.items && o.items.toLowerCase().includes(searchQuery.toLowerCase()));
+    const matchesSearch = (o.id || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          (o.customerName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          (o.items && String(o.items).toLowerCase().includes(searchQuery.toLowerCase()));
     const matchesStatus = selectedStatusTab === 'All' || o.status === selectedStatusTab;
     return matchesSearch && matchesStatus;
   });
 
-  const handleUpdateStatus = (orderId, newStatus) => {
+  const handleUpdateStatus = async (orderId, newStatus) => {
     try {
       if (typeof navigator !== 'undefined' && navigator.vibrate) {
         navigator.vibrate(15);
@@ -57,7 +58,16 @@ export const FarmerOrders = ({ orders = [], setOrders }) => {
       // Ignore vibration errors
     }
     setOrders(orders.map(o => o.id === orderId ? { ...o, status: newStatus } : o));
-    if (showToast) showToast('Order Status Updated 📦', `Order ${orderId} status set to ${newStatus}.`);
+    try {
+      if (updateOrderStatus) {
+        await updateOrderStatus(orderId, newStatus);
+      } else {
+        await farmerService.updateOrderStatus(orderId, newStatus);
+      }
+      if (showToast) showToast('Order Status Updated 📦', `Order ${orderId} status set to ${newStatus} in database.`);
+    } catch (err) {
+      if (showToast) showToast('Update Error', err.message || 'Could not update order status in database.', 'error');
+    }
   };
 
   const handleAcceptOrder = (orderId) => {

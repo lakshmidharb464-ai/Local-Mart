@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { realtimeService } from '../../services/realtimeService';
+import { deliveryService } from '../../services/deliveryService';
 import { 
   Navigation, 
   MapPin, 
@@ -567,6 +568,9 @@ export const DeliveryTracking = ({ orders = [], selectedOrder, setSelectedOrder,
         setDeviceLocation({ lat: latitude, lng: longitude });
         setIsLocating(false);
 
+        // Send telemetry to MySQL delivery_tracking table
+        deliveryService.sendLocation(latitude, longitude, currentOrder?.id).catch(() => {});
+
         if (leafletMapRef.current) {
           if (deviceMarkerRef.current) deviceMarkerRef.current.remove();
 
@@ -760,8 +764,9 @@ export const DeliveryTracking = ({ orders = [], selectedOrder, setSelectedOrder,
       return;
     }
 
-    // Demo pin validation
-    if (enteredPin !== '4920' && enteredPin !== '1234' && enteredPin !== '0000') {
+    // Real database OTP code validation with demo fallback
+    const validPins = [currentOrder?.otpCode, '4920', '1234', '0000'].filter(Boolean);
+    if (!validPins.includes(enteredPin)) {
       const remaining = otpAttemptsLeft - 1;
       setOtpAttemptsLeft(remaining);
       if (remaining <= 0) {
@@ -772,7 +777,11 @@ export const DeliveryTracking = ({ orders = [], selectedOrder, setSelectedOrder,
       return;
     }
 
-    onUpdateStatus(currentOrder.id, 'Delivered');
+    onUpdateStatus(currentOrder.id, 'Delivered', {
+      otpCode: enteredPin,
+      proofPhotoUrl: otpPhotoUrl || proofPhotoUrl || null,
+      note: 'Verified with delivery OTP PIN and customer handover'
+    });
     setShowOtpModal(false);
     if (showToast) {
       showToast('Delivery Completed! 🎉', `Order ${currentOrder.id} successfully handed over.`);

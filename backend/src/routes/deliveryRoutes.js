@@ -9,6 +9,7 @@ import {
   getHubs,
   getShifts,
   bookShift,
+  cancelShift,
   getEarnings,
   getDeliveryProfile,
   updateDeliveryProfile,
@@ -33,6 +34,7 @@ router.patch('/orders/:id/status', updateOrderStatus);
 router.get('/hubs', getHubs);
 router.get('/shifts', getShifts);
 router.post('/shifts', bookShift);
+router.delete('/shifts/:id', cancelShift);
 
 // Earnings & Profile & KYC
 router.get('/earnings', getEarnings);

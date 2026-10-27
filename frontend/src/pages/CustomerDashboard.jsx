@@ -6,6 +6,8 @@ import { CustomerNavbar } from './Customer/CustomerNavbar';
 import { FloatingCartBar } from '../components/FloatingCartBar';
 import { MobileBottomNav } from '../components/MobileBottomNav';
 
+import { customerService } from '../services/customerService';
+
 const CustomerHome = lazy(() => import('./Customer/CustomerHome').then(m => ({ default: m.CustomerHome || m.default })));
 const CustomerProducts = lazy(() => import('./Customer/CustomerProducts').then(m => ({ default: m.CustomerProducts || m.default })));
 const CustomerWishlist = lazy(() => import('./Customer/CustomerWishlist').then(m => ({ default: m.CustomerWishlist || m.default })));
@@ -25,7 +27,7 @@ const ViewLoader = () => (
 );
 
 export const CustomerDashboard = ({ setActiveView }) => {
-  const { showToast } = useAuth();
+  const { showToast, user } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -46,34 +48,39 @@ export const CustomerDashboard = ({ setActiveView }) => {
     }
   };
 
-
   // Master Customer States from Shared Marketplace
   const { products, orders: customerOrders, placeOrder, setOrders: setCustomerOrders } = useMarketplace();
   const [quickBuyProduct, setQuickBuyProduct] = useState(null);
 
-  // Persisted Customer Wishlist
-  const [wishlist, setWishlist] = useState(() => {
-    try {
-      const saved = localStorage.getItem('localfarm_wishlist');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
+  // Real Database Customer Wishlist from MySQL (customer_wishlists table)
+  const [wishlist, setWishlist] = useState([]);
 
   React.useEffect(() => {
-    try {
-      localStorage.setItem('localfarm_wishlist', JSON.stringify(wishlist));
-    } catch (e) {
-      console.error('Error saving wishlist:', e);
+    if (user) {
+      customerService.getWishlist()
+        .then((items) => {
+          if (Array.isArray(items)) setWishlist(items);
+        })
+        .catch((err) => console.warn('Could not load database wishlist:', err));
     }
-  }, [wishlist]);
+  }, [user]);
 
-  const toggleWishlist = (product) => {
-    if (wishlist.some(w => w.id === product.id)) {
-      setWishlist(wishlist.filter(w => w.id !== product.id));
+  const toggleWishlist = async (product) => {
+    if (!product?.id) return;
+    const isPresent = wishlist.some(w => w.id === product.id);
+    // Optimistic UI update
+    if (isPresent) {
+      setWishlist(prev => prev.filter(w => w.id !== product.id));
     } else {
-      setWishlist([...wishlist, product]);
+      setWishlist(prev => [...prev, product]);
+    }
+    try {
+      await customerService.toggleWishlist(product.id);
+    } catch (err) {
+      console.warn('Wishlist DB sync failed, reverting:', err);
+      // Revert if API failed
+      if (isPresent) setWishlist(prev => [...prev, product]);
+      else setWishlist(prev => prev.filter(w => w.id !== product.id));
     }
   };
 

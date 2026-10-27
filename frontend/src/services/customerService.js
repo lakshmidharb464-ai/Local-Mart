@@ -101,12 +101,74 @@ export const customerService = {
   },
 
   /**
+   * Fetch customer wishlist items
+   * GET /api/customers/wishlist
+   */
+  async getWishlist() {
+    try {
+      const res = await apiClient('/customers/wishlist');
+      return res?.wishlist || [];
+    } catch (err) {
+      console.warn('[customerService] Failed to load wishlist:', err);
+      return [];
+    }
+  },
+
+  /**
+   * Toggle product in database wishlist
+   * POST /api/customers/wishlist
+   */
+  async toggleWishlist(productId) {
+    return await apiClient('/customers/wishlist', {
+      method: 'POST',
+      body: { productId },
+    });
+  },
+
+  /**
    * Fetch customer subscriptions
    * GET /api/subscriptions
    */
   async getSubscriptions() {
-    const res = await apiClient('/subscriptions');
-    return res?.subscriptions || [];
+    try {
+      const res = await apiClient('/subscriptions');
+      return res?.subscriptions || [];
+    } catch (err) {
+      console.warn('[customerService] Failed to load subscriptions:', err);
+      return [];
+    }
+  },
+
+  /**
+   * Create a new subscription
+   * POST /api/subscriptions
+   */
+  async createSubscription(subData) {
+    return await apiClient('/subscriptions', {
+      method: 'POST',
+      body: subData,
+    });
+  },
+
+  /**
+   * Update or pause a subscription
+   * PATCH /api/subscriptions/:id
+   */
+  async updateSubscription(id, changes) {
+    return await apiClient(`/subscriptions/${id}`, {
+      method: 'PATCH',
+      body: changes,
+    });
+  },
+
+  /**
+   * Cancel / delete a subscription
+   * DELETE /api/subscriptions/:id
+   */
+  async deleteSubscription(id) {
+    return await apiClient(`/subscriptions/${id}`, {
+      method: 'DELETE',
+    });
   },
 };
 

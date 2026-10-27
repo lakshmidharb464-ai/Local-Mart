@@ -43,14 +43,18 @@ export async function createOrder(req, res, next) {
         );
 
         if (products.length === 0) {
-          throw new Error(`Product ${item.productId || item.id} not found.`);
+          const notFoundError = new Error(`Product "${item.name || item.productId || item.id}" was not found or is no longer listed in the farm catalog.`);
+          notFoundError.status = 404;
+          throw notFoundError;
         }
 
         const product = products[0];
         const qty = Number(item.quantity) || 1;
 
         if (product.stock < qty) {
-          throw new Error(`Insufficient stock for "${product.name}". Available: ${product.stock}, Requested: ${qty}`);
+          const stockError = new Error(`Insufficient stock for "${product.name}". Available: ${product.stock}, Requested: ${qty}`);
+          stockError.status = 400;
+          throw stockError;
         }
 
         const itemTotal = Number(product.price) * qty;

@@ -668,3 +668,43 @@ export async function getFarmerKyc(req, res, next) {
     next(error);
   }
 }
+
+/**
+ * Delete Harvest Plan
+ * DELETE /api/farmer/harvest-plans/:id
+ */
+export async function deleteHarvestPlan(req, res, next) {
+  try {
+    const { id } = req.params;
+    const farmerId = req.user.id;
+    await execute('DELETE FROM farmer_harvest_plans WHERE id = ? AND farmer_id = ?', [id, farmerId]);
+    res.json({ success: true, message: 'Harvest schedule removed from database.' });
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * Broadcast harvest / seasonal announcement to customers
+ * POST /api/farmer/broadcast
+ */
+export async function postBroadcast(req, res, next) {
+  try {
+    const farmerId = req.user.id;
+    const { message, title = 'Fresh Harvest Alert' } = req.body;
+    if (!message) {
+      return res.status(400).json({ success: false, message: 'Broadcast message is required.' });
+    }
+    const customers = await query("SELECT id FROM users WHERE role = 'Customer'");
+    for (const cust of customers) {
+      await execute(
+        "INSERT INTO notifications (id, user_id, title, message, type) VALUES (?, ?, ?, ?, 'harvest')",
+        [uuidv4(), cust.id, title, message]
+      );
+    }
+    res.json({ success: true, message: 'Notification broadcast successfully saved to database.' });
+  } catch (error) {
+    next(error);
+  }
+}
+

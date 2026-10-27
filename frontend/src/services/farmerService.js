@@ -134,6 +134,27 @@ export const farmerService = {
   },
 
   /**
+   * Delete harvest schedule from database
+   * DELETE /api/farmer/harvest-plans/:id
+   */
+  async deleteHarvestPlan(id) {
+    return apiClient(`/farmer/harvest-plans/${id}`, {
+      method: 'DELETE',
+    });
+  },
+
+  /**
+   * Broadcast announcement to all subscribed customers
+   * POST /api/farmer/broadcast
+   */
+  async sendBroadcast(message, title = 'Fresh Harvest Alert') {
+    return apiClient('/farmer/broadcast', {
+      method: 'POST',
+      body: { message, title },
+    });
+  },
+
+  /**
    * Get inventory batches
    * GET /api/farmer/inventory/batches
    */

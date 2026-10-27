@@ -415,6 +415,35 @@ export async function bookShift(req, res, next) {
 }
 
 /**
+ * Cancel Booked Shift
+ * DELETE /api/delivery/shifts/:id
+ */
+export async function cancelShift(req, res, next) {
+  try {
+    const riderId = req.user.id;
+    const { id } = req.params;
+
+    const [existing] = await query(
+      'SELECT id FROM delivery_shifts WHERE id = ? AND delivery_partner_id = ?',
+      [id, riderId]
+    );
+
+    if (!existing) {
+      return res.status(404).json({ success: false, message: 'Shift not found or already cancelled.' });
+    }
+
+    await execute(
+      'DELETE FROM delivery_shifts WHERE id = ? AND delivery_partner_id = ?',
+      [id, riderId]
+    );
+
+    res.json({ success: true, message: 'Shift cancelled successfully.' });
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
  * Delivery Earnings (Real live database calculations)
  * GET /api/delivery/earnings
  */

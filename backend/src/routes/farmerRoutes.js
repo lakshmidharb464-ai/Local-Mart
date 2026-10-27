@@ -9,7 +9,9 @@ import {
   updateFarmerOrderStatus,
   getHarvestPlans,
   createHarvestPlan,
+  deleteHarvestPlan,
   broadcastHarvestAlert,
+  postBroadcast,
   getBatches,
   logBatchSpoilage,
   requestPayout,
@@ -38,10 +40,12 @@ router.delete('/products/:id', deleteProduct);
 router.get('/orders', getFarmerOrders);
 router.patch('/orders/:id/status', updateFarmerOrderStatus);
 
-// Harvest Planner
+// Harvest Planner & Broadcast
 router.get('/harvest-plans', getHarvestPlans);
 router.post('/harvest-plans', createHarvestPlan);
+router.delete('/harvest-plans/:id', deleteHarvestPlan);
 router.post('/harvest-plans/:id/broadcast', broadcastHarvestAlert);
+router.post('/broadcast', postBroadcast);
 
 // Inventory & Batches
 router.get('/inventory/batches', getBatches);

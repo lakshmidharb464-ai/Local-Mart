@@ -167,18 +167,28 @@ export async function seedDatabase() {
       [categories]
     );
 
-    // 9. Insert Products
+    // 9. Insert Products (20 Real-World Farm Products)
     const products = [
-      ['p1', 'f1', 'Organic Veggies', 'Fresh Farm Organic Tomatoes', 'Vine-ripened red tomatoes grown without synthetic pesticides. Juicy & nutrient rich.', 40.00, 'kg', 120, 1, 'Harvested Fresh Today', 'Today 5:30 AM', 4.90, 48, 0.00, 0, 'Approved'],
+      ['p1', 'f1', 'Organic Veggies', 'Fresh Farm Organic Tomatoes', 'Vine-ripened red tomatoes grown without synthetic pesticides. Juicy, firm, and nutrient rich.', 40.00, 'kg', 120, 1, 'Harvested Fresh Today', 'Today 5:30 AM', 4.90, 48, 0.00, 0, 'Approved'],
       ['p2', 'f2', 'Organic Veggies', 'Crisp Hydroponic Spinach', 'Pesticide-free leafy spinach harvested at first light. High iron and nutrient content.', 30.00, 'bunch', 85, 1, 'Harvested Fresh Today', 'Today 6:00 AM', 4.95, 34, 0.00, 0, 'Approved'],
-      ['p3', 'f5', 'Seasonal Picks', 'Alphonso Mangoes (Devgad)', 'Tree-ripened, GI-tagged Alphonso mangoes. Unmatched aroma and sweet rich flavor.', 650.00, 'dozen', 45, 1, 'Yesterday Evening', 'Yesterday Evening', 4.92, 60, 5.00, 0, 'Approved'],
-      ['p4', 'f3', 'Dairy & Eggs', 'Pure A2 Gir Cow Milk', 'Raw, unadulterated A2 milk from free-grazing Gir cows. Chilled and delivered cold.', 80.00, 'liter', 200, 1, 'Harvested Fresh Today', 'Today 4:30 AM', 4.98, 112, 0.00, 0, 'Approved'],
-      ['p5', 'f4', 'Grocery & Oils', 'Cold-Pressed Groundnut Oil', 'Traditional wood-pressed (Ghani) peanut oil preserving natural antioxidants and aroma.', 240.00, 'liter', 60, 1, 'Batch #402', 'Batch #402', 4.70, 19, 0.00, 0, 'Approved'],
-      ['p6', 'f3', 'Dairy & Eggs', 'Farm Fresh Brown Eggs', 'Cruelty-free free-range eggs laid by pasture-raised hens fed natural grain.', 90.00, 'pack of 6', 12, 1, 'Harvested Fresh Today', 'Today 6:15 AM', 4.85, 27, 0.00, 0, 'Approved'],
+      ['p3', 'f5', 'Seasonal Picks', 'Devgad Alphonso Mangoes (Hapus)', 'Tree-ripened, GI-tagged Alphonso mangoes. Unmatched aroma and sweet rich flavor.', 650.00, 'dozen', 45, 1, 'Tree Ripened Yesterday', 'Yesterday Evening', 4.92, 60, 5.00, 0, 'Approved'],
+      ['p4', 'f3', 'Dairy & Eggs', 'Pure A2 Gir Cow Raw Milk', 'Raw, unadulterated A2 milk from free-grazing Gir cows. Chilled and delivered fresh in glass bottles.', 85.00, 'liter', 200, 1, 'Milked This Morning', 'Today 4:30 AM', 4.98, 112, 0.00, 0, 'Approved'],
+      ['p5', 'f4', 'Grocery & Oils', 'Cold-Pressed Groundnut Oil', 'Traditional wood-pressed (Ghani) peanut oil preserving natural antioxidants and aroma.', 240.00, 'liter', 60, 1, 'Cold Pressed Batch #402', 'Batch #402', 4.70, 19, 0.00, 0, 'Approved'],
+      ['p6', 'f3', 'Dairy & Eggs', 'Farm Fresh Pasture Brown Eggs', 'Cruelty-free free-range eggs laid by pasture-raised hens fed natural grain and greens.', 95.00, 'pack of 6', 60, 1, 'Collected Today', 'Today 6:15 AM', 4.85, 27, 0.00, 0, 'Approved'],
       ['p7', 'f1', 'Bulk Farm Boxes', 'Family Weekly Organic Harvest Box', 'Complete family staple box: 4kg essential veggies, 2kg seasonal fruits, and farm fresh greens at 20% bulk savings.', 549.00, 'box (8kg mixed)', 25, 1, 'Curated This Morning', 'Curated This Morning', 4.96, 52, 10.00, 0, 'Approved'],
-      ['p8', 'f3', 'Grocery & Oils', 'Palamaner Farm Pure Desi Ghee', 'Traditional Bilona method ghee made by churning curd from free-grazing AP farm cows.', 950.00, '500g jar', 8, 1, 'Batch #12', 'Batch #12', 4.99, 88, 0.00, 0, 'Approved'],
-      ['p9', 'f5', 'Seasonal Picks', 'Fresh Strawberries (Mahabaleshwar)', 'Handpicked sweet berries from hill slopes of Mahabaleshwar.', 180.00, '250g box', 18, 1, 'Harvested Fresh Today', 'Today 5:00 AM', 4.80, 22, 0.00, 0, 'Approved'],
-      ['p10', 'f2', 'Bulk Farm Boxes', 'Immunity & Detox Farm Box', 'Handpicked citrus, ginger, turmeric root, amla, and fresh green leafy bundles.', 420.00, 'box (5kg)', 30, 1, 'Harvested Fresh Today', 'Today 6:30 AM', 4.90, 15, 0.00, 0, 'Approved'],
+      ['p8', 'f3', 'Dairy & Eggs', 'Traditional Bilona Desi Cow Ghee', 'Hand-churned Vedic Bilona ghee prepared from curd of grass-fed desi cows over slow wood-fire.', 950.00, '500g jar', 35, 1, 'Artisan Batch #12', 'Batch #12', 4.99, 88, 0.00, 0, 'Approved'],
+      ['p9', 'f5', 'Seasonal Picks', 'Fresh Mahabaleshwar Sweet Strawberries', 'Handpicked sweet ruby red berries from the misty hill slopes of Mahabaleshwar.', 180.00, '250g box', 40, 1, 'Harvested Fresh Today', 'Today 5:00 AM', 4.80, 22, 0.00, 0, 'Approved'],
+      ['p10', 'f2', 'Bulk Farm Boxes', 'Immunity & Detox Farm Wellness Box', 'Handpicked citrus, fresh ginger, raw turmeric root, amla, and organic green leafy bundles.', 420.00, 'box (5kg)', 30, 1, 'Harvested Fresh Today', 'Today 6:30 AM', 4.90, 15, 0.00, 0, 'Approved'],
+      ['p11', 'f1', 'Organic Veggies', 'Crisp Sweet Orange Carrots', 'Sweet, crunchy farm-fresh red carrots grown in rich organic soil. High in beta-carotene.', 45.00, 'kg', 110, 1, 'Harvested Fresh Today', 'Today 6:00 AM', 4.88, 31, 0.00, 0, 'Approved'],
+      ['p12', 'f1', 'Organic Veggies', 'Organic Country Potatoes', 'Naturally cultivated unpolished earthen potatoes from Pune rural farms. Perfect texture for cooking.', 35.00, 'kg', 250, 1, 'Harvested This Week', 'This Week', 4.75, 42, 0.00, 0, 'Approved'],
+      ['p13', 'f2', 'Organic Veggies', 'Nashik Red Onions', 'Flavorful, pungent sun-cured red onions sourced directly from the renowned onion fields of Nashik.', 38.00, 'kg', 300, 1, 'Sun Cured Fresh', 'Harvest Batch #88', 4.82, 38, 0.00, 0, 'Approved'],
+      ['p14', 'f3', 'Dairy & Eggs', 'Farm Fresh Malai Paneer', 'Melt-in-mouth artisanal cottage cheese made from pure whole A2 milk with zero synthetic additives.', 130.00, '250g pack', 45, 1, 'Freshly Made Today', 'Today 4:00 AM', 4.95, 64, 0.00, 0, 'Approved'],
+      ['p15', 'f2', 'Organic Veggies', 'Crisp Green Bell Peppers', 'Crisp, thick-walled glossy green capsicums grown in hydroponic polyhouses. Crunchy and mildly sweet.', 55.00, 'kg', 80, 1, 'Harvested Fresh Today', 'Today 5:45 AM', 4.80, 20, 0.00, 0, 'Approved'],
+      ['p16', 'f2', 'Organic Veggies', 'Fresh Organic Broccoli Florets', 'Tender, deep green compact broccoli heads packed with antioxidants, dietary fiber, and vitamin C.', 75.00, '500g', 65, 1, 'Harvested Fresh Today', 'Today 6:10 AM', 4.89, 29, 0.00, 0, 'Approved'],
+      ['p17', 'f4', 'Grocery & Oils', 'Cold-Pressed Pure Yellow Mustard Oil', 'Authentic Sarson tel extracted via traditional Kachi Ghani cold press. Distinctive aroma and purity.', 210.00, 'liter', 55, 1, 'Cold Pressed Batch #109', 'Batch #109', 4.84, 25, 0.00, 0, 'Approved'],
+      ['p18', 'f4', 'Grocery & Oils', 'Raw Wild Forest Multi-Flora Honey', 'Unfiltered, unpasteurized natural honey collected by tribal beekeepers. Retains living enzymes and pollen.', 380.00, '500g jar', 50, 1, 'Raw Forest Harvest', 'Forest Harvest Oct', 4.97, 72, 0.00, 0, 'Approved'],
+      ['p19', 'f1', 'Seasonal Picks', 'Golden Sweet Corn Cobs', 'Tender, juicy sweet corn on the cob harvested fresh before sunrise. Bursting with natural sweetness.', 40.00, 'pack of 2', 95, 1, 'Harvested Fresh Today', 'Today 5:15 AM', 4.86, 18, 0.00, 0, 'Approved'],
+      ['p20', 'f5', 'Seasonal Picks', 'Ruby Red Pomegranates (Bhagwa)', 'Premium Solapur Bhagwa variety pomegranates with deep crimson sweet arils and thin skin.', 160.00, 'kg', 70, 1, 'Direct Orchard Pick', 'Yesterday Afternoon', 4.93, 56, 5.00, 0, 'Approved'],
     ];
 
     await connection.query(
@@ -186,18 +196,28 @@ export async function seedDatabase() {
       [products]
     );
 
-    // 10. Insert Product Images
+    // 10. Insert Product Images (Verified 200 OK Direct URLs)
     const productImages = [
-      ['img-1', 'p1', 'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?auto=format&fit=crop&w=600&q=80', null, 1, 0],
-      ['img-2', 'p2', 'https://images.unsplash.com/photo-1576045057995-568f588f82fb?auto=format&fit=crop&w=600&q=80', null, 1, 0],
-      ['img-3', 'p3', 'https://images.unsplash.com/photo-1601493700631-2b16ec4b4716?auto=format&fit=crop&w=600&q=80', null, 1, 0],
-      ['img-4', 'p4', 'https://images.unsplash.com/photo-1550583724-b2692b85b150?auto=format&fit=crop&w=600&q=80', null, 1, 0],
-      ['img-5', 'p5', 'https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?auto=format&fit=crop&w=600&q=80', null, 1, 0],
-      ['img-6', 'p6', 'https://images.unsplash.com/photo-1516448620398-c5f44bf9f441?auto=format&fit=crop&w=600&q=80', null, 1, 0],
-      ['img-7', 'p7', 'https://images.unsplash.com/photo-1610348725531-843dff563e2c?auto=format&fit=crop&w=600&q=80', null, 1, 0],
-      ['img-8', 'p8', 'https://images.unsplash.com/photo-1631451095765-2c91616fc9e6?auto=format&fit=crop&w=600&q=80', null, 1, 0],
-      ['img-9', 'p9', 'https://images.unsplash.com/photo-1464965911861-746a04b4bca6?auto=format&fit=crop&w=600&q=80', null, 1, 0],
-      ['img-10', 'p10', 'https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=600&q=80', null, 1, 0],
+      ['img-1', 'p1', 'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?auto=format&fit=crop&w=800&q=80', null, 1, 0],
+      ['img-2', 'p2', 'https://images.unsplash.com/photo-1576045057995-568f588f82fb?auto=format&fit=crop&w=800&q=80', null, 1, 0],
+      ['img-3', 'p3', 'https://images.unsplash.com/photo-1553279768-865429fa0078?auto=format&fit=crop&w=800&q=80', null, 1, 0],
+      ['img-4', 'p4', 'https://images.unsplash.com/photo-1550583724-b2692b85b150?auto=format&fit=crop&w=800&q=80', null, 1, 0],
+      ['img-5', 'p5', 'https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?auto=format&fit=crop&w=800&q=80', null, 1, 0],
+      ['img-6', 'p6', 'https://images.unsplash.com/photo-1516448620398-c5f44bf9f441?auto=format&fit=crop&w=800&q=80', null, 1, 0],
+      ['img-7', 'p7', 'https://images.unsplash.com/photo-1610348725531-843dff563e2c?auto=format&fit=crop&w=800&q=80', null, 1, 0],
+      ['img-8', 'p8', 'https://images.unsplash.com/photo-1631451095765-2c91616fc9e6?auto=format&fit=crop&w=800&q=80', null, 1, 0],
+      ['img-9', 'p9', 'https://images.unsplash.com/photo-1464965911861-746a04b4bca6?auto=format&fit=crop&w=800&q=80', null, 1, 0],
+      ['img-10', 'p10', 'https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=800&q=80', null, 1, 0],
+      ['img-11', 'p11', 'https://images.unsplash.com/photo-1590868309235-ea34bed7bd7f?auto=format&fit=crop&w=800&q=80', null, 1, 0],
+      ['img-12', 'p12', 'https://images.unsplash.com/photo-1518977676601-b53f82aba655?auto=format&fit=crop&w=800&q=80', null, 1, 0],
+      ['img-13', 'p13', 'https://images.unsplash.com/photo-1618512496248-a07fe83aa8cb?auto=format&fit=crop&w=800&q=80', null, 1, 0],
+      ['img-14', 'p14', 'https://images.unsplash.com/photo-1631452180519-c014fe946bc7?auto=format&fit=crop&w=800&q=80', null, 1, 0],
+      ['img-15', 'p15', 'https://images.unsplash.com/photo-1563565375-f3fdfdbefa83?auto=format&fit=crop&w=800&q=80', null, 1, 0],
+      ['img-16', 'p16', 'https://images.unsplash.com/photo-1459411621453-7b03977f4bfc?auto=format&fit=crop&w=800&q=80', null, 1, 0],
+      ['img-17', 'p17', 'https://images.unsplash.com/photo-1620706857370-e1b9770e8bb1?auto=format&fit=crop&w=800&q=80', null, 1, 0],
+      ['img-18', 'p18', 'https://images.unsplash.com/photo-1587049352846-4a222e784d38?auto=format&fit=crop&w=800&q=80', null, 1, 0],
+      ['img-19', 'p19', 'https://images.unsplash.com/photo-1551754655-cd27e38d2076?auto=format&fit=crop&w=800&q=80', null, 1, 0],
+      ['img-20', 'p20', 'https://images.unsplash.com/photo-1615485290382-441e4d049cb5?auto=format&fit=crop&w=800&q=80', null, 1, 0],
     ];
 
     await connection.query(
@@ -345,6 +365,11 @@ export async function seedDatabase() {
       ['rev-1', 'p1', 'c1', 5, 'Super fresh and full of natural flavor. Arrived within 30 minutes!'],
       ['rev-2', 'p4', 'c2', 5, 'Best A2 milk in Pune. Thick malai and genuine farm taste.'],
       ['rev-3', 'p2', 'c3', 5, 'Crisp hydroponic spinach, zero mud or pesticides.'],
+      ['rev-4', 'p11', 'c4', 5, 'Sweetest and crunchiest carrots ever, excellent for daily cold juice.'],
+      ['rev-5', 'p13', 'c5', 5, 'Authentic pungent Nashik onions. Excellent shelf life and quality.'],
+      ['rev-6', 'p14', 'c2', 5, 'Melt-in-mouth soft fresh paneer. Makes restaurants look ordinary.'],
+      ['rev-7', 'p18', 'c1', 5, 'Raw wild forest honey with true aroma and pure floral nectar notes.'],
+      ['rev-8', 'p20', 'c3', 5, 'Big ruby pearls with deep sweetness, very high quality Bhagwa pomegranates.'],
     ];
 
     await connection.query(
